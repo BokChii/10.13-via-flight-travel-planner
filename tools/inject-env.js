@@ -9,26 +9,27 @@ const distDir = path.join(projectRoot, 'dist');
 const distIndexPath = path.join(distDir, 'index.html');
 const distPlannerPath = path.join(distDir, 'planner.html');
 
-if (!fs.existsSync(envPath)) {
-  console.error('[inject-env] .env 파일을 찾을 수 없습니다. GOOGLE_MAPS_API_KEY를 설정하세요.');
-  process.exit(1);
+// 환경 변수에서 API 키 가져오기 (GitHub Actions용)
+let apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+// .env 파일이 있으면 파일에서도 읽기 (로컬 개발용)
+if (!apiKey && fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  const envMap = Object.fromEntries(
+    envContent
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'))
+      .map((line) => {
+        const [key, ...rest] = line.split('=');
+        return [key.trim(), rest.join('=').trim()];
+      })
+  );
+  apiKey = envMap.GOOGLE_MAPS_API_KEY;
 }
 
-const envContent = fs.readFileSync(envPath, 'utf8');
-const envMap = Object.fromEntries(
-  envContent
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'))
-    .map((line) => {
-      const [key, ...rest] = line.split('=');
-      return [key.trim(), rest.join('=').trim()];
-    })
-);
-
-const apiKey = envMap.GOOGLE_MAPS_API_KEY;
 if (!apiKey) {
-  console.error('[inject-env] GOOGLE_MAPS_API_KEY 값이 비어 있습니다.');
+  console.error('[inject-env] GOOGLE_MAPS_API_KEY를 찾을 수 없습니다. 환경 변수나 .env 파일을 확인하세요.');
   process.exit(1);
 }
 
