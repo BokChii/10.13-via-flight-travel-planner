@@ -15,6 +15,7 @@ const selectors = {
   copyTrip: "#copy-trip",
   importTrip: "#import-trip",
   importTripInput: "#import-trip-input",
+  emergencyReturn: "#emergency-return",
   summaryOutput: "#summary-output",
   navigationStatus: "#navigation-status",
   navigationOverlay: "#navigation-overlay",

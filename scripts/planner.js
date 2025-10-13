@@ -1,14 +1,7 @@
 ﻿import { showToast } from './toast.js';
 import { loadGoogleMapsSdk } from './api.js';
 import { getGoogleMapsApiKey } from './config.js';
-
-const MAX_CATEGORY_SELECTION = 3;
-const MAX_RECOMMENDED_STOPS = 3;
-const DEFAULT_CATEGORY_PRESET = ['culture', 'food', 'view'];
-const MIN_STAY_MINUTES = 20;
-const MAX_STAY_MINUTES = 240;
-const DEFAULT_SEARCH_CENTER = { lat: 37.5665, lng: 126.978 };
-const DEFAULT_SEARCH_RADIUS_METERS = 15_000;
+import { PLANNER_CONFIG, CATEGORY_STAY_TIMES, LOCATIONS } from './config.js';
 
 const CATEGORY_CONFIGS = {
   food: {
@@ -16,44 +9,39 @@ const CATEGORY_CONFIGS = {
     label: '미식 & 로컬 맛집',
     queries: ['서울 맛집', '서울 인기 음식점', '서울 전통 음식'],
     type: 'restaurant',
-    fallbackStayMinutes: 90,
+    fallbackStayMinutes: CATEGORY_STAY_TIMES.food,
   },
   shopping: {
     key: 'shopping',
     label: '쇼핑 & 기념품',
     queries: ['서울 쇼핑몰', '서울 쇼핑 명소', '서울 기념품 거리'],
     type: 'shopping_mall',
-    fallbackStayMinutes: 75,
+    fallbackStayMinutes: CATEGORY_STAY_TIMES.shopping,
   },
   culture: {
     key: 'culture',
     label: '문화 & 역사',
     queries: ['서울 문화 관광', '서울 역사 명소', '서울 박물관'],
     type: 'tourist_attraction',
-    fallbackStayMinutes: 90,
+    fallbackStayMinutes: CATEGORY_STAY_TIMES.culture,
   },
   nature: {
     key: 'nature',
     label: '자연 & 정원',
     queries: ['서울 공원', '서울 자연 명소', '서울 한강 공원'],
     type: 'park',
-    fallbackStayMinutes: 60,
+    fallbackStayMinutes: CATEGORY_STAY_TIMES.nature,
   },
   view: {
     key: 'view',
     label: '전망 & 야경',
     queries: ['서울 전망대', '서울 야경 명소', '서울 야간 관광'],
     type: 'tourist_attraction',
-    fallbackStayMinutes: 60,
+    fallbackStayMinutes: CATEGORY_STAY_TIMES.view,
   },
 };
 
-const AIRPORT_ANCHOR = {
-  label: '인천국제공항 제1여객터미널',
-  address: '인천광역시 중구 공항로 272',
-  location: { lat: 37.449796, lng: 126.451244 },
-  placeId: null,
-};
+const AIRPORT_ANCHOR = LOCATIONS.DEFAULT_AIRPORT;
 
 let plannerServices = {
   googleMaps: null,
@@ -138,30 +126,33 @@ export function initPlannerWizard({ onPlanGenerated, onSkip } = {}) {
 
 export function attachPlannerServices({ googleMaps, placesService, map } = {}) {
   plannerServices = {
-    googleMaps: googleMaps ?? plannerServices.googleMaps,
+    googleMaps: window.google ?? googleMaps ?? plannerServices.googleMaps,
     placesService: placesService ?? plannerServices.placesService,
     map: map ?? plannerServices.map,
   };
   updateGenerateAvailability();
   // SDK ready: wire airport autocompletes
-  try { initPlannerAutocomplete(); } catch {}
+  try { 
+    // 자동완성 초기화를 약간 지연시켜 DOM이 완전히 준비되도록 함
+    setTimeout(() => {
+      initPlannerAutocomplete(); 
+      console.log('Planner autocomplete initialized successfully');
+    }, 200);
+  } catch (error) {
+    console.error('Failed to initialize planner autocomplete:', error);
+  }
 }
 
 // 전역 함수로 노출 (HTML에서 호출하기 위해)
 window.attachPlannerServices = attachPlannerServices;
+window.initPlannerAutocomplete = initPlannerAutocomplete; // 디버깅용
 
 function collectPlannerElements(form) {
   return {
     form,
     steps: Array.from(document.querySelectorAll('.planner-step')),
     stepIndicators: Array.from(document.querySelectorAll('.planner__step')),
-    summary: document.querySelector('#planner-summary'),
-    nextButton: document.querySelector('#planner-next'),
-    prevButton: document.querySelector('#planner-prev'),
-    skipButton: document.querySelector('#planner-skip'),
     generateButton: document.querySelector('#planner-generate'),
-    arrivalInput: document.querySelector('#planner-arrival'),
-    departureInput: document.querySelector('#planner-departure'),
     arrivalDateInput: document.querySelector('#planner-arrival-date'),
     arrivalHourSelect: document.querySelector('#planner-arrival-hour'),
     arrivalMinuteSelect: document.querySelector('#planner-arrival-minute'),
@@ -183,9 +174,11 @@ function collectPlannerElements(form) {
 function attachEventListeners() {
   if (!plannerElements) return;
 
-  plannerElements.nextButton?.addEventListener('click', handleNextStep);
-  plannerElements.prevButton?.addEventListener('click', handlePreviousStep);
-  plannerElements.skipButton?.addEventListener('click', handleSkipPlanner);
+  // 각 단계별 버튼에 이벤트 리스너 연결
+  document.getElementById('planner-next-1')?.addEventListener('click', handleNextStep);
+  document.getElementById('planner-next-2')?.addEventListener('click', handleNextStep);
+  document.getElementById('planner-prev-2')?.addEventListener('click', handlePreviousStep);
+  document.getElementById('planner-prev-3')?.addEventListener('click', handlePreviousStep);
   plannerElements.generateButton?.addEventListener('click', handleGeneratePlan);
   // Backdrop removed - planner is now a separate page
   plannerElements.form?.addEventListener('submit', (event) => event.preventDefault());
@@ -345,31 +338,55 @@ function attachEventListeners() {
   });
 }
 
-// Attach Google Places Autocomplete to airport inputs (airport-only via selection validation)
+// Attach Google Places Autocomplete to airport inputs (all places allowed)
 function initPlannerAutocomplete() {
   const g = plannerServices.googleMaps;
-  if (!g || !plannerElements) return;
+  if (!g || !plannerElements) {
+    console.warn('Google Maps or planner elements not available:', { g: !!g, plannerElements: !!plannerElements });
+    return;
+  }
+
+  // Google Maps Places API가 로드되었는지 확인
+  if (!g.maps || !g.maps.places) {
+    console.warn('Google Maps Places API not loaded yet');
+    return;
+  }
+
+  console.log('Initializing autocomplete for inputs:', {
+    arriveInput: !!plannerElements.airportArriveInput,
+    returnInput: !!plannerElements.airportReturnInput
+  });
 
   const attach = (input, onPick) => {
-    if (!input) return;
+    if (!input) {
+      console.warn('Input element not found');
+      return;
+    }
+    
+    console.log('Attaching autocomplete to input:', input.id);
+    
     const ac = new g.maps.places.Autocomplete(input, {
       fields: ['formatted_address', 'geometry', 'place_id', 'name', 'types'],
+      types: ['establishment', 'geocode'], // 모든 장소 타입 허용
     });
+    
     ac.addListener('place_changed', () => {
       const p = ac.getPlace();
-      if (!p?.geometry || !p.formatted_address) return;
-      const types = Array.isArray(p.types) ? p.types : [];
-      const isAirport = types.includes('airport') || /공항|airport/i.test(p.name ?? '');
-      if (!isAirport) {
-        showToast({ message: '공항만 선택할 수 있어요. 공항명을 다시 선택해주세요.', type: 'warning' });
+      console.log('Place selected:', p);
+      
+      if (!p?.geometry || !p.formatted_address) {
+        console.warn('Invalid place selected:', p);
         return;
       }
+      
       const place = {
         label: p.name ?? p.formatted_address,
         address: p.formatted_address,
         location: p.geometry.location?.toJSON?.() ?? null,
         placeId: p.place_id ?? null,
       };
+      
+      console.log('Processed place:', place);
       onPick(place);
     });
   };
@@ -392,16 +409,21 @@ function initPlannerAutocomplete() {
 function handleNextStep() {
   const values = readFormValues();
   
-  // 첫 번째 단계는 스킵하고 바로 두 번째 단계로 이동
+  // 각 단계별 검증 수행
   if (currentStep === 1) {
+    if (!validateStep1(values)) {
+      return;
+    }
     goToStep(2, values);
+  } else if (currentStep === 2) {
+    if (!validateStep2(values)) {
+      return;
+    }
+    goToStep(3, values);
+  } else if (currentStep === 3) {
+    // 3단계에서는 생성 버튼이 별도로 처리됨
     return;
   }
-  
-  if (currentStep === 2 && !validateCategories(values)) {
-    return;
-  }
-  goToStep(Math.min(currentStep + 1, 3), values);
 }
 
 function handlePreviousStep() {
@@ -410,23 +432,25 @@ function handlePreviousStep() {
 
 function goToStep(step, values) {
   currentStep = step;
-  // Overlay removed - planner is now a separate page
-
+  
+  // 모든 단계 섹션 숨기기
   plannerElements.steps.forEach((section) => {
     const sectionStep = Number(section.dataset.step ?? '1');
     section.hidden = sectionStep !== step;
   });
 
-  plannerElements.prevButton.hidden = step === 1;
-  plannerElements.nextButton.hidden = step === 3;
-  plannerElements.generateButton.hidden = step !== 3;
+  // 스크롤을 최상단으로 이동
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
+  // 단계 표시기 업데이트
   updateStepIndicator(step);
 
+  // 3단계에서 요약 미리보기 업데이트
   if (step === 3) {
     updateSummaryPreview(values ?? readFormValues());
   }
 
+  // 생성 버튼 가용성 업데이트
   updateGenerateAvailability();
 }
 
@@ -555,25 +579,23 @@ function highlightFieldError(selector, message) {
   return null;
 }
 
-function validateAirports(values) {
+function validateStep1(values) {
   clearFieldErrors();
   
+  // 공항 검증
   if (!values.arriveAnchor) {
     highlightFieldError('#planner-airport-arrive-select');
     showToast({ message: '도착 공항을 선택해주세요.', type: 'warning' });
     return false;
   }
+  
   if (!values.returnAnchor) {
     highlightFieldError('#planner-airport-return-select');
     showToast({ message: '복귀 공항을 선택해주세요.', type: 'warning' });
     return false;
   }
-  return true;
-}
-
-function validateTiming(values) {
-  clearFieldErrors();
   
+  // 시간 검증
   if (!values.arrival || !values.departure) {
     if (!values.arrival) {
       highlightFieldError('#planner-arrival-date');
@@ -601,7 +623,7 @@ function validateTiming(values) {
   return true;
 }
 
-function validateCategories(values) {
+function validateStep2(values) {
   clearFieldErrors();
   
   if (!values.categories.length) {
@@ -618,6 +640,7 @@ function validateCategories(values) {
     showToast({ message: '관심 있는 카테고리를 하나 이상 선택해주세요.', type: 'warning' });
     return false;
   }
+  
   return true;
 }
 
@@ -706,7 +729,7 @@ function formatDurationFromMinutes(minutes) {
 
 function handleSkipPlanner() {
   // Skip to main page
-  window.location.href = 'index.html';
+  window.location.href = 'navigation.html';
   plannerHandlers.onSkip?.();
 }
 
@@ -716,13 +739,13 @@ function ensurePlannerVisible() {
 
 function hidePlannerOverlay() {
   // Planner is now a separate page, navigate to main page instead
-  window.location.href = 'index.html';
+  window.location.href = 'navigation.html';
 }
 
 function updateCategoryLimits() {
   if (!plannerElements?.categoryInputs) return;
   const selected = plannerElements.categoryInputs.filter((input) => input.checked);
-  const limitReached = selected.length >= MAX_CATEGORY_SELECTION;
+  const limitReached = selected.length >= PLANNER_CONFIG.MAX_CATEGORY_SELECTION;
   plannerElements.categoryInputs.forEach((input) => {
     if (input.checked) return;
     input.disabled = limitReached;
@@ -731,10 +754,18 @@ function updateCategoryLimits() {
 
 function updateGenerateAvailability() {
   if (!plannerElements?.generateButton) return;
+  
+  const values = readFormValues();
   const anchorsReady = Boolean(selectedArriveAnchor && (selectedReturnAnchor || sameAirportChecked));
+  const categoriesSelected = values.categories.length > 0;
   const readyForGeneration = Boolean(
-    plannerServices.placesService && plannerServices.googleMaps && currentStep === 3 && anchorsReady
+    plannerServices.placesService && 
+    plannerServices.googleMaps && 
+    currentStep === 3 && 
+    anchorsReady && 
+    categoriesSelected
   );
+  
   plannerElements.generateButton.disabled = !readyForGeneration || isGenerating;
 }
 
@@ -759,7 +790,8 @@ async function handleGeneratePlan() {
   }
 
   const values = readFormValues();
-  if (!validateTiming(values) || !validateCategories(values)) {
+  // 모든 단계 검증 수행
+  if (!validateStep1(values) || !validateStep2(values)) {
     return;
   }
 
@@ -782,7 +814,7 @@ async function handleGeneratePlan() {
     sessionStorage.setItem('plannerResult', JSON.stringify(plan));
     
     // Navigate to main page
-    window.location.href = 'index.html';
+    window.location.href = 'navigation.html';
     
     plannerHandlers.onPlanGenerated?.(plan);
   } catch (error) {
@@ -856,15 +888,15 @@ function determineStopCount(availableMinutes, userDefaultStay) {
     return 1;
   }
   const roughCount = Math.max(1, Math.round(availableMinutes / (baselineStay + 30)));
-  return clamp(roughCount, 1, MAX_RECOMMENDED_STOPS);
+  return clamp(roughCount, 1, PLANNER_CONFIG.MAX_RECOMMENDED_STOPS);
 }
 
 function buildCategorySequence(selectedKeys, desiredStops) {
   const base = Array.isArray(selectedKeys) && selectedKeys.length
-    ? selectedKeys.slice(0, MAX_RECOMMENDED_STOPS)
-    : DEFAULT_CATEGORY_PRESET.slice(0, MAX_RECOMMENDED_STOPS);
+    ? selectedKeys.slice(0, PLANNER_CONFIG.MAX_RECOMMENDED_STOPS)
+    : PLANNER_CONFIG.DEFAULT_CATEGORY_PRESET.slice(0, PLANNER_CONFIG.MAX_RECOMMENDED_STOPS);
   const sequence = [];
-  const pool = [...base, ...DEFAULT_CATEGORY_PRESET, ...Object.keys(CATEGORY_CONFIGS)];
+  const pool = [...base, ...PLANNER_CONFIG.DEFAULT_CATEGORY_PRESET, ...Object.keys(CATEGORY_CONFIGS)];
   pool.forEach((key) => {
     if (CATEGORY_CONFIGS[key] && !sequence.includes(key)) {
       sequence.push(key);
@@ -912,8 +944,8 @@ function executeTextSearch({ query, type }) {
     query,
     language: 'ko',
     region: 'kr',
-    location: new googleMaps.LatLng(center.lat, center.lng),
-    radius: DEFAULT_SEARCH_RADIUS_METERS,
+    location: new window.google.maps.LatLng(center.lat, center.lng),
+    radius: PLANNER_CONFIG.DEFAULT_SEARCH_RADIUS_METERS,
   };
   if (type) {
     request.type = type;
@@ -921,7 +953,7 @@ function executeTextSearch({ query, type }) {
 
   return new Promise((resolve, reject) => {
     placesService.textSearch(request, (results, status) => {
-      const statusEnum = googleMaps.places.PlacesServiceStatus;
+      const statusEnum = window.google.maps.places.PlacesServiceStatus;
       if (status === statusEnum.OK || status === statusEnum.ZERO_RESULTS) {
         resolve(results ?? []);
       } else {
@@ -939,8 +971,8 @@ function executeNearbySearch({ type }) {
 
   const center = getSearchCenter();
   const request = {
-    location: new googleMaps.LatLng(center.lat, center.lng),
-    radius: DEFAULT_SEARCH_RADIUS_METERS,
+    location: new window.google.maps.LatLng(center.lat, center.lng),
+    radius: PLANNER_CONFIG.DEFAULT_SEARCH_RADIUS_METERS,
   };
   if (type) {
     request.type = type; // use string as required by Places NearbySearch
@@ -948,7 +980,7 @@ function executeNearbySearch({ type }) {
 
   return new Promise((resolve, reject) => {
     placesService.nearbySearch(request, (results, status) => {
-      const statusEnum = googleMaps.places.PlacesServiceStatus;
+      const statusEnum = window.google.maps.places.PlacesServiceStatus;
       if (status === statusEnum.OK || status === statusEnum.ZERO_RESULTS) {
         resolve(results ?? []);
       } else {
@@ -964,7 +996,7 @@ function getSearchCenter() {
   if (mapCenter) {
     return { lat: mapCenter.lat(), lng: mapCenter.lng() };
   }
-  return DEFAULT_SEARCH_CENTER;
+  return LOCATIONS.DEFAULT_CITY_CENTER;
 }
 
 function pickCandidate(results, usedIds) {
@@ -1006,7 +1038,7 @@ function determineStayMinutes(userDefaultStay, fallback) {
   const candidate = Number.isFinite(userDefaultStay) && userDefaultStay > 0
     ? userDefaultStay
     : fallback ?? 60;
-  return clamp(Math.round(candidate), MIN_STAY_MINUTES, MAX_STAY_MINUTES);
+  return clamp(Math.round(candidate), PLANNER_CONFIG.MIN_STAY_MINUTES, PLANNER_CONFIG.MAX_STAY_MINUTES);
 }
 
 function balanceStayMinutes(waypoints, availableMinutes) {
@@ -1015,7 +1047,7 @@ function balanceStayMinutes(waypoints, availableMinutes) {
   if (totalPlanned <= 0 || totalPlanned <= availableMinutes) return;
   const scale = availableMinutes / totalPlanned;
   waypoints.forEach((wp) => {
-    const adjusted = clamp(Math.round((wp.stayMinutes ?? MIN_STAY_MINUTES) * scale), MIN_STAY_MINUTES, MAX_STAY_MINUTES);
+    const adjusted = clamp(Math.round((wp.stayMinutes ?? PLANNER_CONFIG.MIN_STAY_MINUTES) * scale), PLANNER_CONFIG.MIN_STAY_MINUTES, PLANNER_CONFIG.MAX_STAY_MINUTES);
     wp.stayMinutes = adjusted;
   });
 }
@@ -1052,25 +1084,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       // Places Service 초기화 (googleMaps는 window.google 객체)
-      const placesService = new googleMaps.maps.places.PlacesService(document.createElement('div'));
+      const placesService = new window.google.maps.places.PlacesService(document.createElement('div'));
       
       // planner.js의 attachPlannerServices 함수 호출
       attachPlannerServices({
-        googleMaps: googleMaps.maps,
+        googleMaps: window.google.maps,
         placesService,
         map: null // planner에서는 지도가 필요 없음
       });
 
-      // Only initialize on planner.html page
+      // Only initialize on index.html page (planner)
       initPlannerWizard({
         onPlanGenerated: (plan) => {
           // Store plan data and navigate to main page
           sessionStorage.setItem('plannerResult', JSON.stringify(plan));
-          window.location.href = 'index.html';
+          window.location.href = 'navigation.html';
         },
         onSkip: () => {
           // Navigate to main page without plan
-          window.location.href = 'index.html';
+          window.location.href = 'navigation.html';
         }
       });
     } catch (error) {
@@ -1078,6 +1110,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToast('Google Maps API를 로드할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
     }
   }
-  // On index.html, do nothing (no planner form exists)
+  // On navigation.html, do nothing (no planner form exists)
 });
 

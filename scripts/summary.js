@@ -1,6 +1,6 @@
 ﻿import { calculateReturnTimeInfo } from './navigationUi.js';
 
-export function renderSummary(container, routePlan, activeSegmentIndex = null) {
+export function renderSummary(container, routePlan, activeSegmentIndex = null, tripMeta = null) {
   container.innerHTML = "";
 
   if (!routePlan) {
@@ -11,13 +11,13 @@ export function renderSummary(container, routePlan, activeSegmentIndex = null) {
     return;
   }
 
-  container.append(createHeroCard(routePlan));
+  container.append(createHeroCard(routePlan, tripMeta));
   routePlan.segments?.forEach((segment, index) => {
     container.append(createSegmentEntry(segment, index, index === activeSegmentIndex));
   });
 }
 
-function createHeroCard(routePlan) {
+function createHeroCard(routePlan, tripMeta = null) {
   const { totalDurationText, totalDistanceText, arrivalTimeText } = routePlan;
   const card = document.createElement("article");
   card.className = "summary-card";
@@ -25,8 +25,12 @@ function createHeroCard(routePlan) {
   // 복귀 시간 계산
   const returnTimeInfo = calculateReturnTimeInfo(routePlan);
   
+  // 여행 정보 섹션 생성
+  const tripInfoSection = tripMeta ? createTripInfoSection(tripMeta) : '';
+  
   card.innerHTML = `
     <h3>전체 여정 요약</h3>
+    ${tripInfoSection}
     <p><strong>총 소요 시간:</strong> ${totalDurationText}</p>
     <p><strong>총 이동 거리:</strong> ${totalDistanceText}</p>
     ${arrivalTimeText ? `<p><strong>예상 도착:</strong> ${arrivalTimeText}</p>` : ""}
@@ -103,4 +107,52 @@ function createSegmentEntry(segment, index, isActive) {
 
   details.append(content);
   return details;
+}
+
+/**
+ * 여행 정보 섹션을 생성합니다
+ * @param {Object} tripMeta - 여행 메타데이터
+ * @returns {string} HTML 문자열
+ */
+function createTripInfoSection(tripMeta) {
+  if (!tripMeta) return '';
+
+  const arrival = new Date(tripMeta.arrival);
+  const departure = new Date(tripMeta.departure);
+  
+  // 전체 환승 시간 계산 (출발 - 도착)
+  const totalLayoverMinutes = Math.round((departure.getTime() - arrival.getTime()) / (1000 * 60));
+  const totalLayoverHours = Math.floor(totalLayoverMinutes / 60);
+  const remainingMinutes = totalLayoverMinutes % 60;
+  const layoverTimeText = totalLayoverHours > 0 
+    ? `${totalLayoverHours}시간 ${remainingMinutes}분`
+    : `${remainingMinutes}분`;
+
+  return `
+    <div class="trip-info-section">
+      <h4>✈️ 여행 정보</h4>
+      <p><strong>🛫 도착:</strong> ${formatDateTime(arrival)}</p>
+      <p><strong>🛬 출발:</strong> ${formatDateTime(departure)}</p>
+      <p><strong>⏱️ 전체 환승 시간:</strong> ${layoverTimeText}</p>
+      <p><strong>🕐 입국 버퍼:</strong> ${tripMeta.entryBufferMinutes || 0}분</p>
+      <p><strong>🕐 출국 버퍼:</strong> ${tripMeta.returnBufferMinutes || 0}분</p>
+    </div>
+  `;
+}
+
+/**
+ * 날짜와 시간을 포맷팅합니다
+ * @param {Date} date - 포맷팅할 날짜
+ * @returns {string} 포맷된 날짜 문자열
+ */
+function formatDateTime(date) {
+  if (!date || !(date instanceof Date)) return '-';
+  
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }

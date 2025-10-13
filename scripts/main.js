@@ -13,7 +13,7 @@ import {
   clearPreviewMarker,
 } from "./map.js";
 import { buildRoutePlan } from "./routing.js";
-import { getGoogleMapsApiKey } from "./config.js";
+import { getGoogleMapsApiKey, NOTIFICATION_CONFIG } from "./config.js";
 import { initAutocomplete } from "./autocomplete.js";
 // import { updateAutocompleteRegion } from "./autocomplete.js"; // 국가별 제한 기능 활성화 시 주석 해제
 import { getRouteColors } from "./palette.js";
@@ -22,6 +22,10 @@ import { calculateNavigationProgress } from "./progress.js";
 import { showToast } from "./toast.js";
 import { buildTripSnapshot, buildShareText, parseTripSnapshot } from "./trip.js";
 import { initPlaceModal, openPlaceModal } from "./placeModal.js";
+import { getCurrentLocationContext, generateLocationDescription } from "./locationContext.js";
+import { getCurrentWaypointContext } from "./navigationUi.js";
+import { detectEmergencySituation, activateEmergencyMode, calculateAirportReturnRoute, showAirportReturnModal } from "./emergencyMode.js";
+import { calculateRealTimeReturnInfo, generateAirportReturnMessage } from "./airportReturnSystem.js";
 
 import { attachPlannerServices } from "./planner.js";
 
@@ -29,10 +33,10 @@ const config = {
   googleMapsApiKey: getGoogleMapsApiKey(),
 };
 
-const TOAST_COOLDOWN_MS = 15_000;
-const TOAST_DISTANCE_THRESHOLD_METERS = 30;
+const TOAST_COOLDOWN_MS = NOTIFICATION_CONFIG.TOAST_COOLDOWN_MS;
+const TOAST_DISTANCE_THRESHOLD_METERS = NOTIFICATION_CONFIG.TOAST_DISTANCE_THRESHOLD_METERS;
 const RETURN_WARNING_THRESHOLD_MINUTES = 20;
-const RETURN_DEADLINE_TIMER_INTERVAL_MS = 30_000;
+const RETURN_DEADLINE_TIMER_INTERVAL_MS = NOTIFICATION_CONFIG.RETURN_DEADLINE_TIMER_INTERVAL_MS;
 const RETURN_ETA_WARNING_THRESHOLD_MINUTES = 30;
 
 
@@ -72,12 +76,17 @@ async function applyPlannerPlan(plan) {
 
   const elements = getElements();
 
+  console.log('applyPlannerPlan: 받은 plan 데이터:', plan);
+  console.log('applyPlannerPlan: plan.destination:', plan.destination);
+
   updateState((draft) => {
     draft.origin = plan.origin ? { ...plan.origin } : null;
     draft.destination = plan.destination ? { ...plan.destination } : null;
     draft.tripMeta = plan.meta
       ? {
           ...plan.meta,
+          airportPosition: plan.destination?.location || null,  // 복귀 공항 위치 정보 추가
+          returnAirport: plan.destination || null,              // 복귀 공항 전체 정보 추가
           exploreWindow: plan.meta?.exploreWindow ? { ...plan.meta.exploreWindow } : null,
           categoriesUsed: Array.isArray(plan.meta?.categoriesUsed) ? [...plan.meta.categoriesUsed] : [],
         }
@@ -85,6 +94,8 @@ async function applyPlannerPlan(plan) {
     draft.waypoints = Array.isArray(plan.waypoints) ? plan.waypoints.map((wp) => ({ ...wp })) : [];
     draft.routePlan = null;
     resetNavigationDraft(draft);
+    
+    console.log('applyPlannerPlan: 저장된 tripMeta:', draft.tripMeta);
   });
 
   if (elements.origin) {
@@ -127,19 +138,20 @@ async function bootstrap() {
   const elements = getElements();
   assertElements(elements);
 
-  subscribe((latestState) => {
+  subscribe(async (latestState) => {
     manageNavigationTracking(latestState);
     const progress = computeProgress(latestState);
     applyNavigationHighlight(latestState, progress);
     maybeAnnounceNextStep(latestState, progress);
-    syncUi(elements, latestState, progress);
-    maybeNotifyReturnDeadline(latestState, progress);
+    await syncUi(elements, latestState, progress);
+    await maybeNotifyReturnDeadline(latestState, progress);
     updateReturnDeadlineTimer(latestState);
   });
   const initialState = getState();
   const initialProgress = computeProgress(initialState);
-  syncUi(elements, initialState, null);
-  maybeNotifyReturnDeadline(initialState, initialProgress);
+  await syncUi(elements, initialState, null);
+  // 초기 로드 시에는 긴급 모드 체크하지 않음 (네비게이션 활성화 후에만 체크)
+  // maybeNotifyReturnDeadline(initialState, initialProgress);
   updateReturnDeadlineTimer(initialState);
 
   wireEventHandlers(elements);
@@ -190,6 +202,7 @@ function wireEventHandlers({
   copyTrip,
   importTrip,
   importTripInput,
+  emergencyReturn,
 }) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -275,6 +288,23 @@ function wireEventHandlers({
   saveTrip.addEventListener("click", handleSaveTrip);
   copyTrip.addEventListener("click", handleCopyTrip);
 
+  // 공항 복귀 버튼 이벤트 추가
+  if (emergencyReturn) {
+    emergencyReturn.addEventListener("click", async () => {
+      try {
+        const state = getState();
+        const routeData = await calculateAirportReturnRoute(state);
+        showAirportReturnModal(routeData, state);
+      } catch (error) {
+        console.error('공항 복귀 경로 계산 실패:', error);
+        showToast({ 
+          message: '공항 복귀 경로를 계산할 수 없습니다. 현재 위치와 여행 정보를 확인해주세요.', 
+          type: 'error' 
+        });
+      }
+    });
+  }
+
   importTrip.addEventListener("click", () => {
     importTripInput?.click();
   });
@@ -282,7 +312,7 @@ function wireEventHandlers({
   importTripInput.addEventListener("change", handleImportTrip);
 }
 
-function syncUi({
+async function syncUi({
   waypointList,
   summaryOutput,
   origin,
@@ -292,6 +322,7 @@ function syncUi({
   saveTrip,
   copyTrip,
   importTrip,
+  emergencyReturn,
   navigationStatus,
   navigationOverlay,
 }, latestState, progress) {
@@ -364,6 +395,11 @@ function syncUi({
 
   startNavigation.textContent = latestState.navigation.active ? "내비게이션 진행 중" : "내비게이션 시작";
   exitNavigation.hidden = !latestState.navigation.active;
+  
+  // 공항 복귀 버튼 표시 로직 (네비게이션 활성화 시에만 표시)
+  if (emergencyReturn) {
+    emergencyReturn.hidden = !latestState.navigation.active;
+  }
 
   document.body.classList.toggle("navigation-active", latestState.navigation.active);
   updateNavigationOverlay(navigationOverlay, latestState, progress);
@@ -371,8 +407,8 @@ function syncUi({
   // PC용 네비게이션 종료 버튼 관리
   updateNavigationExitButton(latestState.navigation.active);
 
-  renderNavigationStatus(navigationStatus, latestState.navigation, latestState.routePlan, progress);
-  renderSummary(summaryOutput, latestState.routePlan, progress?.closestSegmentIndex ?? null);
+  await renderNavigationStatus(navigationStatus, latestState.navigation, latestState.routePlan, progress);
+  renderSummary(summaryOutput, latestState.routePlan, progress?.closestSegmentIndex ?? null, latestState.tripMeta);
 }
 
 async function calculateRoute() {
@@ -481,82 +517,59 @@ function maybeAnnounceNextStep(state, progress) {
   lastToastTimestamp = now;
 }
 
-function maybeNotifyReturnDeadline(state, progress = null) {
-  const meta = state.tripMeta;
-  const windowEnd = meta?.exploreWindow?.end;
-  if (!windowEnd) return;
+async function maybeNotifyReturnDeadline(state, progress = null) {
+  // 새로운 실시간 공항 복귀 시스템 사용
+  try {
+    const returnInfo = await calculateRealTimeReturnInfo(state, progress);
+    if (!returnInfo) return;
 
-  const deadline = Date.parse(windowEnd);
-  if (!Number.isFinite(deadline)) return;
-
-  const now = Date.now();
-  const diffMs = deadline - now;
-
-  if (diffMs <= 0) {
-    if (!returnDeadlineMissedNotified) {
-      returnDeadlineMissedNotified = true;
+    const alertMessage = generateAirportReturnMessage(returnInfo);
+    
+    // 긴급 모드 활성화
+    if (returnInfo.shouldActivateEmergencyMode && !returnDeadlineWarningNotified) {
+      activateEmergencyMode(returnInfo, state);
       returnDeadlineWarningNotified = true;
-      showToast({ message: '복귀 마지노선을 넘었어요! 지금 바로 공항으로 이동하세요.', type: 'error' });
-    }    return;
-  }
-
-  const etaMinutes = estimateRemainingTravelMinutes(state, progress);
-  const bufferMinutes = Number.isFinite(meta?.returnBufferMinutes)
-    ? meta.returnBufferMinutes
-    : RETURN_WARNING_THRESHOLD_MINUTES;
-
-  if (etaMinutes != null) {
-    const departureTimestamp = Date.parse(meta?.departure ?? '');
-    if (Number.isFinite(departureTimestamp)) {
-      const timeUntilDepartureMinutes = (departureTimestamp - now) / 60_000;
-      if (timeUntilDepartureMinutes > 0) {
-        const travelPlusBuffer = etaMinutes + bufferMinutes;
-        const slackMinutes = timeUntilDepartureMinutes - travelPlusBuffer;
-
-        if (slackMinutes <= 0) {
-          if (!returnEtaCriticalNotified) {
-            returnEtaCriticalNotified = true;
-            returnEtaWarningNotified = true;
-            returnDeadlineWarningNotified = true;
-            showToast({
-              message: '예상 이동 시간과 공항 복귀 버퍼를 고려하면 지금 바로 출발해야 해요.',
-              type: 'error',
-            });
-          }
-        } else if (
-          slackMinutes <= RETURN_ETA_WARNING_THRESHOLD_MINUTES &&
-          !returnEtaWarningNotified &&
-          !returnEtaCriticalNotified
-        ) {
-          const roundedSlack = Math.max(Math.ceil(slackMinutes), 1);
-          showToast({
-            message: `공항 복귀 여유가 ${roundedSlack}분밖에 남지 않았어요. 이동 준비를 시작해주세요.`,
-            type: 'warning',
-          });
-          returnEtaWarningNotified = true;
-          returnDeadlineWarningNotified = true;
-        }
-      }
-    }
-  }
-
-  if (returnDeadlineWarningNotified || returnDeadlineMissedNotified) return;
-
-  const warningMinutes = Math.max(Math.min(bufferMinutes, 30), 10);
-  const thresholdMs = warningMinutes * 60_000;
-
-  if (diffMs <= thresholdMs) {
-    const minutesLeft = Math.max(Math.ceil(diffMs / 60_000), 1);
-    const message = minutesLeft <= 5
-      ? `공항 복귀까지 ${minutesLeft}분 남았어요. 지금 이동을 시작해야 해요.`
-      : `공항 복귀까지 ${minutesLeft}분 남았어요. 이동 준비를 시작해주세요.`;
-    showToast({
-      message,
-      type: 'warning',
-    });
-    returnDeadlineWarningNotified = true;
-    if (minutesLeft <= 5) {
+      returnDeadlineMissedNotified = true;
+      returnEtaCriticalNotified = true;
       returnEtaWarningNotified = true;
+      return;
+    }
+    
+    // 점진적 알림 표시
+    if (returnInfo.shouldShowAlert && alertMessage.urgency !== 'low') {
+      const toastType = alertMessage.urgency === 'critical' ? 'error' : 
+                       alertMessage.urgency === 'high' ? 'warning' : 'info';
+      showToast({ 
+        message: alertMessage.message, 
+        type: toastType 
+      });
+    }
+  } catch (error) {
+    console.warn('실시간 공항 복귀 알림 실패, 기존 시스템 사용:', error);
+    
+    // Fallback: 기존 긴급 상황 감지 시스템 사용
+    const emergencySituation = detectEmergencySituation(state, progress);
+    
+    if (!emergencySituation) return;
+    
+    const { emergencyLevel, shouldActivateEmergencyMode, actualSlackMinutes } = emergencySituation;
+    
+    // 긴급 모드 활성화가 필요한 경우
+    if (shouldActivateEmergencyMode && !returnDeadlineWarningNotified) {
+      activateEmergencyMode(emergencySituation, state);
+      returnDeadlineWarningNotified = true;
+      returnDeadlineMissedNotified = true;
+      returnEtaCriticalNotified = true;
+      returnEtaWarningNotified = true;
+      return;
+    }
+    
+    // 기존 알림 시스템과 통합
+    if (emergencyLevel === 'WARNING' && !returnEtaWarningNotified) {
+      const message = `⏰ 주의! 공항 복귀까지 ${actualSlackMinutes}분 여유가 있습니다. 이동 준비를 시작하세요.`;
+      showToast({ message, type: 'warning' });
+      returnEtaWarningNotified = true;
+      returnDeadlineWarningNotified = true;
     }
   }
 }

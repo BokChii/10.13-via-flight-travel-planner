@@ -3,11 +3,11 @@ import path from 'node:path';
 
 const projectRoot = process.cwd();
 const envPath = path.join(projectRoot, '.env');
-const templatePath = path.join(projectRoot, 'index.html');
-const plannerTemplatePath = path.join(projectRoot, 'planner.html');
+const templatePath = path.join(projectRoot, 'navigation.html');
+const plannerTemplatePath = path.join(projectRoot, 'index.html');
 const distDir = path.join(projectRoot, 'dist');
-const distIndexPath = path.join(distDir, 'index.html');
-const distPlannerPath = path.join(distDir, 'planner.html');
+const distIndexPath = path.join(distDir, 'navigation.html');
+const distPlannerPath = path.join(distDir, 'index.html');
 
 // 환경 변수에서 API 키 가져오기 (GitHub Actions용)
 let apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -34,12 +34,12 @@ if (!apiKey) {
 }
 
 if (!fs.existsSync(templatePath)) {
-  console.error('[inject-env] index.html 템플릿을 찾을 수 없습니다.');
+  console.error('[inject-env] navigation.html 템플릿을 찾을 수 없습니다.');
   process.exit(1);
 }
 
 if (!fs.existsSync(plannerTemplatePath)) {
-  console.error('[inject-env] planner.html 템플릿을 찾을 수 없습니다.');
+  console.error('[inject-env] index.html 템플릿을 찾을 수 없습니다.');
   process.exit(1);
 }
 

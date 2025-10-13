@@ -1,116 +1,477 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
-    <title>Via Flight</title>
+    <title>환승 일정 생성 - 환승 여행 내비게이터</title>
     <link rel="stylesheet" href="styles/main.css" />
+    <!-- Google Maps API는 planner.js에서 Promise 방식으로 로드됩니다 -->
   </head>
   <body class="app">
     <header class="app-header">
-      <h1>Via Flight Travel Planner</h1>
-      <p class="tagline">도보와 대중교통만으로 최적의 환승 여행 일정을 계획해보세요.</p>
-      <nav class="header-actions">
-        <a href="planner.html" class="btn btn--secondary">환승 일정 생성</a>
+      <h1>환승 일정 생성</h1>
+      <p class="tagline">도보와 대중교통만으로 창이 환승 일정을 계획해보세요.</p>
+      <nav class="breadcrumb">
+        <a href="navigation.html" class="breadcrumb__link">← 네비게이션으로 돌아가기</a>
       </nav>
     </header>
 
-    <main class="layout" data-view="planning">
-      <section class="panel panel--controls" aria-label="경로 입력">
-        <form id="route-form" class="route-form">
-          <fieldset>
-            <legend>경로 설정</legend>
-            <label class="field">
-              <span class="field__label">출발지</span>
-              <input id="origin-input" class="field__input" type="text" placeholder="예: 창이공항 터미널 1" required />
-            </label>
-            <label class="field">
-              <span class="field__label">목적지</span>
-              <input id="destination-input" class="field__input" type="text" placeholder="예: 창이공항 터미널 1" required />
+    <main class="planner-page">
+      <!-- 단계 표시기 (상단 고정) -->
+      <div class="planner-steps-container">
+        <ol class="planner__steps" aria-hidden="true">
+          <li class="planner__step" data-step-index="1">
+            <div class="step-indicator">
+              <div class="step-number">1</div>
+              <div class="step-label">환승 정보</div>
+            </div>
+          </li>
+          <li class="planner__step" data-step-index="2">
+            <div class="step-indicator">
+              <div class="step-number">2</div>
+              <div class="step-label">취향 설정</div>
+            </div>
+          </li>
+          <li class="planner__step" data-step-index="3">
+            <div class="step-indicator">
+              <div class="step-number">3</div>
+              <div class="step-label">결과 확인</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <section class="planner__panel" aria-live="polite">
+        <form id="planner-form" class="planner-form">
+          <!-- 1단계: 환승 정보 페이지 -->
+          <div id="planner-step-1" class="planner-step planner-step--full" data-step="1">
+            <header class="planner-step__header">
+              <h2 class="planner-step__title">✈️ 환승 정보 입력</h2>
+              <p class="planner-step__guide">도착/복귀 공항과 환승 시간을 입력해주세요.</p>
+            </header>
+            
+            <div class="planner-step__content">
+              <fieldset class="planner-fieldset">
+                <legend>공항/도시</legend>
+                
+                <div class="planner-field">
+                  <span class="planner-field__label">도착 공항</span>
+                  <div class="airport-input-group">
+                    <select id="planner-airport-arrive-select" class="airport-select">
+                      <option value="">공항을 선택하세요</option>
+                      <option value="ICN">인천국제공항 (ICN)</option>
+                      <option value="SIN">싱가포르 창이국제공항 (SIN)</option>
+                      <option value="HND">도쿄 하네다공항 (HND)</option>
+                      <option value="NRT">도쿄 나리타공항 (NRT)</option>
+                      <option value="HKG">홍콩국제공항 (HKG)</option>
+                      <option value="custom">직접 입력</option>
+                    </select>
+                    <input id="planner-airport-arrive" type="text" placeholder="장소명을 입력하세요" class="airport-input" style="display: none;" />
+                  </div>
+                </div>
+
+                <div class="planner-field">
+                  <span class="planner-field__label">복귀 공항</span>
+                  <div class="airport-input-group">
+                    <select id="planner-airport-return-select" class="airport-select">
+                      <option value="">공항을 선택하세요</option>
+                      <option value="ICN">인천국제공항 (ICN)</option>
+                      <option value="SIN">싱가포르 창이국제공항 (SIN)</option>
+                      <option value="HND">도쿄 하네다공항 (HND)</option>
+                      <option value="NRT">도쿄 나리타공항 (NRT)</option>
+                      <option value="HKG">홍콩국제공항 (HKG)</option>
+                      <option value="custom">직접 입력</option>
+                    </select>
+                    <input id="planner-airport-return" type="text" placeholder="장소명을 입력하세요" class="airport-input" style="display: none;" />
+                  </div>
+                </div>
+
+                <label class="planner-field checkbox-field">
+                  <input id="planner-same-airport" type="checkbox" />
+                  <span>복귀 공항이 출발 공항과 같아요</span>
             </label>
           </fieldset>
 
-          <fieldset>
-            <legend>경유지</legend>
-            <ul id="waypoint-list" class="waypoint-list" aria-live="polite"></ul>
-            <div class="waypoint-controls">
-              <input id="waypoint-input" class="field__input" type="text" placeholder="방문할 장소를 입력하세요" />
-              <button id="add-waypoint" type="button" class="btn">추가</button>
+              <div class="datetime-cards">
+                <div class="datetime-card arrival-card">
+                  <div class="datetime-card__header">
+                    <div class="datetime-card__icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v18H3zM7 3v18M17 3v18M3 7h18M3 17h18"/>
+                      </svg>
+                    </div>
+                    <h3 class="datetime-card__title">도착 일정</h3>
+                  </div>
+                  <div class="datetime-card__content">
+                    <div class="datetime-field">
+                      <label class="datetime-field__label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        도착 날짜
+                      </label>
+                      <input id="planner-arrival-date" type="date" class="date-input" required />
+                    </div>
+                    <div class="datetime-field">
+                      <label class="datetime-field__label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                        도착 시간
+                      </label>
+                      <div class="time-inputs">
+                        <select id="planner-arrival-hour" class="hour-select">
+                          <option value="">시</option>
+                          <option value="00">00</option>
+                          <option value="01">01</option>
+                          <option value="02">02</option>
+                          <option value="03">03</option>
+                          <option value="04">04</option>
+                          <option value="05">05</option>
+                          <option value="06">06</option>
+                          <option value="07">07</option>
+                          <option value="08">08</option>
+                          <option value="09">09</option>
+                          <option value="10">10</option>
+                          <option value="11">11</option>
+                          <option value="12">12</option>
+                          <option value="13">13</option>
+                          <option value="14">14</option>
+                          <option value="15">15</option>
+                          <option value="16">16</option>
+                          <option value="17">17</option>
+                          <option value="18">18</option>
+                          <option value="19">19</option>
+                          <option value="20">20</option>
+                          <option value="21">21</option>
+                          <option value="22">22</option>
+                          <option value="23">23</option>
+                        </select>
+                        <span class="time-separator">:</span>
+                        <select id="planner-arrival-minute" class="minute-select">
+                          <option value="">분</option>
+                          <option value="00">00</option>
+                          <option value="15">15</option>
+                          <option value="30">30</option>
+                          <option value="45">45</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="datetime-card departure-card">
+                  <div class="datetime-card__header">
+                    <div class="datetime-card__icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v18H3zM7 3v18M17 3v18M3 7h18M3 17h18"/>
+                      </svg>
+                    </div>
+                    <h3 class="datetime-card__title">출발 일정</h3>
+                  </div>
+                  <div class="datetime-card__content">
+                    <div class="datetime-field">
+                      <label class="datetime-field__label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        출발 날짜
+                      </label>
+                      <input id="planner-departure-date" type="date" class="date-input" required />
+                    </div>
+                    <div class="datetime-field">
+                      <label class="datetime-field__label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                        출발 시간
+                      </label>
+                      <div class="time-inputs">
+                        <select id="planner-departure-hour" class="hour-select">
+                          <option value="">시</option>
+                          <option value="00">00</option>
+                          <option value="01">01</option>
+                          <option value="02">02</option>
+                          <option value="03">03</option>
+                          <option value="04">04</option>
+                          <option value="05">05</option>
+                          <option value="06">06</option>
+                          <option value="07">07</option>
+                          <option value="08">08</option>
+                          <option value="09">09</option>
+                          <option value="10">10</option>
+                          <option value="11">11</option>
+                          <option value="12">12</option>
+                          <option value="13">13</option>
+                          <option value="14">14</option>
+                          <option value="15">15</option>
+                          <option value="16">16</option>
+                          <option value="17">17</option>
+                          <option value="18">18</option>
+                          <option value="19">19</option>
+                          <option value="20">20</option>
+                          <option value="21">21</option>
+                          <option value="22">22</option>
+                          <option value="23">23</option>
+                        </select>
+                        <span class="time-separator">:</span>
+                        <select id="planner-departure-minute" class="minute-select">
+                          <option value="">분</option>
+                          <option value="00">00</option>
+                          <option value="15">15</option>
+                          <option value="30">30</option>
+                          <option value="45">45</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="buffer-settings">
+                <h4>버퍼 시간 설정</h4>
+                <div class="buffer-fields">
+                  <div class="planner-field">
+                    <span class="planner-field__label">입국 버퍼 시간</span>
+                    <div class="buffer-input-group">
+                      <input id="planner-entry-buffer" type="number" min="30" max="180" step="15" value="90" class="buffer-input" />
+                      <span class="buffer-unit">분</span>
+                    </div>
+                    <small class="planner-field__hint">도착 후 공항에서 나오는 데 걸리는 시간</small>
+                  </div>
+                  <div class="planner-field">
+                    <span class="planner-field__label">복귀 버퍼 시간</span>
+                    <div class="buffer-input-group">
+                      <input id="planner-return-buffer" type="number" min="30" max="180" step="15" value="120" class="buffer-input" />
+                      <span class="buffer-unit">분</span>
+                    </div>
+                    <small class="planner-field__hint">출발 전 공항에 도착해야 하는 시간</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="planner-step__actions">
+              <button type="button" id="planner-next-1" class="btn btn--primary">다음 단계</button>
+            </div>
+          </div>
+
+          <!-- 2단계: 취향 설정 페이지 -->
+          <div id="planner-step-2" class="planner-step planner-step--full" data-step="2" hidden>
+            <header class="planner-step__header">
+              <h2 class="planner-step__title">🎯 여행 취향 설정</h2>
+              <p class="planner-step__guide">선호하는 분위기를 고르면 어울리는 장소를 찾아드릴게요. (최대 3개)</p>
+            </header>
+            
+            <div class="planner-step__content">
+              <fieldset class="planner-fieldset">
+                <legend>카테고리</legend>
+                <div class="category-grid">
+                  <label class="category-card">
+                    <input type="checkbox" name="planner-category" value="food" />
+                    <div class="category-card__content">
+                      <div class="category-card__icon">🍽️</div>
+                      <div class="category-card__label">미식 &amp; 로컬 맛집</div>
+                      <div class="category-card__description">현지 맛집과 특색 있는 음식</div>
+                    </div>
+                  </label>
+                  <label class="category-card">
+                    <input type="checkbox" name="planner-category" value="shopping" />
+                    <div class="category-card__content">
+                      <div class="category-card__icon">🛍️</div>
+                      <div class="category-card__label">쇼핑 &amp; 기념품</div>
+                      <div class="category-card__description">현지 상품과 기념품 쇼핑</div>
+                    </div>
+                  </label>
+                  <label class="category-card">
+                    <input type="checkbox" name="planner-category" value="culture" />
+                    <div class="category-card__content">
+                      <div class="category-card__icon">🏛️</div>
+                      <div class="category-card__label">문화 &amp; 역사</div>
+                      <div class="category-card__description">박물관, 역사적 장소</div>
+                    </div>
+                  </label>
+                  <label class="category-card">
+                    <input type="checkbox" name="planner-category" value="nature" />
+                    <div class="category-card__content">
+                      <div class="category-card__icon">🌿</div>
+                      <div class="category-card__label">자연 &amp; 정원</div>
+                      <div class="category-card__description">공원, 정원, 자연 경관</div>
+                    </div>
+                  </label>
+                  <label class="category-card">
+                    <input type="checkbox" name="planner-category" value="view" />
+                    <div class="category-card__content">
+                      <div class="category-card__icon">🌆</div>
+                      <div class="category-card__label">전망 &amp; 야경</div>
+                      <div class="category-card__description">전망대, 야경 명소</div>
+                    </div>
+                  </label>
             </div>
           </fieldset>
 
-          <div class="actions">
-            <button type="submit" class="btn btn--primary">경로 찾기</button>
-            <button id="start-navigation" type="button" class="btn btn--accent" disabled>내비게이션 시작</button>
-            <button id="clear-route" type="button" class="btn btn--ghost">초기화</button>
+              <div class="stay-time-section">
+                <h4>장소별 기본 체류 시간</h4>
+                <div class="stay-time-input">
+                  <div class="stay-time-slider">
+                    <input id="planner-default-stay" type="range" min="20" max="240" step="5" value="60" class="stay-slider" />
+                    <div class="stay-time-labels">
+                      <span>20분</span>
+                      <span>240분</span>
+                    </div>
+                  </div>
+                  <div class="stay-time-display">
+                    <input type="number" min="20" max="240" step="5" value="60" class="stay-number" />
+                    <span class="stay-unit">분</span>
+                  </div>
+                </div>
+                <small class="planner-field__hint">각 장소에서 보낼 예상 시간입니다</small>
+              </div>
+            </div>
+
+            <div class="planner-step__actions">
+              <button type="button" id="planner-prev-2" class="btn btn--ghost">← 이전</button>
+              <button type="button" id="planner-next-2" class="btn btn--primary">다음 단계</button>
+            </div>
+          </div>
+
+          <!-- 3단계: 결과 확인 페이지 -->
+          <div id="planner-step-3" class="planner-step planner-step--full" data-step="3" hidden>
+            <header class="planner-step__header">
+              <h2 class="planner-step__title">✅ 생성 준비 완료!</h2>
+              <p class="planner-step__guide">입력한 정보를 바탕으로 맞춤 경로를 생성합니다. 확인 후 생성 버튼을 눌러주세요.</p>
+            </header>
+            
+            <div class="planner-step__content">
+              <div class="summary-cards">
+                <div class="summary-card summary-card--airport">
+                  <div class="summary-card__header">
+                    <div class="summary-card__icon">✈️</div>
+                    <div class="summary-card__title">공항 정보</div>
+                  </div>
+                  <div class="summary-card__content">
+                    <div class="summary-item">
+                      <span class="summary-item__label">도착 공항</span>
+                      <span class="summary-item__value" data-summary-arrive-airport>-</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-item__label">복귀 공항</span>
+                      <span class="summary-item__value" data-summary-return-airport>-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="summary-card summary-card--timing">
+                  <div class="summary-card__header">
+                    <div class="summary-card__icon">⏰</div>
+                    <div class="summary-card__title">시간 정보</div>
+                  </div>
+                  <div class="summary-card__content">
+                    <div class="summary-item">
+                      <span class="summary-item__label">도착 시각</span>
+                      <span class="summary-item__value" data-summary-arrival-time>-</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-item__label">출발 시각</span>
+                      <span class="summary-item__value" data-summary-departure-time>-</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-item__label">체류 가능 시간</span>
+                      <span class="summary-item__value" data-summary-stay-duration>-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="summary-card summary-card--preferences">
+                  <div class="summary-card__header">
+                    <div class="summary-card__icon">🎯</div>
+                    <div class="summary-card__title">여행 취향</div>
+                  </div>
+                  <div class="summary-card__content">
+                    <div class="summary-item">
+                      <span class="summary-item__label">선택 카테고리</span>
+                      <div class="summary-item__value" data-summary-categories>-</div>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-item__label">장소별 체류 시간</span>
+                      <span class="summary-item__value" data-summary-stay-time>-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="planner-step__actions">
+              <button type="button" id="planner-prev-3" class="btn btn--ghost">← 이전</button>
+              <button type="button" id="planner-generate" class="btn btn--accent">일정 생성</button>
+            </div>
           </div>
         </form>
       </section>
-
-      <section class="panel panel--map" aria-label="지도">
-        <div id="map" class="map-placeholder" role="application" aria-live="polite">지도 로딩 중...</div>
-        <div id="navigation-overlay" class="navigation-overlay" hidden></div>
-      </section>
-
-      <section class="panel panel--summary" aria-label="여행 요약">
-        <div class="navigation-header">
-          <h2>여정 요약</h2>
-          <div class="navigation-header__actions">
-            <button id="import-trip" type="button" class="btn btn--ghost btn--small">일정 불러오기</button>
-            <button id="save-trip" type="button" class="btn btn--ghost btn--small">일정 저장</button>
-            <button id="copy-trip" type="button" class="btn btn--ghost btn--small">경로 복사</button>
-            <button id="exit-navigation" class="btn btn--ghost btn--small" hidden>내비게이션 종료</button>
-          </div>
-        </div>
-        <div id="navigation-status" class="navigation-status" aria-live="polite">
-          <p class="placeholder">내비게이션을 시작하면 현재 위치와 진행 상황이 표시됩니다.</p>
-        </div>
-        <div id="summary-output" class="summary-output">
-          <p class="placeholder">경로를 계산하면 총 소요 시간과 이동 정보를 확인할 수 있어요.</p>
-        </div>
-      </section>
     </main>
 
+    <!-- Place Modal -->
     <div id="place-modal" class="modal" hidden>
       <div class="modal__backdrop"></div>
-      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="place-modal-title">
-        <button type="button" class="modal__close" data-modal-close>&times;</button>
-        <div class="modal__body" data-modal-body>
-          <div class="modal__header">
-            <h3 id="place-modal-title" data-modal-title>장소 정보</h3>
-            <p class="modal__address" data-modal-address></p>
+      <div class="modal__content">
+        <header class="modal__header">
+          <h3 data-modal-title>장소 정보</h3>
+          <button data-modal-close class="modal__close" aria-label="닫기">×</button>
+        </header>
+        <div class="modal__body">
+          <div class="modal-photo">
+            <img data-modal-photo src="" alt="" />
           </div>
-          <div class="modal__photo" hidden>
-            <img data-modal-photo alt="장소 이미지" />
+          <div class="modal-info">
+            <p data-modal-address>주소 정보가 없습니다.</p>
+            <div class="modal-row" hidden>
+              <span class="modal-label">웹사이트:</span>
+              <a data-modal-website href="#" target="_blank" rel="noopener">웹사이트</a>
           </div>
-          <div class="modal__section modal__stay">
-            <label>체류 예정 시간 (분)
-              <input type="number" min="10" max="600" step="5" value="60" data-stay-input />
-            </label>
+            <div class="modal-row" hidden>
+              <span class="modal-label">전화번호:</span>
+              <span data-modal-phone></span>
           </div>
-          <div class="modal__meta">
-            <p class="modal__line" hidden><strong>웹사이트:</strong> <a data-modal-website target="_blank" rel="noopener noreferrer"></a></p>
-            <p class="modal__line" hidden><strong>전화:</strong> <span data-modal-phone></span></p>
-            <p class="modal__line" hidden><strong>평점:</strong> <span data-modal-rating></span></p>
+            <div class="modal-row" hidden>
+              <span class="modal-label">평점:</span>
+              <span data-modal-rating></span>
           </div>
-          <div class="modal__section" hidden>
-            <h4>운영 시간</h4>
+            <div class="modal-section" hidden>
+              <h4>운영시간</h4>
             <ul data-modal-hours></ul>
           </div>
-          <div class="modal__section" hidden>
+            <div class="modal-section" hidden>
             <h4>리뷰</h4>
             <div data-modal-reviews></div>
           </div>
         </div>
-        <div class="modal__actions">
-          <button type="button" class="btn btn--ghost" data-modal-cancel>취소</button>
-          <button type="button" class="btn btn--accent" data-modal-confirm>일정에 추가</button>
         </div>
+        <footer class="modal__footer">
+          <label class="modal-field">
+            <span class="modal-field__label">체류 시간 (분)</span>
+            <input data-stay-input type="number" min="10" max="300" step="5" value="60" />
+          </label>
+          <div class="modal__actions">
+            <button data-modal-cancel class="btn btn--ghost">취소</button>
+            <button data-modal-confirm class="btn btn--primary">확인</button>
+          </div>
+        </footer>
       </div>
     </div>
-    <input id="import-trip-input" type="file" accept="application/json" hidden />
 
-    <script type="module" src="scripts/main.js"></script>
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Google Maps API는 planner.js에서 Promise 방식으로 로드됩니다 -->
+    <script type="module" src="scripts/planner.js"></script>
   </body>
 </html>

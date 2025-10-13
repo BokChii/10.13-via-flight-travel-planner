@@ -1,4 +1,35 @@
-﻿export function renderNavigationStatus(container, navigation, routePlan, progress) {
+﻿/**
+ * 네비게이션 진행률을 기반으로 현재 경유지 정보를 파악합니다
+ * @param {Object} progress - 네비게이션 진행률 정보
+ * @param {Object} routePlan - 경로 계획 정보
+ * @returns {Object|null} 현재 경유지 컨텍스트 정보
+ */
+export function getCurrentWaypointContext(progress, routePlan) {
+  if (!progress || !routePlan.segments) return null;
+  
+  const segmentIndex = progress.closestSegmentIndex;
+  const currentSegment = routePlan.segments[segmentIndex];
+  
+  if (!currentSegment) return null;
+  
+  return {
+    destinationName: currentSegment.destinationName,
+    destinationType: currentSegment.destinationType,
+    progressRatio: progress.progressRatio,
+    isAtDestination: progress.progressRatio > 0.8,
+    isMoving: progress.progressRatio > 0.1 && progress.progressRatio < 0.8,
+    segmentIndex: segmentIndex,
+    distanceToDestination: progress.remainingMeters || 0
+  };
+}
+
+// 새로운 실시간 공항 복귀 시스템 import
+import { calculateRealTimeReturnInfo, convertToLegacyFormat } from './airportReturnSystem.js';
+
+
+
+
+export async function renderNavigationStatus(container, navigation, routePlan, progress) {
   container.innerHTML = "";
 
   if (!routePlan) {
@@ -11,8 +42,8 @@
     return;
   }
 
-  // 복귀 시간 정보 추가
-  const returnTimeInfo = calculateReturnTimeInfo(routePlan);
+  // 새로운 실시간 복귀 시간 정보 추가 (기존 시스템과 호환)
+  const returnTimeInfo = await calculateEnhancedReturnTimeInfo(routePlan, navigation, progress);
   if (returnTimeInfo) {
     const returnBanner = createReturnTimeBanner(returnTimeInfo);
     container.append(returnBanner);
@@ -108,6 +139,36 @@ function formatDistance(meters) {
   return `${Math.round(meters)}m`;
 }
 
+/**
+ * 새로운 실시간 공항 복귀 정보를 계산합니다 (기존 함수와 호환)
+ * @param {Object} routePlan - 경로 계획
+ * @param {Object} navigation - 네비게이션 상태
+ * @param {Object} progress - 진행률
+ * @returns {Promise<Object|null>} 복귀 시간 정보
+ */
+export async function calculateEnhancedReturnTimeInfo(routePlan, navigation, progress) {
+  // 새로운 실시간 시스템 사용 시도
+  if (navigation?.active && progress) {
+    try {
+      const state = { navigation, tripMeta: routePlan };
+      const realTimeInfo = await calculateRealTimeReturnInfo(state, progress);
+      if (realTimeInfo) {
+        return convertToLegacyFormat(realTimeInfo);
+      }
+    } catch (error) {
+      console.warn('실시간 공항 복귀 정보 계산 실패, 기존 시스템 사용:', error);
+    }
+  }
+  
+  // Fallback: 기존 시스템 사용
+  return calculateReturnTimeInfo(routePlan);
+}
+
+/**
+ * 기존 calculateReturnTimeInfo 함수 (호환성 유지)
+ * @param {Object} routePlan - 경로 계획
+ * @returns {Object|null} 복귀 시간 정보
+ */
 export function calculateReturnTimeInfo(routePlan) {
   if (!routePlan?.departureTime || !routePlan?.totalDurationSeconds) {
     return null;
@@ -201,30 +262,36 @@ function createNavigationStatusIndicator(returnTimeInfo, progress) {
   indicator.className = "navigation-status-indicator";
   
   // 상태에 따른 색상과 아이콘 설정
-  let statusClass, statusIcon, statusText, statusDescription;
+  let statusClass, statusIcon, statusText, statusDescription, actionText;
   
   if (returnTimeInfo) {
+    const slackMinutes = returnTimeInfo.slackMinutes;
+    
     if (returnTimeInfo.status === "danger") {
       statusClass = "danger";
-      statusIcon = "⚠️";
-      statusText = "위험";
-      statusDescription = "시간이 부족합니다. 서둘러 이동하세요.";
+      statusIcon = "🚨";
+      statusText = "긴급!";
+      statusDescription = `출발까지 ${Math.abs(slackMinutes)}분 부족합니다`;
+      actionText = "지금 즉시 공항으로 가세요!";
     } else if (returnTimeInfo.status === "warning") {
       statusClass = "warning";
       statusIcon = "⏰";
       statusText = "주의";
-      statusDescription = "시간이 촉박합니다. 경로를 확인하세요.";
+      statusDescription = `출발까지 ${slackMinutes}분 여유가 있습니다`;
+      actionText = "이제 공항으로 향하세요!";
     } else {
       statusClass = "safe";
       statusIcon = "✅";
-      statusText = "안전";
-      statusDescription = "충분한 시간이 있습니다.";
+      statusText = "여유롭게";
+      statusDescription = `출발까지 ${slackMinutes}분 여유가 있습니다`;
+      actionText = "충분한 시간이 있어요!";
     }
   } else {
     statusClass = "neutral";
     statusIcon = "📍";
     statusText = "진행 중";
     statusDescription = "내비게이션을 진행하고 있습니다.";
+    actionText = "안전하게 이동하세요.";
   }
   
   indicator.className = `navigation-status-indicator navigation-status-indicator--${statusClass}`;
@@ -244,7 +311,12 @@ function createNavigationStatusIndicator(returnTimeInfo, progress) {
   description.className = "navigation-status-indicator__description";
   description.textContent = statusDescription;
   
-  content.append(title, description);
+  // 새로운 액션 텍스트 추가
+  const action = document.createElement("div");
+  action.className = "navigation-status-indicator__action";
+  action.textContent = actionText;
+  
+  content.append(title, description, action);
   indicator.append(icon, content);
   
   return indicator;
