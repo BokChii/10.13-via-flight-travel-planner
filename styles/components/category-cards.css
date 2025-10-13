@@ -38,7 +38,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   width: 100% !important;
   min-height: 180px !important; /* 높이 증가 */
-  min-width: 200px !important; /* 최소 너비 보장 */
+  min-width: 280px !important; /* 최소 너비 증가 */
 }
 
 .category-card:hover {
