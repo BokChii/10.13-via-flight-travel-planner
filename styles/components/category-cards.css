@@ -1,0 +1,140 @@
+/* Category Cards Component */
+/* ========================================== */
+
+/* Category selection cards - 강화된 레이아웃 */
+.category-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important; /* 2열 강제 적용 */
+  gap: 24px !important; /* 간격 증가 */
+  margin-top: 20px !important;
+  max-width: 100% !important;
+}
+
+/* 태블릿 크기에서 3열로 확장 */
+@media (min-width: 768px) {
+  .category-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 28px !important;
+  }
+}
+
+/* 데스크톱에서 4열로 확장 */
+@media (min-width: 1024px) {
+  .category-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 32px !important;
+  }
+}
+
+.category-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: 16px;
+  border: 2px solid rgba(15, 28, 46, 0.1);
+  background: #ffffff;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100% !important;
+  min-height: 160px !important;
+}
+
+.category-card:hover {
+  border-color: rgba(26, 115, 232, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(26, 115, 232, 0.2);
+}
+
+.category-card input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.category-card input[type="checkbox"]:checked + .category-card__content {
+  background: rgba(26, 115, 232, 0.05);
+  border-color: var(--color-primary);
+}
+
+.category-card input[type="checkbox"]:checked + .category-card__content::before {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.category-card__content {
+  padding: 28px 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 16px !important;
+  position: relative;
+  transition: all 0.2s ease;
+  min-height: 160px !important;
+  width: 100% !important;
+}
+
+.category-card__icon {
+  font-size: 3rem !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+
+.category-card__label {
+  font-weight: 600 !important;
+  font-size: 1.2rem !important;
+  color: var(--color-text) !important;
+  text-align: center !important;
+  margin-bottom: 8px !important;
+  width: 100% !important;
+}
+
+.category-card__description {
+  font-size: 0.9rem !important;
+  color: rgba(15, 28, 46, 0.6) !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .category-grid {
+    grid-template-columns: 1fr !important; /* 모바일에서는 1열 */
+    gap: 20px !important;
+  }
+  
+  .category-card__content {
+    padding: 24px 20px !important;
+    min-height: 140px !important;
+  }
+  
+  .category-card__icon {
+    font-size: 2.5rem !important;
+  }
+  
+  .category-card__label {
+    font-size: 1.1rem !important;
+  }
+  
+  .category-card__description {
+    font-size: 0.85rem !important;
+  }
+}
