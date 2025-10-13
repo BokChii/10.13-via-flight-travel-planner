@@ -1,20 +1,21 @@
 /* Category Cards Component */
 /* ========================================== */
 
-/* Category selection cards - 강화된 레이아웃 */
+/* Category selection cards - 최종 강화된 레이아웃 */
 .category-grid {
   display: grid !important;
   grid-template-columns: repeat(2, 1fr) !important; /* 2열 강제 적용 */
-  gap: 24px !important; /* 간격 증가 */
-  margin-top: 20px !important;
+  gap: 32px !important; /* 간격 더 증가 */
+  margin-top: 24px !important;
   max-width: 100% !important;
+  width: 100% !important;
 }
 
 /* 태블릿 크기에서 3열로 확장 */
 @media (min-width: 768px) {
   .category-grid {
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 28px !important;
+    gap: 36px !important;
   }
 }
 
@@ -22,7 +23,7 @@
 @media (min-width: 1024px) {
   .category-grid {
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 32px !important;
+    gap: 40px !important;
   }
 }
 
@@ -36,7 +37,8 @@
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   width: 100% !important;
-  min-height: 160px !important;
+  min-height: 180px !important; /* 높이 증가 */
+  min-width: 200px !important; /* 최소 너비 보장 */
 }
 
 .category-card:hover {
@@ -74,22 +76,22 @@
 }
 
 .category-card__content {
-  padding: 28px 24px !important;
+  padding: 32px 28px !important; /* 패딩 더 증가 */
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
-  gap: 16px !important;
+  gap: 18px !important; /* 간격 증가 */
   position: relative;
   transition: all 0.2s ease;
-  min-height: 160px !important;
+  min-height: 180px !important; /* 높이 증가 */
   width: 100% !important;
 }
 
 .category-card__icon {
-  font-size: 3rem !important;
-  margin-bottom: 12px !important;
+  font-size: 3.5rem !important; /* 아이콘 더 크게 */
+  margin-bottom: 16px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -98,43 +100,51 @@
 
 .category-card__label {
   font-weight: 600 !important;
-  font-size: 1.2rem !important;
+  font-size: 1.3rem !important; /* 라벨 크기 증가 */
   color: var(--color-text) !important;
   text-align: center !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 12px !important;
   width: 100% !important;
+  white-space: nowrap !important; /* 줄바꿈 방지 */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .category-card__description {
-  font-size: 0.9rem !important;
+  font-size: 1rem !important; /* 설명 크기 증가 */
   color: rgba(15, 28, 46, 0.6) !important;
   line-height: 1.4 !important;
   text-align: center !important;
   max-width: 100% !important;
   width: 100% !important;
+  white-space: nowrap !important; /* 줄바꿈 방지 */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
-/* 모바일 반응형 */
+/* 모바일 반응형 - 줄바꿈 허용 */
 @media (max-width: 768px) {
   .category-grid {
     grid-template-columns: 1fr !important; /* 모바일에서는 1열 */
-    gap: 20px !important;
+    gap: 24px !important;
   }
   
   .category-card__content {
-    padding: 24px 20px !important;
-    min-height: 140px !important;
+    padding: 28px 24px !important;
+    min-height: 160px !important;
   }
   
   .category-card__icon {
-    font-size: 2.5rem !important;
+    font-size: 3rem !important;
   }
   
   .category-card__label {
-    font-size: 1.1rem !important;
+    font-size: 1.2rem !important;
+    white-space: normal !important; /* 모바일에서는 줄바꿈 허용 */
   }
   
   .category-card__description {
-    font-size: 0.85rem !important;
+    font-size: 0.9rem !important;
+    white-space: normal !important; /* 모바일에서는 줄바꿈 허용 */
   }
 }
