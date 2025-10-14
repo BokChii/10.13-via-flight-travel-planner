@@ -4,6 +4,12 @@
  * API 호출을 최소화하기 위해 캐싱 전략을 사용합니다.
  */
 
+import { 
+  getBusinessStatus, 
+  getBusinessStatusIcon, 
+  getBusinessStatusLabel 
+} from './businessHours.js';
+
 // POI 카테고리 매핑 (더 세분화된 매핑)
 const POI_CATEGORIES = {
   // 식음료
@@ -275,4 +281,63 @@ export function clearExpiredCache() {
       POI_CACHE.delete(key);
     }
   }
+}
+
+/**
+ * 여행 시간을 기반으로 POI의 영업 상태를 확인합니다
+ * @param {Object} poiInfo - POI 정보
+ * @param {Object} travelTime - 여행 시간 정보
+ * @returns {Object} 영업 상태 정보
+ */
+export function checkBusinessStatus(poiInfo, travelTime = null) {
+  if (!poiInfo) {
+    return {
+      status: 'UNKNOWN',
+      icon: '⚪',
+      label: '영업 상태 확인 불가'
+    };
+  }
+
+  // 여행 시간이 주어진 경우 정확한 영업 상태 확인
+  if (travelTime) {
+    const status = getBusinessStatus(poiInfo, travelTime);
+    return {
+      status,
+      icon: getBusinessStatusIcon(status),
+      label: getBusinessStatusLabel(status)
+    };
+  }
+
+  // 기본 영업 상태 (Google Places API의 business_status 기반)
+  const status = poiInfo.businessStatus || 'UNKNOWN';
+  return {
+    status,
+    icon: getBusinessStatusIcon(status),
+    label: getBusinessStatusLabel(status)
+  };
+}
+
+/**
+ * 여행 시간 정보를 생성합니다
+ * @param {Date} startTime - 시작 시간
+ * @param {number} durationMinutes - 체류 시간 (분)
+ * @param {string} timeZone - 시간대 (기본값: 'Asia/Seoul')
+ * @returns {Object} 여행 시간 정보
+ */
+export function createTravelTimeInfo(startTime, durationMinutes = 60, timeZone = 'Asia/Seoul') {
+  return {
+    start: startTime,
+    durationMinutes,
+    timeZone
+  };
+}
+
+/**
+ * 현재 시간을 기반으로 여행 시간 정보를 생성합니다
+ * @param {number} durationMinutes - 체류 시간 (분)
+ * @param {string} timeZone - 시간대 (기본값: 'Asia/Seoul')
+ * @returns {Object} 여행 시간 정보
+ */
+export function createCurrentTravelTimeInfo(durationMinutes = 60, timeZone = 'Asia/Seoul') {
+  return createTravelTimeInfo(new Date(), durationMinutes, timeZone);
 }

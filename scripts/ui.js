@@ -1,6 +1,12 @@
 ﻿// Handles DOM interactions for forms, waypoint list, and user-triggered events.
 import { showToast } from './toast.js';
-import { getPOIInfo, searchPOIByName, getCategoryInfo } from './poiManager.js';
+import { 
+  getPOIInfo, 
+  searchPOIByName, 
+  getCategoryInfo, 
+  checkBusinessStatus,
+  createCurrentTravelTimeInfo 
+} from './poiManager.js';
 
 const selectors = {
   form: "#route-form",
@@ -85,6 +91,30 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       else if (waypoint?.address) parts.push(waypoint.address);
       meta.textContent = parts.join(" · ");
       info.append(meta);
+    }
+
+    // 영업 상태 표시 추가
+    if (poiInfo) {
+      const travelTime = createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      const businessStatus = checkBusinessStatus(poiInfo, travelTime);
+      
+      const statusElement = document.createElement("span");
+      statusElement.className = "waypoint-item__status";
+      statusElement.innerHTML = `${businessStatus.icon} ${businessStatus.label}`;
+      statusElement.title = `영업 상태: ${businessStatus.label}`;
+      
+      // 상태에 따른 스타일 적용
+      if (businessStatus.status === 'OPEN') {
+        statusElement.style.color = '#4caf50';
+        statusElement.style.fontWeight = '600';
+      } else if (businessStatus.status === 'CLOSED') {
+        statusElement.style.color = '#f44336';
+        statusElement.style.fontWeight = '600';
+      } else {
+        statusElement.style.color = '#9e9e9e';
+      }
+      
+      info.append(statusElement);
     }
 
     // 체류 시간 수정 기능 추가 (컴팩트하게)

@@ -1,4 +1,9 @@
-﻿let modalEl;
+﻿import { 
+  checkBusinessStatus, 
+  createCurrentTravelTimeInfo 
+} from './poiManager.js';
+
+let modalEl;
 let closeBtn;
 let cancelBtn;
 let confirmBtn;
@@ -142,6 +147,29 @@ function fillModalContent(details = {}, defaultStayMinutes) {
   }
 
   stayInput.value = defaultStayMinutes;
+
+  // 영업 상태 표시 추가
+  const businessStatusElement = modalEl.querySelector("[data-modal-business-status]");
+  if (businessStatusElement) {
+    const travelTime = createCurrentTravelTimeInfo(defaultStayMinutes);
+    const businessStatus = checkBusinessStatus(details, travelTime);
+    
+    businessStatusElement.innerHTML = `${businessStatus.icon} ${businessStatus.label}`;
+    businessStatusElement.title = `영업 상태: ${businessStatus.label}`;
+    
+    // 상태에 따른 스타일 적용
+    if (businessStatus.status === 'OPEN') {
+      businessStatusElement.style.color = '#4caf50';
+      businessStatusElement.style.fontWeight = '600';
+    } else if (businessStatus.status === 'CLOSED') {
+      businessStatusElement.style.color = '#f44336';
+      businessStatusElement.style.fontWeight = '600';
+    } else {
+      businessStatusElement.style.color = '#9e9e9e';
+    }
+    
+    businessStatusElement.parentElement.hidden = false;
+  }
 
   const photoWrapper = photoEl?.parentElement;
   console.log('🖼️ [DEBUG] fillModalContent - photos:', photos);
