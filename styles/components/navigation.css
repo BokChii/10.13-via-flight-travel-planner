@@ -88,7 +88,7 @@ body.app.navigation-active .app-header .tagline {
 
 .layout[data-view="planning"] .panel--summary {
   grid-area: summary !important;
-  max-height: 80vh !important;
+  height: 100% !important;
   overflow: auto !important;
 }
 
