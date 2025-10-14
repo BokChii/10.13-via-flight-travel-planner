@@ -130,11 +130,22 @@ function fillModalContent(details = {}, defaultStayMinutes) {
   stayInput.value = defaultStayMinutes;
 
   const photoWrapper = photoEl?.parentElement;
+  console.log('🖼️ [DEBUG] fillModalContent - photos:', photos);
+  console.log('🖼️ [DEBUG] fillModalContent - photoEl:', photoEl);
+  console.log('🖼️ [DEBUG] fillModalContent - photoWrapper:', photoWrapper);
+  
   if (photoEl && photos?.length) {
-    const url = photos[0].getUrl({ maxWidth: 720, maxHeight: 480 });
-    photoEl.src = url;
-    photoEl.alt = `${name ?? "장소"} 사진`;
-    photoWrapper.hidden = false;
+    console.log('✅ [DEBUG] 사진 처리 시작 - photos.length:', photos.length);
+    try {
+      const url = photos[0].getUrl({ maxWidth: 720, maxHeight: 480 });
+      console.log('🔗 [DEBUG] 사진 URL 생성됨:', url);
+      photoEl.src = url;
+      photoEl.alt = `${name ?? "장소"} 사진`;
+      photoWrapper.hidden = false;
+      console.log('✅ [DEBUG] 사진 설정 완료');
+    } catch (error) {
+      console.error('❌ [DEBUG] 사진 URL 생성 실패:', error);
+    }
   } else if (photoEl && details?.geometry?.location) {
     // 사진이 없으면 지도 썸네일 폴백
     const loc = details.geometry.location.toJSON?.() ?? details.geometry.location;
