@@ -140,12 +140,14 @@
 .modal__photo {
   border-radius: 12px;
   height: 200px; /* 고정 높이 설정 */
+  max-height: 400px; /* 최대 높이 제한 */
   overflow: hidden; /* 둥근 모서리를 위해 다시 추가 */
 }
 
 .modal__photo img {
   width: 100%;
-  height: 100%; /* 컨테이너 높이에 맞춤 */
+  height: 200px; /* 직접 높이 지정 - 부모 의존성 제거 */
+  max-height: 400px; /* 최대 높이 제한 */
   display: block;
   object-fit: cover; /* 비율 유지하면서 컨테이너 채움 */
 }
