@@ -71,7 +71,7 @@ body.app.navigation-active .app-header .tagline {
 }
 
 .layout[data-view="planning"] {
-  grid-template-columns: 300px 1fr 450px !important;
+  grid-template-columns: 350px 1fr 450px !important;
   grid-template-areas:
     "controls map summary" !important;
 }
@@ -447,7 +447,7 @@ body.app.navigation-active .app-header .tagline {
 /* 반응형 디자인 */
 @media (max-width: 1200px) {
   .layout[data-view="planning"] {
-    grid-template-columns: 300px 1fr 420px !important;
+    grid-template-columns: 350px 1fr 420px !important;
   }
 }
 
