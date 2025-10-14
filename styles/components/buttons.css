@@ -87,7 +87,7 @@
 
 .summary-actions__row {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
@@ -98,6 +98,8 @@
 .summary-actions .btn {
   flex: 1;
   min-width: 0;
+  font-size: 0.9rem;
+  padding: 8px 12px;
 }
 
 .summary-title {
