@@ -60,6 +60,26 @@
   font-size: 0.85rem;
 }
 
+/* Airport Return 버튼 */
+.btn--airport-return {
+  background: #ff9800;
+  color: white;
+  border: 1px solid #ff9800;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.btn--airport-return:hover {
+  background: #f57c00;
+  border-color: #f57c00;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
+}
+
+.btn--airport-return:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
 /* Emergency 버튼 */
 .btn--emergency {
   background: #f44336;

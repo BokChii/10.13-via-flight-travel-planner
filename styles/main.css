@@ -149,6 +149,7 @@
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 16px;
+  margin-bottom: 16px;
   transition: all 0.2s ease;
 }
 
@@ -179,7 +180,14 @@
 
 .waypoint-item__actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.waypoint-item__actions .btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  min-height: 36px;
 }
 
 .waypoint-item__stay-time {
@@ -193,12 +201,14 @@
 }
 
 .waypoint-item__stay-input input {
-  width: 80px;
-  padding: 6px 8px;
+  width: 100px;
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  font-size: 1rem;
   text-align: center;
+  font-weight: 600;
+  color: var(--color-primary);
 }
 
 .waypoint-item__stay-input span {

@@ -15,6 +15,62 @@
   transform: translateY(-2px);
 }
 
+/* 총 요약 카드 */
+.total-summary {
+  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+.total-summary__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.total-summary__title::before {
+  content: "📊";
+  font-size: 1.2rem;
+}
+
+.total-summary__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 8px 0;
+}
+
+.total-summary__item:last-child {
+  margin-bottom: 0;
+}
+
+.total-summary__label {
+  font-size: 0.95rem;
+  color: rgba(15, 28, 46, 0.7);
+  font-weight: 500;
+}
+
+.total-summary__value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.total-summary__value--time {
+  color: #4caf50;
+}
+
+.total-summary__value--distance {
+  color: #ff9800;
+}
+
 /* 요약 카드 */
 .summary-card {
   background: #ffffff;
