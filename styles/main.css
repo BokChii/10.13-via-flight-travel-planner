@@ -76,6 +76,64 @@
   margin-top: 8px;
 }
 
+/* Waypoint controls */
+.waypoint-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.waypoint-controls .field__input {
+  flex: 1;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* Navigation header */
+.navigation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.navigation-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.navigation-header__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Summary output */
+.summary-output {
+  margin-top: 16px;
+}
+
+/* Map placeholder */
+.map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+
 /* Waypoint list */
 .waypoint-list {
   list-style: none;
@@ -281,5 +339,24 @@
   
   .buffer-input {
     width: 100%;
+  }
+  
+  .waypoint-controls {
+    flex-direction: column;
+  }
+  
+  .actions {
+    flex-direction: column;
+  }
+  
+  .navigation-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .navigation-header__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

@@ -1,6 +1,32 @@
 /* Form Components */
 /* ========================================== */
 
+/* 기본 필드 스타일 (navigation.html용) */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.field__input {
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
 /* 기본 폼 필드 */
 .planner-field {
   display: flex;
@@ -155,6 +181,40 @@
   font-size: 0.9rem;
   color: var(--color-text-light);
   font-weight: 500;
+}
+
+/* 날짜/시간 필드 */
+.datetime-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.datetime-field__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-separator {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.buffer-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 /* 체류 시간 입력 */
