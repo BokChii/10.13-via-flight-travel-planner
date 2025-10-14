@@ -52,10 +52,24 @@ export function initPlaceModal() {
 }
 
 export function openPlaceModal({ details, defaultStayMinutes = 60 }) {
-  if (!modalEl) initPlaceModal();
-  if (!modalEl) return Promise.resolve({ confirmed: false });
+  console.log('🚪 [DEBUG] openPlaceModal 호출됨');
+  console.log('📋 [DEBUG] details:', details);
+  console.log('⏰ [DEBUG] defaultStayMinutes:', defaultStayMinutes);
+  
+  if (!modalEl) {
+    console.log('🔄 [DEBUG] modalEl이 없어서 initPlaceModal 호출');
+    initPlaceModal();
+  }
+  
+  if (!modalEl) {
+    console.log('❌ [DEBUG] modalEl이 여전히 없음');
+    return Promise.resolve({ confirmed: false });
+  }
 
+  console.log('✅ [DEBUG] fillModalContent 호출 시작');
   fillModalContent(details, defaultStayMinutes);
+  console.log('✅ [DEBUG] fillModalContent 호출 완료');
+  
   modalEl.hidden = false;
   document.body.style.overflow = "hidden";
   requestAnimationFrame(() => {

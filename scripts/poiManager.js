@@ -222,7 +222,7 @@ async function fetchPOIFromAPI(placeId) {
           name: place.name,
           address: place.formatted_address,
           types: place.types || [],
-          photos: place.photos || [],
+          photos: place.photos ? [place.photos[0]] : [], // 대표 사진 1장만
           openingHours: place.opening_hours,
           businessStatus: place.business_status || 'UNKNOWN',
           category: determineCategory(place.types)

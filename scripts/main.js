@@ -864,7 +864,7 @@ async function handleWaypointDetails(waypoint, poiInfo) {
             // POI 정보 우선 유지
             name: poiInfo.name || additionalDetails.name,
             formatted_address: poiInfo.address || additionalDetails.formatted_address,
-            photos: poiInfo.photos || additionalDetails.photos,
+            photos: poiInfo.photos?.length ? [poiInfo.photos[0]] : (additionalDetails.photos?.length ? [additionalDetails.photos[0]] : []),
             opening_hours: poiInfo.openingHours || additionalDetails.opening_hours
           };
           
