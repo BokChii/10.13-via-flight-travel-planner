@@ -71,25 +71,25 @@ body.app.navigation-active .app-header .tagline {
 }
 
 .layout[data-view="planning"] {
-  grid-template-columns: 350px 1fr 350px;
+  grid-template-columns: 350px 1fr 350px !important;
   grid-template-areas:
-    "controls map summary";
+    "controls map summary" !important;
 }
 
 .layout[data-view="planning"] .panel--controls {
-  grid-area: controls;
-  display: flex;
+  grid-area: controls !important;
+  display: flex !important;
 }
 
 .layout[data-view="planning"] .panel--map {
-  grid-area: map;
-  min-height: 80vh;
+  grid-area: map !important;
+  min-height: 80vh !important;
 }
 
 .layout[data-view="planning"] .panel--summary {
-  grid-area: summary;
-  max-height: 80vh;
-  overflow: auto;
+  grid-area: summary !important;
+  max-height: 80vh !important;
+  overflow: auto !important;
 }
 
 .layout[data-view="navigation"] {
