@@ -1,0 +1,318 @@
+/* Form Components */
+/* ========================================== */
+
+/* 기본 폼 필드 */
+.planner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planner-field__label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.planner-field__hint {
+  font-size: 0.8rem;
+  color: rgba(15, 28, 46, 0.5);
+}
+
+/* 폼 필드셋 */
+.planner-fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(15, 28, 46, 0.15);
+  border-radius: 12px;
+  background: rgba(15, 28, 46, 0.02);
+}
+
+.planner-fieldset legend {
+  padding: 0 6px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.planner-fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+/* 체크박스 필드 */
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+/* 공항 입력 그룹 */
+.airport-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.airport-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 28, 46, 0.2);
+  font-size: 1rem;
+  background: #ffffff;
+  color: var(--color-text);
+}
+
+.airport-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 28, 46, 0.2);
+  font-size: 1rem;
+  background: #ffffff;
+  color: var(--color-text);
+}
+
+.airport-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* 날짜 입력 */
+.date-input {
+  width: 100% !important;
+  padding: 12px 16px !important;
+  border-radius: 12px !important;
+  border: 2px solid rgba(15, 28, 46, 0.15) !important;
+  font-size: 1rem !important;
+  background: #ffffff !important;
+  color: var(--color-text) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.date-input:focus {
+  outline: none !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(15, 28, 46, 0.1) !important;
+}
+
+/* 시간 선택 */
+.hour-select,
+.minute-select {
+  flex: 1 !important;
+  padding: 12px 16px !important;
+  border-radius: 12px !important;
+  border: 2px solid rgba(15, 28, 46, 0.15) !important;
+  font-size: 1rem !important;
+  background: #ffffff !important;
+  color: var(--color-text) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.hour-select:focus,
+.minute-select:focus {
+  outline: none !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(15, 28, 46, 0.1) !important;
+}
+
+/* 버퍼 입력 */
+.buffer-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buffer-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #ffffff;
+  color: var(--color-text);
+  transition: all var(--transition-fast);
+}
+
+.buffer-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(15, 28, 46, 0.1);
+}
+
+.buffer-unit {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  font-weight: 500;
+}
+
+/* 체류 시간 입력 */
+.stay-time-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stay-time-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stay-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border-light);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.stay-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+}
+
+.stay-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+}
+
+.stay-time-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+}
+
+.stay-time-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.stay-number {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stay-unit {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  font-weight: 500;
+}
+
+/* 에러 상태 */
+.planner-field--error {
+  animation: shake 0.5s ease-in-out;
+}
+
+.planner-field--error .planner-field__label {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.planner-field--error input,
+.planner-field--error select,
+.planner-field--error .airport-input-group {
+  border-color: #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.05);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+.planner-field--error .airport-select,
+.planner-field--error .airport-input {
+  border-color: #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.05);
+}
+
+.datetime-field--error .date-input,
+.datetime-field--error .hour-select,
+.datetime-field--error .minute-select {
+  border-color: #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.05);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+/* 애니메이션 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .airport-input-group {
+    gap: 6px;
+  }
+  
+  .stay-time-display {
+    flex-direction: column;
+  }
+  
+  .hour-select,
+  .minute-select {
+    padding: 10px 12px !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .time-separator {
+    font-size: 0.9rem !important;
+  }
+  
+  .buffer-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .buffer-unit {
+    text-align: center;
+  }
+}
+
+/* PC 화면 최적화 */
+@media (min-width: 1024px) {
+  .planner-field__label {
+    font-size: 1.1rem !important;
+  }
+  
+  .airport-select, .date-input, .hour-select, .minute-select {
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+  }
+  
+  .buffer-input {
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+  }
+}

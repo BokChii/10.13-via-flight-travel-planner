@@ -1,4 +1,12 @@
-﻿:root {
+﻿/* CSS 모듈화 - Import 순서 */
+@import 'base/variables.css';
+@import 'components/buttons.css';
+@import 'components/cards.css';
+@import 'components/forms.css';
+@import 'components/category-cards.css';
+
+/* 기본 CSS 변수 (기존 호환성 유지) */
+:root {
   --color-bg: #f0f8ff;
   --color-panel: #ffffff;
   --color-primary: #1a73e8;
