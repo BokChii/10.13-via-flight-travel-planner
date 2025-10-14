@@ -29,11 +29,24 @@ function createHeroCard(routePlan, tripMeta = null) {
   const tripInfoSection = tripMeta ? createTripInfoSection(tripMeta) : '';
   
   card.innerHTML = `
-    <h3>전체 여정 요약</h3>
-    ${tripInfoSection}
-    <p><strong>총 소요 시간:</strong> ${totalDurationText}</p>
-    <p><strong>총 이동 거리:</strong> ${totalDistanceText}</p>
-    ${arrivalTimeText ? `<p><strong>예상 도착:</strong> ${arrivalTimeText}</p>` : ""}
+    <div class="total-summary">
+      <div class="total-summary__title">전체 여정 요약</div>
+      ${tripInfoSection}
+      <div class="total-summary__item">
+        <span class="total-summary__label">총 소요 시간</span>
+        <span class="total-summary__value total-summary__value--time">${totalDurationText}</span>
+      </div>
+      <div class="total-summary__item">
+        <span class="total-summary__label">총 이동 거리</span>
+        <span class="total-summary__value total-summary__value--distance">${totalDistanceText}</span>
+      </div>
+      ${arrivalTimeText ? `
+        <div class="total-summary__item">
+          <span class="total-summary__label">예상 도착</span>
+          <span class="total-summary__value">${arrivalTimeText}</span>
+        </div>
+      ` : ""}
+    </div>
     ${returnTimeInfo ? `
       <div class="return-time-banner ${returnTimeInfo.status}">
         <div class="return-time-banner__icon">${returnTimeInfo.icon}</div>

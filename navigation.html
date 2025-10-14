@@ -59,14 +59,22 @@
       </section>
 
       <section class="panel panel--summary" aria-label="여행 요약">
-        <div class="navigation-header">
-          <h2>여정 요약</h2>
-          <div class="navigation-header__actions">
-            <button id="import-trip" type="button" class="btn btn--ghost btn--small">일정 불러오기</button>
-            <button id="save-trip" type="button" class="btn btn--ghost btn--small">일정 저장</button>
-            <button id="copy-trip" type="button" class="btn btn--ghost btn--small">경로 복사</button>
-            <button id="emergency-return" type="button" class="btn btn--emergency btn--small" hidden>🚨 공항 복귀</button>
-            <button id="exit-navigation" class="btn btn--ghost btn--small" hidden>내비게이션 종료</button>
+        <div class="summary-header">
+          <h2 class="summary-title">여정 요약</h2>
+          
+          <div class="summary-actions">
+            <div class="summary-actions__row">
+              <button id="import-trip" type="button" class="btn btn--secondary">일정 불러오기</button>
+              <button id="save-trip" type="button" class="btn btn--secondary">일정 저장</button>
+              <button id="copy-trip" type="button" class="btn btn--secondary">경로 복사</button>
+            </div>
+            <div class="summary-actions__row">
+              <button id="emergency-return" type="button" class="btn btn--airport-return" hidden>
+                <span class="btn-icon">✈️</span>
+                공항 복귀
+              </button>
+              <button id="exit-navigation" class="btn btn--danger" hidden>내비게이션 종료</button>
+            </div>
           </div>
         </div>
         <div id="navigation-status" class="navigation-status" aria-live="polite">

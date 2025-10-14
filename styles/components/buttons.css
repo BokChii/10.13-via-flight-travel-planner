@@ -80,6 +80,39 @@
   box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
 }
 
+/* Summary Actions */
+.summary-actions {
+  margin-top: 16px;
+}
+
+.summary-actions__row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.summary-actions__row:last-child {
+  margin-bottom: 0;
+}
+
+.summary-actions .btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  text-align: left;
+}
+
+.btn-icon {
+  margin-right: 6px;
+  font-size: 0.9rem;
+}
+
 /* Emergency 버튼 */
 .btn--emergency {
   background: #f44336;

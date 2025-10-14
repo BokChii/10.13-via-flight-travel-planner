@@ -35,8 +35,8 @@ export function buildRoutePlan({ segments = [], stops = [], colors = [] } = {}) 
   return {
     totalDurationSeconds,
     totalDistanceMeters,
-    totalDurationText: combineLegText(allLegs, "duration"),
-    totalDistanceText: combineLegText(allLegs, "distance"),
+    totalDurationText: formatTotalDuration(totalDurationSeconds),
+    totalDistanceText: formatTotalDistance(totalDistanceMeters),
     arrivalTimeText: routes[routes.length - 1]?.arrival_time?.text ?? null,
     segments: segmentSummaries,
     legs: allLegs.map((leg) => normalizeLeg(leg)),
@@ -58,6 +58,26 @@ function combineLegText(legs, key) {
   if (!parts.length) return "--";
   if (parts.length === 1) return parts[0];
   return parts.join(" + ");
+}
+
+function formatTotalDuration(totalSeconds) {
+  if (!totalSeconds) return "--";
+  
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  
+  if (hours > 0) {
+    return `${hours}시간 ${minutes}분`;
+  } else {
+    return `${minutes}분`;
+  }
+}
+
+function formatTotalDistance(totalMeters) {
+  if (!totalMeters) return "--";
+  
+  const kilometers = totalMeters / 1000;
+  return `${kilometers.toFixed(1)} km`;
 }
 
 function normalizeLeg(leg) {

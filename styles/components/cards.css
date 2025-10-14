@@ -100,7 +100,7 @@
 
 .summary-card__title {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--color-text);
 }
 
@@ -417,7 +417,7 @@
 /* PC 화면 최적화 */
 @media (min-width: 1024px) {
   .summary-card__title {
-    font-size: 1.3rem !important;
+    font-size: 1.1rem !important;
   }
   
   .summary-item__label {
