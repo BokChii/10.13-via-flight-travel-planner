@@ -1,0 +1,323 @@
+/* Steps Component */
+/* ========================================== */
+
+/* 단계 표시기 컨테이너 */
+.planner-steps-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 16px 0;
+  margin-bottom: 24px;
+}
+
+/* 단계 목록 */
+.planner__steps {
+  list-style: none;
+  display: flex;
+  gap: 16px;
+  padding: 20px 0;
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(15, 28, 46, 0.6);
+}
+
+.planner__step {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* 단계 표시기 */
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(26, 115, 232, 0.05);
+  border: 2px solid rgba(26, 115, 232, 0.1);
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.step-indicator.active {
+  background: rgba(26, 115, 232, 0.1);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.step-indicator.completed {
+  background: rgba(52, 168, 83, 0.1);
+  border-color: #34a853;
+  color: #34a853;
+}
+
+/* 단계 번호 */
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.2);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.step-indicator.active .step-number {
+  background: var(--color-primary);
+  color: white;
+}
+
+.step-indicator.completed .step-number {
+  background: #34a853;
+  color: white;
+}
+
+/* 단계 라벨 */
+.step-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* 플래너 단계 */
+.planner-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.planner-step[hidden] {
+  display: none !important;
+}
+
+.planner-step:not([hidden]) {
+  animation: fadeInUp 0.4s ease;
+}
+
+/* 전체 페이지 레이아웃 */
+.planner-step--full {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 단계 헤더 */
+.planner-step__header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 0 16px;
+}
+
+.planner-step__title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.planner-step__guide {
+  font-size: 1.1rem;
+  color: rgba(15, 28, 46, 0.7);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 단계 콘텐츠 */
+.planner-step__content {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* 단계 액션 */
+.planner-step__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 24px 16px;
+  background: var(--color-panel);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+}
+
+.planner-step__actions .btn {
+  min-width: 120px;
+}
+
+/* 2-3단계에서 이전/다음 버튼이 함께 있을 때의 레이아웃 */
+.planner-step__actions:has(.btn--ghost) {
+  justify-content: space-between;
+}
+
+/* 버퍼 설정 섹션 */
+.buffer-settings {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--color-panel);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
+}
+
+.buffer-settings h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.buffer-settings h4::before {
+  content: "⏰";
+  margin-right: 8px;
+}
+
+.buffer-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+/* 체류 시간 섹션 */
+.stay-time-section {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--color-panel);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
+}
+
+.stay-time-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stay-time-section h4::before {
+  content: "⏰";
+}
+
+/* 애니메이션 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .planner__steps {
+    gap: 8px;
+    padding: 16px 0;
+  }
+  
+  .step-indicator {
+    padding: 8px 12px;
+    min-width: 80px;
+  }
+  
+  .step-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+  
+  .step-label {
+    font-size: 0.75rem;
+  }
+  
+  .planner-step__title {
+    font-size: 1.5rem;
+  }
+  
+  .planner-step__guide {
+    font-size: 1rem;
+  }
+  
+  .buffer-fields {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .planner-step__actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .planner-step__actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .planner__steps {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .step-indicator {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-width: auto;
+  }
+  
+  .step-number {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+  
+  .step-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .planner-steps-container {
+    background: #f8fafc;
+    border-bottom-color: #e2e8f0;
+  }
+  
+  .buffer-settings,
+  .stay-time-section {
+    background: #ffffff;
+    border-color: #e2e8f0;
+  }
+  
+  .planner-step__actions {
+    background: #ffffff;
+    border-top-color: #e2e8f0;
+  }
+}
+
+/* PC 화면 최적화 */
+@media (min-width: 1024px) {
+  .planner-step__title {
+    font-size: 1.8rem !important;
+  }
+  
+  .planner-step__guide {
+    font-size: 1.1rem !important;
+  }
+}

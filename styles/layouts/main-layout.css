@@ -1,0 +1,96 @@
+/* Main Layout */
+/* ========================================== */
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+/* App Body */
+body.app {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: padding 0.3s ease;
+}
+
+/* App Container */
+.app {
+  padding: 0 2rem !important; /* 좌우 패딩 증가 */
+}
+
+/* Planner Page */
+.planner-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.planner-page .planner__panel {
+  position: relative;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  background: #ffffff;
+  color: var(--color-text);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 28px 60px rgba(15, 28, 46, 0.15);
+  overflow: auto;
+}
+
+/* Emergency Mode */
+body.emergency-mode {
+  --color-bg: #ffebee;
+  --color-panel: #ffffff;
+  --color-primary: #f44336;
+  --color-accent: #ff5722;
+  --color-border: #ffcdd2;
+  --color-text: #d32f2f;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .planner-page {
+    padding: 16px;
+  }
+  
+  .planner-page .planner__panel {
+    padding: 20px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .planner-page {
+    padding: 12px;
+  }
+  
+  .planner-page .planner__panel {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .app {
+    padding: 0 3rem !important; /* 태블릿에서 더 증가 */
+  }
+}
+
+@media (min-width: 1024px) {
+  .app {
+    padding: 0 4rem !important; /* PC에서 최대 증가 */
+  }
+  
+  /* PC 화면 최적화 */
+  .planner-page {
+    max-width: 1200px !important;
+    margin: 0 auto;
+  }
+  
+  /* 플래너 패널 패딩 증가 */
+  .planner__panel {
+    padding: 2rem !important;
+  }
+}
