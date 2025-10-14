@@ -290,7 +290,12 @@ export function clearExpiredCache() {
  * @returns {Object} 영업 상태 정보
  */
 export function checkBusinessStatus(poiInfo, travelTime = null) {
+  console.log('🔍 [DEBUG] checkBusinessStatus 호출됨');
+  console.log('🏢 [DEBUG] poiInfo:', poiInfo);
+  console.log('🕐 [DEBUG] travelTime:', travelTime);
+  
   if (!poiInfo) {
+    console.log('❌ [DEBUG] poiInfo가 없음 - UNKNOWN 반환');
     return {
       status: 'UNKNOWN',
       icon: '⚪',
@@ -300,21 +305,30 @@ export function checkBusinessStatus(poiInfo, travelTime = null) {
 
   // 여행 시간이 주어진 경우 정확한 영업 상태 확인
   if (travelTime) {
+    console.log('🕐 [DEBUG] travelTime이 있음 - getBusinessStatus 호출');
     const status = getBusinessStatus(poiInfo, travelTime);
-    return {
+    console.log('📊 [DEBUG] getBusinessStatus 결과:', status);
+    
+    const result = {
       status,
       icon: getBusinessStatusIcon(status),
       label: getBusinessStatusLabel(status)
     };
+    console.log('✅ [DEBUG] 최종 결과:', result);
+    return result;
   }
 
   // 기본 영업 상태 (Google Places API의 business_status 기반)
   const status = poiInfo.businessStatus || 'UNKNOWN';
-  return {
+  console.log('📊 [DEBUG] 기본 businessStatus:', status);
+  
+  const result = {
     status,
     icon: getBusinessStatusIcon(status),
     label: getBusinessStatusLabel(status)
   };
+  console.log('✅ [DEBUG] 기본 결과:', result);
+  return result;
 }
 
 /**
