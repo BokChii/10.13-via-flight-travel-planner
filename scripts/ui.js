@@ -1,5 +1,6 @@
 ﻿// Handles DOM interactions for forms, waypoint list, and user-triggered events.
 import { showToast } from './toast.js';
+import { getPOIInfo, searchPOIByName, getCategoryInfo } from './poiManager.js';
 
 const selectors = {
   form: "#route-form",
@@ -27,7 +28,7 @@ export function getElements() {
   );
 }
 
-export function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = {}) {
+export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = {}) {
   listElement.innerHTML = "";
 
   if (!waypoints.length) {
@@ -38,25 +39,50 @@ export function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, on
     return;
   }
 
-  waypoints.forEach((entry, index) => {
+  // 모든 경유지에 대해 POI 정보를 병렬로 가져오기
+  const waypointPromises = waypoints.map(async (entry, index) => {
     const waypoint = typeof entry === "string" ? { label: entry } : entry;
+    
+    // POI 정보 가져오기
+    let poiInfo = null;
+    if (waypoint.placeId) {
+      poiInfo = await getPOIInfo(waypoint.placeId);
+    } else if (waypoint.label) {
+      poiInfo = await searchPOIByName(waypoint.label);
+    }
+    
+    return { waypoint, poiInfo, index };
+  });
+
+  const waypointData = await Promise.all(waypointPromises);
+
+  waypointData.forEach(({ waypoint, poiInfo, index }) => {
     const item = document.createElement("li");
     item.className = "waypoint-item";
 
     const info = document.createElement("div");
     info.className = "waypoint-item__info";
 
+    // 카테고리 아이콘과 라벨 추가
+    const categoryInfo = poiInfo?.category || getCategoryInfo('default');
+    const categoryIcon = document.createElement("span");
+    categoryIcon.className = "waypoint-item__category";
+    categoryIcon.textContent = categoryInfo.icon;
+    categoryIcon.title = categoryInfo.label;
+
     const name = document.createElement("span");
     name.className = "waypoint-item__label";
     name.textContent = waypoint.label ?? waypoint.address ?? `경유지 ${index + 1}`;
-    info.append(name);
+    
+    info.append(categoryIcon, name);
 
-    if (waypoint?.stayMinutes || waypoint?.address) {
+    if (waypoint?.stayMinutes || poiInfo?.address || waypoint?.address) {
       const meta = document.createElement("span");
       meta.className = "waypoint-item__meta";
       const parts = [];
       if (waypoint?.stayMinutes) parts.push(`체류 ${waypoint.stayMinutes}분`);
-      if (waypoint?.address) parts.push(waypoint.address);
+      if (poiInfo?.address) parts.push(poiInfo.address);
+      else if (waypoint?.address) parts.push(waypoint.address);
       meta.textContent = parts.join(" · ");
       info.append(meta);
     }
@@ -95,7 +121,7 @@ export function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, on
     detailsButton.type = "button";
     detailsButton.className = "btn btn--ghost btn--small";
     detailsButton.textContent = "상세";
-    detailsButton.addEventListener("click", () => onShowDetails(index));
+    detailsButton.addEventListener("click", () => onShowDetails?.(waypoint, poiInfo));
 
     const upButton = document.createElement("button");
     upButton.type = "button";

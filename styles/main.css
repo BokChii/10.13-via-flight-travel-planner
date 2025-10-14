@@ -172,6 +172,20 @@
   margin-bottom: 8px;
 }
 
+.waypoint-item__category {
+  font-size: 1.2rem;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.waypoint-item__info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .waypoint-item__title {
   font-size: 1rem;
   font-weight: 600;
@@ -385,6 +399,6 @@
   
   .navigation-header__actions {
     width: 100%;
-    justify-content: flex-start;
+  justify-content: flex-start;
   }
 }

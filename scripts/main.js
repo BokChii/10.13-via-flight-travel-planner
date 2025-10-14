@@ -333,7 +333,7 @@ async function syncUi({
     destination.value = latestState.destination.address;
   }
 
-  renderWaypoints(
+  await renderWaypoints(
     waypointList,
     latestState.waypoints,
     {
@@ -365,7 +365,7 @@ async function syncUi({
           resetNavigationDraft(draft);
           setViewMode("planning");
         }),
-      onShowDetails: (index) => handleWaypointDetails(index),
+      onShowDetails: (waypoint, poiInfo) => handleWaypointDetails(waypoint, poiInfo),
       onUpdateStayTime: (index, newStayMinutes) => {
         updateState((draft) => {
           const waypoint = draft.waypoints[index];
@@ -819,13 +819,23 @@ function resetReturnDeadlineAlerts() {
   stopReturnDeadlineTimer();
 }
 
-async function handleWaypointDetails(index) {
-  const state = getState();
-  const waypoint = state.waypoints[index];
+async function handleWaypointDetails(waypoint, poiInfo) {
   if (!waypoint) return;
 
   let details = null;
-  if (waypoint.placeId && placesService) {
+  
+  // POI 정보가 있으면 사용, 없으면 기존 방식으로 가져오기
+  if (poiInfo) {
+    details = {
+      name: poiInfo.name || waypoint.label,
+      address: poiInfo.address,
+      types: poiInfo.types,
+      photos: poiInfo.photos,
+      openingHours: poiInfo.openingHours,
+      businessStatus: poiInfo.businessStatus,
+      category: poiInfo.category
+    };
+  } else if (waypoint.placeId && placesService) {
     try {
       details = await fetchPlaceDetails(waypoint.placeId);
     } catch (error) {
