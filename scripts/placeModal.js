@@ -155,8 +155,8 @@ function fillModalContent(details = {}, defaultStayMinutes) {
       console.log('🔗 [DEBUG] 사진 URL 생성됨:', url);
       photoEl.src = url;
       photoEl.alt = `${name ?? "장소"} 사진`;
-      photoWrapper.hidden = false;
-      console.log('✅ [DEBUG] 사진 설정 완료');
+      photoWrapper.hidden = false; // hidden 속성 제거
+      console.log('✅ [DEBUG] 사진 설정 완료 - hidden 제거됨');
     } catch (error) {
       console.error('❌ [DEBUG] 사진 URL 생성 실패:', error);
     }
