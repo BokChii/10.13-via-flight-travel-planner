@@ -70,6 +70,28 @@ body.app.navigation-active .app-header .tagline {
   grid-template-areas: "planner";
 }
 
+.layout[data-view="planning"] {
+  grid-template-columns: 350px 1fr 350px;
+  grid-template-areas:
+    "controls map summary";
+}
+
+.layout[data-view="planning"] .panel--controls {
+  grid-area: controls;
+  display: flex;
+}
+
+.layout[data-view="planning"] .panel--map {
+  grid-area: map;
+  min-height: 80vh;
+}
+
+.layout[data-view="planning"] .panel--summary {
+  grid-area: summary;
+  max-height: 80vh;
+  overflow: auto;
+}
+
 .layout[data-view="navigation"] {
   grid-template-columns: 1fr 350px;
   grid-template-areas:
@@ -424,6 +446,18 @@ body.app.navigation-active .app-header .tagline {
 
 /* 반응형 디자인 */
 @media (max-width: 1100px) {
+  .layout[data-view="planning"] {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "controls"
+      "map"
+      "summary";
+  }
+
+  .layout[data-view="planning"] .panel--summary {
+    max-height: none;
+  }
+
   .layout[data-view="navigation"] {
     grid-template-columns: 1fr;
     grid-template-areas:
