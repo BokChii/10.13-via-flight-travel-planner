@@ -2387,3 +2387,81 @@ body.emergency-mode {
 .btn--emergency:active {
   transform: translateY(0);
 }
+
+/* PC 화면 최적화 */
+@media (min-width: 1024px) {
+  /* 메인 컨테이너 최대 너비 증가 */
+  .planner-page {
+    max-width: 1200px !important;
+    margin: 0 auto;
+  }
+  
+  /* 헤더 텍스트 크기 증가 */
+  .app-header h1 {
+    font-size: 2.5rem !important;
+  }
+  
+  .tagline {
+    font-size: 1.2rem !important;
+  }
+  
+  /* 플래너 패널 패딩 증가 */
+  .planner__panel {
+    padding: 2rem !important;
+  }
+  
+  /* 단계 제목 크기 증가 */
+  .planner-step__title {
+    font-size: 1.8rem !important;
+  }
+  
+  .planner-step__guide {
+    font-size: 1.1rem !important;
+  }
+  
+  /* 입력 필드 크기 증가 */
+  .planner-field__label {
+    font-size: 1.1rem !important;
+  }
+  
+  .airport-select, .date-input, .hour-select, .minute-select {
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+  }
+  
+  /* 버퍼 입력 필드 크기 증가 */
+  .buffer-input {
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+  }
+  
+  /* 요약 카드 크기 증가 */
+  .summary-card__title {
+    font-size: 1.3rem !important;
+  }
+  
+  .summary-item__label {
+    font-size: 1rem !important;
+  }
+  
+  .summary-item__value {
+    font-size: 1rem !important;
+  }
+}
+
+/* 전체 컨테이너 최적화 */
+.app {
+  padding: 0 2rem !important; /* 좌우 패딩 증가 */
+}
+
+@media (min-width: 768px) {
+  .app {
+    padding: 0 3rem !important; /* 태블릿에서 더 증가 */
+  }
+}
+
+@media (min-width: 1024px) {
+  .app {
+    padding: 0 4rem !important; /* PC에서 최대 증가 */
+  }
+}
