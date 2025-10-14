@@ -828,13 +828,39 @@ async function handleWaypointDetails(waypoint, poiInfo) {
   if (poiInfo) {
     details = {
       name: poiInfo.name || waypoint.label,
-      address: poiInfo.address,
+      formatted_address: poiInfo.address,
       types: poiInfo.types,
       photos: poiInfo.photos,
-      openingHours: poiInfo.openingHours,
-      businessStatus: poiInfo.businessStatus,
-      category: poiInfo.category
+      opening_hours: poiInfo.openingHours,
+      business_status: poiInfo.businessStatus,
+      category: poiInfo.category,
+      // 추가 정보는 기존 방식으로 가져오기
+      website: null,
+      formatted_phone_number: null,
+      rating: null,
+      user_ratings_total: null,
+      reviews: null
     };
+    
+    // POI 정보가 있으면 추가 상세 정보 가져오기
+    if (poiInfo.placeId && placesService) {
+      try {
+        const additionalDetails = await fetchPlaceDetails(poiInfo.placeId);
+        if (additionalDetails) {
+          details = {
+            ...details,
+            ...additionalDetails,
+            // POI 정보 우선 유지
+            name: poiInfo.name || additionalDetails.name,
+            formatted_address: poiInfo.address || additionalDetails.formatted_address,
+            photos: poiInfo.photos || additionalDetails.photos,
+            opening_hours: poiInfo.openingHours || additionalDetails.opening_hours
+          };
+        }
+      } catch (error) {
+        console.warn('추가 상세 정보 가져오기 실패:', error);
+      }
+    }
   } else if (waypoint.placeId && placesService) {
     try {
       details = await fetchPlaceDetails(waypoint.placeId);

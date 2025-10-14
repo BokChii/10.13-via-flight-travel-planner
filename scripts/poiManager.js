@@ -4,23 +4,53 @@
  * API 호출을 최소화하기 위해 캐싱 전략을 사용합니다.
  */
 
-// POI 카테고리 매핑
+// POI 카테고리 매핑 (더 세분화된 매핑)
 const POI_CATEGORIES = {
+  // 식음료
   'restaurant': { icon: '🍽️', label: '식당', color: '#ff6b6b' },
   'cafe': { icon: '☕', label: '카페', color: '#8b4513' },
-  'shopping_mall': { icon: '🛍️', label: '쇼핑', color: '#ff9f43' },
+  'bar': { icon: '🍺', label: '바', color: '#8b4513' },
+  'bakery': { icon: '🥖', label: '베이커리', color: '#8b4513' },
+  'food': { icon: '🍕', label: '음식점', color: '#ff6b6b' },
+  
+  // 쇼핑
+  'shopping_mall': { icon: '🛍️', label: '쇼핑몰', color: '#ff9f43' },
+  'store': { icon: '🏪', label: '상점', color: '#ff9f43' },
+  'clothing_store': { icon: '👕', label: '의류점', color: '#ff9f43' },
+  'electronics_store': { icon: '📱', label: '전자제품', color: '#ff9f43' },
+  'supermarket': { icon: '🛒', label: '마트', color: '#ff9f43' },
+  
+  // 관광/레저
   'tourist_attraction': { icon: '🏛️', label: '관광지', color: '#3742fa' },
-  'lodging': { icon: '🏨', label: '숙박', color: '#2f3542' },
   'park': { icon: '🌳', label: '공원', color: '#2ed573' },
+  'beach': { icon: '🏖️', label: '해변', color: '#2ed573' },
+  'amusement_park': { icon: '🎢', label: '놀이공원', color: '#ff6b6b' },
+  'zoo': { icon: '🦁', label: '동물원', color: '#2ed573' },
+  'aquarium': { icon: '🐠', label: '수족관', color: '#2ed573' },
   'museum': { icon: '🏛️', label: '박물관', color: '#5352ed' },
-  'gas_station': { icon: '⛽', label: '주유소', color: '#ffa502' },
-  'hospital': { icon: '🏥', label: '병원', color: '#ff3838' },
-  'bank': { icon: '🏦', label: '은행', color: '#2f3542' },
-  'pharmacy': { icon: '💊', label: '약국', color: '#ff6b6b' },
-  'atm': { icon: '🏧', label: 'ATM', color: '#2f3542' },
+  'art_gallery': { icon: '🎨', label: '미술관', color: '#5352ed' },
+  'stadium': { icon: '🏟️', label: '경기장', color: '#3742fa' },
+  'gym': { icon: '💪', label: '헬스장', color: '#2ed573' },
+  
+  // 숙박
+  'lodging': { icon: '🏨', label: '숙박', color: '#2f3542' },
+  'hotel': { icon: '🏨', label: '호텔', color: '#2f3542' },
+  'motel': { icon: '🏨', label: '모텔', color: '#2f3542' },
+  
+  // 교통
   'subway_station': { icon: '🚇', label: '지하철', color: '#3742fa' },
   'bus_station': { icon: '🚌', label: '버스정류장', color: '#ff9f43' },
+  'train_station': { icon: '🚂', label: '기차역', color: '#3742fa' },
   'airport': { icon: '✈️', label: '공항', color: '#5352ed' },
+  'gas_station': { icon: '⛽', label: '주유소', color: '#ffa502' },
+  
+  // 의료/금융
+  'hospital': { icon: '🏥', label: '병원', color: '#ff3838' },
+  'pharmacy': { icon: '💊', label: '약국', color: '#ff6b6b' },
+  'bank': { icon: '🏦', label: '은행', color: '#2f3542' },
+  'atm': { icon: '🏧', label: 'ATM', color: '#2f3542' },
+  
+  // 기타
   'default': { icon: '📍', label: '기타', color: '#6c757d' }
 };
 
@@ -95,7 +125,7 @@ export async function searchPOIByName(placeName) {
 }
 
 /**
- * 카테고리를 결정합니다
+ * 카테고리를 결정합니다 (개선된 우선순위 로직)
  * @param {Array} types - Google Places types 배열
  * @returns {Object} 카테고리 정보
  */
@@ -104,11 +134,28 @@ export function determineCategory(types) {
     return POI_CATEGORIES.default;
   }
 
-  // 우선순위에 따라 카테고리 결정
+  // 우선순위에 따라 카테고리 결정 (더 세분화된 매핑)
   const priorityTypes = [
-    'restaurant', 'cafe', 'shopping_mall', 'tourist_attraction',
-    'lodging', 'park', 'museum', 'gas_station', 'hospital',
-    'bank', 'pharmacy', 'atm', 'subway_station', 'bus_station', 'airport'
+    // 공원/해변 관련 (높은 우선순위)
+    'park', 'beach', 'amusement_park', 'zoo', 'aquarium',
+    
+    // 식음료
+    'restaurant', 'cafe', 'bar', 'bakery', 'food',
+    
+    // 쇼핑
+    'shopping_mall', 'store', 'clothing_store', 'electronics_store', 'supermarket',
+    
+    // 관광/문화
+    'museum', 'art_gallery', 'tourist_attraction', 'stadium', 'gym',
+    
+    // 숙박
+    'hotel', 'motel', 'lodging',
+    
+    // 교통
+    'airport', 'subway_station', 'bus_station', 'train_station', 'gas_station',
+    
+    // 의료/금융
+    'hospital', 'pharmacy', 'bank', 'atm'
   ];
 
   for (const type of priorityTypes) {
