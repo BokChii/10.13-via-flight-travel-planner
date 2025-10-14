@@ -156,6 +156,7 @@ function fillModalContent(details = {}, defaultStayMinutes) {
       photoEl.src = url;
       photoEl.alt = `${name ?? "장소"} 사진`;
       photoWrapper.removeAttribute('hidden'); // hidden 속성 완전 제거
+      photoWrapper.textContent = ''; // 안내 메시지 제거
       console.log('✅ [DEBUG] 사진 설정 완료 - hidden 속성 제거됨');
     } catch (error) {
       console.error('❌ [DEBUG] 사진 URL 생성 실패:', error);
@@ -178,14 +179,18 @@ function fillModalContent(details = {}, defaultStayMinutes) {
       });
       photoEl.src = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
       photoEl.alt = `${name ?? "장소"} 주변 지도`;
-      if (photoWrapper) photoWrapper.hidden = false;
+      photoWrapper.removeAttribute('hidden');
+      photoWrapper.textContent = ''; // 안내 메시지 제거
     } else if (photoWrapper) {
-      photoWrapper.hidden = true;
+      photoWrapper.removeAttribute('hidden');
+      photoWrapper.textContent = '사진이 없습니다.';
       photoEl.src = "";
       photoEl.alt = "";
     }
   } else if (photoWrapper) {
-    photoWrapper.hidden = true;
+    // 사진도 지도도 없는 경우 안내 메시지 표시
+    photoWrapper.removeAttribute('hidden');
+    photoWrapper.textContent = '사진이 없습니다.';
     if (photoEl) {
       photoEl.src = "";
       photoEl.alt = "";

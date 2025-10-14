@@ -139,7 +139,19 @@
 
 .modal__photo {
   border-radius: 12px;
-  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.modal__photo:has(img) {
+  /* 사진이 있을 때는 overflow: hidden 제거 */
+  background: transparent;
+  color: inherit;
 }
 
 .modal__photo img {
