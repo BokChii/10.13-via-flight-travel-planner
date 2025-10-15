@@ -1,0 +1,3 @@
+[33m9e5f7e3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m  Critical Issues 해결: 영업 상태 판정, 시간 기준 통일, tripMeta 전달 체인, renderWaypoints 최적화
+[33maadc770[m feat: POI 영업 상태 확인 기능 완성 및 경로 찾기 후 상태 변경 문제 수정
+[33md3ea0bb[m fix: renderWaypoints 함수 매개변수 구조 수정
