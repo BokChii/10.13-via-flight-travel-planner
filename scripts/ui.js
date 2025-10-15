@@ -35,11 +35,14 @@ export function getElements() {
   );
 }
 
-export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime, tripMeta } = {}) {
+export async function renderWaypoints(listElement, waypoints, options = {}, tripMeta) {
   console.log('🔍 [DEBUG] renderWaypoints 호출됨');
   console.log('📅 [DEBUG] 받은 tripMeta:', tripMeta);
   console.log('📍 [DEBUG] waypoints.length:', waypoints.length);
   console.log('🔍 [DEBUG] tripMeta 존재 여부:', !!tripMeta);
+  
+  // options에서 이벤트 핸들러 추출
+  const { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = options;
   
   listElement.innerHTML = "";
 
