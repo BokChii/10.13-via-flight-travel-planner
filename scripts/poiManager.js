@@ -70,36 +70,26 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
  * @returns {Promise<Object>} POI 정보
  */
 export async function getPOIInfo(placeId) {
-  console.log('🔍 [DEBUG] getPOIInfo 호출됨, placeId:', placeId);
-  
   if (!placeId) {
-    console.log('❌ [DEBUG] placeId가 없음');
     return null;
   }
 
   // 캐시 확인
   const cached = getCachedPOI(placeId);
   if (cached) {
-    console.log('✅ [DEBUG] 캐시에서 POI 정보 반환:', cached);
-    console.log('📸 [DEBUG] 캐시된 photos:', cached.photos);
     return cached;
   }
-
-  console.log('🔄 [DEBUG] API 호출 중...');
   
   // API 호출
   try {
     const poiInfo = await fetchPOIFromAPI(placeId);
-    console.log('📋 [DEBUG] API 응답:', poiInfo);
-    console.log('📸 [DEBUG] API photos:', poiInfo?.photos);
     
     if (poiInfo) {
       cachePOI(placeId, poiInfo);
-      console.log('✅ [DEBUG] POI 정보 캐시에 저장됨');
     }
     return poiInfo;
   } catch (error) {
-    console.warn('❌ [DEBUG] POI 정보 가져오기 실패:', error);
+    console.warn('❌ POI 정보 가져오기 실패:', error);
     return null;
   }
 }
@@ -212,18 +202,11 @@ async function fetchPOIFromAPI(placeId) {
   const service = new window.google.maps.places.PlacesService(document.createElement('div'));
   
   return new Promise((resolve) => {
-    console.log('🔄 [DEBUG] Places API getDetails 요청 중...');
-    
     service.getDetails({
       placeId: placeId,
       fields: ['name', 'types', 'formatted_address', 'photos', 'opening_hours', 'business_status']
     }, (place, status) => {
-      console.log('📋 [DEBUG] Places API 응답 상태:', status);
-      console.log('📍 [DEBUG] Places API 응답 데이터:', place);
-      
       if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
-        console.log('📸 [DEBUG] 원본 photos:', place.photos);
-        
         const poiInfo = {
           placeId: placeId,
           name: place.name,
@@ -235,12 +218,8 @@ async function fetchPOIFromAPI(placeId) {
           category: determineCategory(place.types)
         };
         
-        console.log('✅ [DEBUG] POI 정보 생성됨:', poiInfo);
-        console.log('📸 [DEBUG] 최종 photos:', poiInfo.photos);
-        
         resolve(poiInfo);
       } else {
-        console.log('❌ [DEBUG] Places API 실패:', status);
         resolve(null);
       }
     });

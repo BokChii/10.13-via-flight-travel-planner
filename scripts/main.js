@@ -830,15 +830,10 @@ function resetReturnDeadlineAlerts() {
 async function handleWaypointDetails(waypoint, poiInfo) {
   if (!waypoint) return;
 
-  console.log('🔍 [DEBUG] handleWaypointDetails 호출됨');
-  console.log('📍 [DEBUG] waypoint:', waypoint);
-  console.log('🏢 [DEBUG] poiInfo:', poiInfo);
-
   let details = null;
   
   // POI 정보가 있으면 사용, 없으면 기존 방식으로 가져오기
   if (poiInfo) {
-    console.log('✅ [DEBUG] POI 정보 사용');
     details = {
       name: poiInfo.name || waypoint.label,
       formatted_address: poiInfo.address,
@@ -855,15 +850,10 @@ async function handleWaypointDetails(waypoint, poiInfo) {
       reviews: null
     };
     
-    console.log('📸 [DEBUG] POI photos:', poiInfo.photos);
-    
     // POI 정보가 있으면 추가 상세 정보 가져오기
     if (poiInfo.placeId && placesService) {
-      console.log('🔄 [DEBUG] 추가 상세 정보 요청 중...');
       try {
         const additionalDetails = await fetchPlaceDetails(poiInfo.placeId);
-        console.log('📋 [DEBUG] 추가 상세 정보:', additionalDetails);
-        console.log('📸 [DEBUG] 추가 상세 photos:', additionalDetails?.photos);
         
         if (additionalDetails) {
           details = {
@@ -875,26 +865,20 @@ async function handleWaypointDetails(waypoint, poiInfo) {
             photos: poiInfo.photos?.length ? [poiInfo.photos[0]] : (additionalDetails.photos?.length ? [additionalDetails.photos[0]] : []),
             opening_hours: poiInfo.openingHours || additionalDetails.opening_hours
           };
-          
-          console.log('🔀 [DEBUG] 통합된 details:', details);
-          console.log('📸 [DEBUG] 최종 photos:', details.photos);
         }
       } catch (error) {
-        console.warn('❌ [DEBUG] 추가 상세 정보 가져오기 실패:', error);
+        console.warn('❌ 추가 상세 정보 가져오기 실패:', error);
       }
     }
   } else if (waypoint.placeId && placesService) {
-    console.log('🔄 [DEBUG] 기존 방식으로 상세 정보 요청');
     try {
       details = await fetchPlaceDetails(waypoint.placeId);
-      console.log('📋 [DEBUG] 기존 방식 상세 정보:', details);
     } catch (error) {
-      console.error('❌ [DEBUG] 기존 방식 실패:', error);
+      console.error('❌ 기존 방식 실패:', error);
     }
   }
 
   if (!details) {
-    console.log('⚠️ [DEBUG] 폴백 방식 사용');
     details = buildDetailsFromWaypoint(waypoint);
   }
 
