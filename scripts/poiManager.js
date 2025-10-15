@@ -129,7 +129,8 @@ export async function searchPOIByName(placeName) {
             types: place.types || [],
             photos: place.photos || [],
             category: determineCategory(place.types),
-            businessStatus: 'UNKNOWN' // 기본값
+            business_status: 'UNKNOWN', // 수정: businessStatus → business_status
+            opening_hours: null // 추가: opening_hours 필드
           };
           resolve(poiInfo);
         } else {
@@ -229,8 +230,8 @@ async function fetchPOIFromAPI(placeId) {
           address: place.formatted_address,
           types: place.types || [],
           photos: place.photos ? [place.photos[0]] : [], // 대표 사진 1장만
-          openingHours: place.opening_hours,
-          businessStatus: place.business_status || 'UNKNOWN',
+          opening_hours: place.opening_hours, // 수정: openingHours → opening_hours
+          business_status: place.business_status, // 수정: businessStatus → business_status
           category: determineCategory(place.types)
         };
         
@@ -319,8 +320,8 @@ export function checkBusinessStatus(poiInfo, travelTime = null) {
   }
 
   // 기본 영업 상태 (Google Places API의 business_status 기반)
-  const status = poiInfo.businessStatus || 'UNKNOWN';
-  console.log('📊 [DEBUG] 기본 businessStatus:', status);
+  const status = poiInfo.business_status || 'UNKNOWN';
+  console.log('📊 [DEBUG] 기본 business_status:', status);
   
   const result = {
     status,
