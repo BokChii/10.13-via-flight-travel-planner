@@ -96,12 +96,19 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
 
     // 영업 상태 표시 추가
     if (poiInfo) {
+      console.log(`🔍 [DEBUG] 경유지 ${index} 영업 상태 확인 시작`);
+      console.log(`📍 [DEBUG] waypoint:`, waypoint);
+      console.log(`📋 [DEBUG] tripMeta:`, tripMeta);
+      
       // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
       const travelTime = tripMeta 
         ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
         : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
       
+      console.log(`🕐 [DEBUG] 경유지 ${index} travelTime:`, travelTime);
+      
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
+      console.log(`📊 [DEBUG] 경유지 ${index} businessStatus:`, businessStatus);
       
       const statusElement = document.createElement("span");
       statusElement.className = "waypoint-item__status";
