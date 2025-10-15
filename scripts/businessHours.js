@@ -261,7 +261,14 @@ export function isWithinIntervals(intervals, startMin, endMin) {
  * 영업 상태 평가 (핵심 함수)
  */
 export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, timeZone, offsetMinutes) {
+  console.log('🔍 [FIXED] evaluateOperatingStatus 호출됨');
+  console.log('📅 [FIXED] startDate:', startDate);
+  console.log('⏰ [FIXED] stayMinutes:', stayMinutes);
+  console.log('🌍 [FIXED] timeZone:', timeZone);
+  console.log('📊 [FIXED] openingHours:', openingHours);
+  
   if (!openingHours) {
+    console.log('⚠️ [FIXED] openingHours 없음 - true 반환');
     return true;
   }
   
@@ -276,11 +283,15 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
   let startMin = startInfo.day * 1440 + startInfo.minutes;
   let endMin = endInfo.day * 1440 + endInfo.minutes;
   
+  console.log('🕐 [FIXED] startMin:', startMin);
+  console.log('🕐 [FIXED] endMin:', endMin);
+  
   if (endMin < startMin) {
     endMin += WEEK;
   }
   
   if (intervals.length && isWithinIntervals(intervals, startMin, endMin)) {
+    console.log('✅ [FIXED] intervals 내에 있음 - true 반환');
     return true;
   }
   
@@ -409,15 +420,18 @@ export function isWithinOperatingTime(slots, hourOrDate, minute) {
  * 영업 상태 판정 (통합 함수)
  */
 export function getBusinessStatus(poi, travelTime = null) {
+  console.log('🔍 [FIXED] getBusinessStatus 호출됨 - 수정된 버전');
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
+    console.log('⚠️ [FIXED] opening_hours 없음 - UNKNOWN 반환');
     return 'UNKNOWN';
   }
   
   // 여행 시간이 주어진 경우 영업 시간 비교 (OPERATIONAL이어도 실제 영업 시간 확인)
   if (travelTime) {
+    console.log('🕐 [FIXED] travelTime 있음 - evaluateOperatingStatus 호출');
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
@@ -425,14 +439,19 @@ export function getBusinessStatus(poi, travelTime = null) {
       travelTime.timeZone,
       poi.utc_offset_minutes
     );
-    return isOpen ? 'OPEN' : 'CLOSED';
+    console.log('📊 [FIXED] evaluateOperatingStatus 결과:', isOpen);
+    const result = isOpen ? 'OPEN' : 'CLOSED';
+    console.log('✅ [FIXED] 최종 결과:', result);
+    return result;
   }
   
   // Google Places API의 business_status는 참고용으로만 사용
   if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
+    console.log('❌ [FIXED] CLOSED_TEMPORARILY/PERMANENTLY - CLOSED 반환');
     return 'CLOSED';
   }
   
+  console.log('⚠️ [FIXED] 기본 - UNKNOWN 반환');
   return 'UNKNOWN';
 }
 
