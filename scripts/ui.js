@@ -35,7 +35,7 @@ export function getElements() {
   );
 }
 
-export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime, tripMeta } = {}) {
+export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = {}, tripMeta = null) {
   listElement.innerHTML = "";
 
   if (!waypoints.length) {

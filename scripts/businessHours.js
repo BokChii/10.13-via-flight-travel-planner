@@ -353,116 +353,99 @@ function isWithinOperatingTime(slots, hourOrDate, minute) {
 }
 
 /**
- * 영업 상태 평가 (핵심 함수) - 기존 서비스 코드
+ * 영업 상태 평가 (핵심 함수) - 최적화된 버전
  */
 export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, timeZone, offsetMinutes) {
-  console.log('🔍 [FIXED] evaluateOperatingStatus 호출됨 - 기존 서비스 코드');
-  console.log('📅 [FIXED] startDate:', startDate);
-  console.log('⏰ [FIXED] stayMinutes:', stayMinutes);
-  console.log('🌍 [FIXED] timeZone:', timeZone);
-  console.log('📊 [FIXED] openingHours:', openingHours);
-  
+  // openingHours가 없으면 영업 상태 불명으로 간주 (기본적으로 true 반환)
   if (!openingHours) {
-    console.log('⚠️ [FIXED] openingHours 없음 - true 반환');
     return true;
   }
   
-  const intervals = buildOpeningIntervals(openingHours);
-  const WEEK = 7 * 1440;
+  // stayMinutes가 없거나 0이면 1분으로 설정
   const stay = Math.max(1, stayMinutes || 0);
   const endDate = new Date(startDate.getTime() + stay * 60000);
   
-  const startInfo = resolveLocalMinutes(startDate, timeZone, offsetMinutes);
-  const endInfo = resolveLocalMinutes(endDate, timeZone, offsetMinutes);
+  // 시간대 정보가 없으면 기본값 사용
+  const effectiveTimeZone = timeZone || 'Asia/Seoul';
+  const effectiveOffsetMinutes = offsetMinutes || 0;
   
+  // 로컬 시간으로 변환
+  const startInfo = resolveLocalMinutes(startDate, effectiveTimeZone, effectiveOffsetMinutes);
+  const endInfo = resolveLocalMinutes(endDate, effectiveTimeZone, effectiveOffsetMinutes);
+  
+  // 주간 분 단위로 변환
   let startMin = startInfo.day * 1440 + startInfo.minutes;
   let endMin = endInfo.day * 1440 + endInfo.minutes;
   
-  console.log('🕐 [FIXED] startMin:', startMin);
-  console.log('🕐 [FIXED] endMin:', endMin);
-  console.log('📊 [FIXED] intervals:', intervals);
-  
+  // 다음 날로 넘어가는 경우 처리
   if (endMin < startMin) {
-    endMin += WEEK;
+    endMin += 7 * 1440; // 7일 = 1주
   }
   
-  if (intervals.length && isWithinIntervals(intervals, startMin, endMin)) {
-    console.log('✅ [FIXED] intervals 내에 있음 - true 반환');
+  // 영업 시간 간격 구축
+  const intervals = buildOpeningIntervals(openingHours);
+  
+  // 간격 내에 포함되는지 확인
+  if (intervals.length > 0 && isWithinIntervals(intervals, startMin, endMin)) {
     return true;
   }
   
-  const localStart = offsetMinutes != null ? new Date(startDate.getTime() + offsetMinutes * 60000) : new Date(startDate);
-  const localEnd = offsetMinutes != null ? new Date(endDate.getTime() + offsetMinutes * 60000) : new Date(endDate);
-  
-  const startSlots = getTodayOperatingHours(openingHours, localStart.getDay());
-  if (startSlots && startSlots.length) {
-    if (!isWithinOperatingTime(startSlots, localStart)) {
-      console.log('❌ [FIXED] 시작 시간이 영업 시간 밖 - false 반환');
-      return false;
-    }
-    if (isWithinOperatingTime(startSlots, localEnd)) {
-      console.log('✅ [FIXED] 종료 시간이 영업 시간 내 - true 반환');
-      return true;
-    }
-    
-    const nextSlots = getTodayOperatingHours(openingHours, localEnd.getDay());
-    if (nextSlots && nextSlots.length) {
-      const result = isWithinOperatingTime(nextSlots, localEnd);
-      console.log('📊 [FIXED] 다음 날 영업 시간 확인:', result);
-      return result;
-    }
-    console.log('❌ [FIXED] 다음 날 영업 시간 없음 - false 반환');
-    return false;
-  }
-  
+  // 24시간 영업 확인
   if (Array.isArray(openingHours.weekday_text)) {
-    const is24 = openingHours.weekday_text.some(text => /24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(text));
+    const is24 = openingHours.weekday_text.some(text => 
+      /24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(text)
+    );
     if (is24) {
-      console.log('✅ [FIXED] 24시간 영업 - true 반환');
       return true;
     }
   }
   
-  console.log('❌ [FIXED] 기본 - false 반환');
+  // periods 배열에서 24시간 영업 확인
+  if (Array.isArray(openingHours.periods)) {
+    const is24 = openingHours.periods.some(period => {
+      if (!period.open?.time) return false;
+      const openTime = parseTimeString(period.open.time);
+      const closeTime = period.close?.time ? parseTimeString(period.close.time) : null;
+      return openTime === 0 && (!closeTime || closeTime === 1440);
+    });
+    if (is24) {
+      return true;
+    }
+  }
+  
+  // 기본적으로 false 반환 (영업 시간 밖)
   return false;
 }
 
 /**
- * 영업 상태 판정 (통합 함수)
+ * 영업 상태 판정 (통합 함수) - 최적화된 버전
  */
 export function getBusinessStatus(poi, travelTime = null) {
-  console.log('🔍 [FIXED] getBusinessStatus 호출됨 - 기존 서비스 코드');
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
-    console.log('⚠️ [FIXED] opening_hours 없음 - UNKNOWN 반환');
     return 'UNKNOWN';
   }
   
-  // 여행 시간이 주어진 경우 영업 시간 비교 (OPERATIONAL이어도 실제 영업 시간 확인)
-  if (travelTime) {
-    console.log('🕐 [FIXED] travelTime 있음 - evaluateOperatingStatus 호출');
+  // Google Places API의 business_status가 명시적으로 폐업/휴업인 경우
+  if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
+    return 'CLOSED';
+  }
+  
+  // 여행 시간이 주어진 경우 영업 시간 비교
+  if (travelTime && travelTime.start && travelTime.durationMinutes) {
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
       travelTime.durationMinutes,
-      travelTime.timeZone,
-      poi.utc_offset_minutes
+      travelTime.timeZone || 'Asia/Seoul',
+      poi.utc_offset_minutes || 0
     );
-    console.log('📊 [FIXED] evaluateOperatingStatus 결과:', isOpen);
-    const result = isOpen ? 'OPEN' : 'CLOSED';
-    console.log('✅ [FIXED] 최종 결과:', result);
-    return result;
+    return isOpen ? 'OPEN' : 'CLOSED';
   }
   
-  // Google Places API의 business_status는 참고용으로만 사용
-  if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
-    console.log('❌ [FIXED] CLOSED_TEMPORARILY/PERMANENTLY - CLOSED 반환');
-    return 'CLOSED';
-  }
-  
-  console.log('⚠️ [FIXED] 기본 - UNKNOWN 반환');
+  // 기본적으로 상태 불명
   return 'UNKNOWN';
 }
 

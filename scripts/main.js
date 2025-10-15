@@ -52,6 +52,8 @@ let returnDeadlineMissedNotified = false;
 let returnEtaWarningNotified = false;
 let returnEtaCriticalNotified = false;
 let returnDeadlineTimerId = null;
+let lastWaypointsState = null;
+let lastTripMetaState = null;
 
 
 
@@ -332,56 +334,66 @@ async function syncUi({
     destination.value = latestState.destination.address;
   }
 
-  await renderWaypoints(
-    waypointList,
-    latestState.waypoints,
-    {
-      onRemove: (index) =>
-        updateState((draft) => {
-          draft.waypoints = draft.waypoints.filter((_, i) => i !== index);
-          resetNavigationDraft(draft);
-          setViewMode("planning");
-        }),
-      onMoveUp: (index) =>
-        updateState((draft) => {
-          if (index === 0) return;
-          const next = [...draft.waypoints];
-          [next[index - 1], next[index]] = [next[index], next[index - 1]];
-          draft.waypoints = next;
-          resetNavigationDraft(draft);
-          setViewMode("planning");
-        }),
-      onMoveDown: (index) =>
-        updateState((draft) => {
-          const { waypoints } = draft;
-          if (index === waypoints.length - 1) return;
-          const next = [...waypoints];
-          [next[index], next[index + 1]] = [next[index + 1], next[index]];
-          draft.waypoints = next;
-          resetNavigationDraft(draft);
-          setViewMode("planning");
-        }),
-      onShowDetails: (waypoint, poiInfo) => handleWaypointDetails(waypoint, poiInfo),
-      onUpdateStayTime: (index, newStayMinutes) => {
-        updateState((draft) => {
-          const waypoint = draft.waypoints[index];
-          if (waypoint) {
-            waypoint.stayMinutes = newStayMinutes;
+  // waypoints 또는 tripMeta가 변경된 경우에만 renderWaypoints 호출
+  const waypointsChanged = JSON.stringify(latestState.waypoints) !== JSON.stringify(lastWaypointsState);
+  const tripMetaChanged = JSON.stringify(latestState.tripMeta) !== JSON.stringify(lastTripMetaState);
+  
+  if (waypointsChanged || tripMetaChanged) {
+    await renderWaypoints(
+      waypointList,
+      latestState.waypoints,
+      {
+        onRemove: (index) =>
+          updateState((draft) => {
+            draft.waypoints = draft.waypoints.filter((_, i) => i !== index);
             resetNavigationDraft(draft);
             setViewMode("planning");
-            
-            // 토스트 메시지 표시
-            const label = waypoint.label ?? waypoint.address ?? `경유지 ${index + 1}`;
-            showToast({
-              message: `${label} 체류 시간을 ${newStayMinutes}분으로 변경했습니다.`,
-              type: "success",
-            });
-          }
-        });
-      }
-    },
-    latestState.tripMeta  // ✅ 네 번째 매개변수로 tripMeta 전달
-  );
+          }),
+        onMoveUp: (index) =>
+          updateState((draft) => {
+            if (index === 0) return;
+            const next = [...draft.waypoints];
+            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+            draft.waypoints = next;
+            resetNavigationDraft(draft);
+            setViewMode("planning");
+          }),
+        onMoveDown: (index) =>
+          updateState((draft) => {
+            const { waypoints } = draft;
+            if (index === waypoints.length - 1) return;
+            const next = [...waypoints];
+            [next[index], next[index + 1]] = [next[index + 1], next[index]];
+            draft.waypoints = next;
+            resetNavigationDraft(draft);
+            setViewMode("planning");
+          }),
+        onShowDetails: (waypoint, poiInfo) => handleWaypointDetails(waypoint, poiInfo),
+        onUpdateStayTime: (index, newStayMinutes) => {
+          updateState((draft) => {
+            const waypoint = draft.waypoints[index];
+            if (waypoint) {
+              waypoint.stayMinutes = newStayMinutes;
+              resetNavigationDraft(draft);
+              setViewMode("planning");
+              
+              // 토스트 메시지 표시
+              const label = waypoint.label ?? waypoint.address ?? `경유지 ${index + 1}`;
+              showToast({
+                message: `${label} 체류 시간을 ${newStayMinutes}분으로 변경했습니다.`,
+                type: "success",
+              });
+            }
+          });
+        }
+      },
+      latestState.tripMeta  // ✅ 네 번째 매개변수로 tripMeta 전달
+    );
+    
+    // 현재 상태를 저장
+    lastWaypointsState = JSON.parse(JSON.stringify(latestState.waypoints));
+    lastTripMetaState = JSON.parse(JSON.stringify(latestState.tripMeta));
+  }
 
   const hasRoute = Boolean(latestState.routePlan);
   startNavigation.disabled = !hasRoute;
