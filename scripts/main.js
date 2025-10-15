@@ -378,9 +378,9 @@ async function syncUi({
             });
           }
         });
-      },
-      tripMeta: latestState.tripMeta, // 실제 여행 일정 전달
-    }
+      }
+    },
+    latestState.tripMeta  // ✅ 네 번째 매개변수로 tripMeta 전달
   );
 
   const hasRoute = Boolean(latestState.routePlan);
