@@ -384,18 +384,27 @@ export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex,
 function calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex) {
   let visitTime = new Date(arrivalTime);
   
+  console.log(`🕐 [DEBUG] calculateWaypointVisitTime 호출됨`);
+  console.log(`📅 [DEBUG] arrivalTime: ${arrivalTime}`);
+  console.log(`📍 [DEBUG] waypointIndex: ${waypointIndex}`);
+  console.log(`📋 [DEBUG] waypoints.length: ${waypoints.length}`);
+  
   // 이전 경유지들의 체류 시간과 이동 시간을 합산
   for (let i = 0; i < waypointIndex; i++) {
     const waypoint = waypoints[i];
     const stayMinutes = waypoint.stayMinutes || 60;
+    
+    console.log(`📍 [DEBUG] 경유지 ${i}: 체류 ${stayMinutes}분`);
     
     // 체류 시간 추가
     visitTime.setMinutes(visitTime.getMinutes() + stayMinutes);
     
     // 이동 시간 추가 (기본 30분, 실제로는 라우팅 API에서 가져와야 함)
     const travelMinutes = 30; // TODO: 실제 이동 시간으로 교체
+    console.log(`🚗 [DEBUG] 이동 시간: ${travelMinutes}분`);
     visitTime.setMinutes(visitTime.getMinutes() + travelMinutes);
   }
   
+  console.log(`✅ [DEBUG] 최종 visitTime: ${visitTime}`);
   return visitTime;
 }
