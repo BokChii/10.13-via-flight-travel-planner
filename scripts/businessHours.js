@@ -409,37 +409,15 @@ export function isWithinOperatingTime(slots, hourOrDate, minute) {
  * 영업 상태 판정 (통합 함수)
  */
 export function getBusinessStatus(poi, travelTime = null) {
-  console.log('🔍 [DEBUG] getBusinessStatus 호출됨');
-  console.log('🏢 [DEBUG] poi:', poi);
-  console.log('🕐 [DEBUG] travelTime:', travelTime);
-  
   const { business_status, opening_hours } = poi;
-  console.log('📊 [DEBUG] business_status:', business_status);
-  console.log('🕐 [DEBUG] opening_hours:', opening_hours);
-  
-  // Google Places API의 business_status 우선 사용
-  if (business_status === 'OPERATIONAL') {
-    console.log('✅ [DEBUG] OPERATIONAL - OPEN 반환');
-    return 'OPEN';
-  }
-  if (business_status === 'CLOSED_TEMPORARILY') {
-    console.log('❌ [DEBUG] CLOSED_TEMPORARILY - CLOSED 반환');
-    return 'CLOSED';
-  }
-  if (business_status === 'CLOSED_PERMANENTLY') {
-    console.log('❌ [DEBUG] CLOSED_PERMANENTLY - CLOSED 반환');
-    return 'CLOSED';
-  }
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
-    console.log('⚠️ [DEBUG] opening_hours 없음 - UNKNOWN 반환');
     return 'UNKNOWN';
   }
   
-  // 여행 시간이 주어진 경우 영업 시간 비교
+  // 여행 시간이 주어진 경우 영업 시간 비교 (OPERATIONAL이어도 실제 영업 시간 확인)
   if (travelTime) {
-    console.log('🕐 [DEBUG] travelTime 있음 - evaluateOperatingStatus 호출');
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
@@ -447,13 +425,14 @@ export function getBusinessStatus(poi, travelTime = null) {
       travelTime.timeZone,
       poi.utc_offset_minutes
     );
-    console.log('📊 [DEBUG] evaluateOperatingStatus 결과:', isOpen);
-    const result = isOpen ? 'OPEN' : 'CLOSED';
-    console.log('✅ [DEBUG] 최종 결과:', result);
-    return result;
+    return isOpen ? 'OPEN' : 'CLOSED';
   }
   
-  console.log('⚠️ [DEBUG] travelTime 없음 - UNKNOWN 반환');
+  // Google Places API의 business_status는 참고용으로만 사용
+  if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
+    return 'CLOSED';
+  }
+  
   return 'UNKNOWN';
 }
 

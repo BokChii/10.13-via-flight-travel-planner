@@ -152,21 +152,12 @@ function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, way
   // 영업 상태 표시 추가
   const businessStatusElement = modalEl.querySelector("[data-modal-business-status]");
   if (businessStatusElement) {
-    console.log('🔍 [DEBUG] 모달 영업 상태 확인 시작');
-    console.log('📋 [DEBUG] details:', details);
-    console.log('⏰ [DEBUG] defaultStayMinutes:', defaultStayMinutes);
-    console.log('📅 [DEBUG] tripMeta:', tripMeta);
-    console.log('📍 [DEBUG] waypointIndex:', waypointIndex);
-    
     // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
     const travelTime = tripMeta 
       ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
       : createCurrentTravelTimeInfo(defaultStayMinutes);
     
-    console.log('🕐 [DEBUG] travelTime:', travelTime);
-    
     const businessStatus = checkBusinessStatus(details, travelTime);
-    console.log('📊 [DEBUG] businessStatus:', businessStatus);
     
     businessStatusElement.innerHTML = `${businessStatus.icon} ${businessStatus.label}`;
     businessStatusElement.title = `영업 상태: ${businessStatus.label}`;
@@ -182,10 +173,7 @@ function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, way
       businessStatusElement.style.color = '#9e9e9e';
     }
     
-    console.log('✅ [DEBUG] 모달 영업 상태 설정 완료:', businessStatusElement.innerHTML);
     businessStatusElement.parentElement.hidden = false;
-  } else {
-    console.log('⚠️ [DEBUG] businessStatusElement를 찾을 수 없음');
   }
 
   const photoWrapper = photoEl?.parentElement;
