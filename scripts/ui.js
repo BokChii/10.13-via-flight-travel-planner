@@ -5,7 +5,8 @@ import {
   searchPOIByName, 
   getCategoryInfo, 
   checkBusinessStatus,
-  createCurrentTravelTimeInfo 
+  createCurrentTravelTimeInfo,
+  createTravelTimeFromTripMeta 
 } from './poiManager.js';
 
 const selectors = {
@@ -34,7 +35,7 @@ export function getElements() {
   );
 }
 
-export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = {}) {
+export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime, tripMeta } = {}) {
   listElement.innerHTML = "";
 
   if (!waypoints.length) {
@@ -99,8 +100,13 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       console.log('📍 [DEBUG] waypoint:', waypoint);
       console.log('🏢 [DEBUG] poiInfo:', poiInfo);
       console.log('⏰ [DEBUG] stayMinutes:', waypoint?.stayMinutes);
+      console.log('📅 [DEBUG] tripMeta:', tripMeta);
       
-      const travelTime = createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
+      const travelTime = tripMeta 
+        ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
+        : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      
       console.log('🕐 [DEBUG] travelTime:', travelTime);
       
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);

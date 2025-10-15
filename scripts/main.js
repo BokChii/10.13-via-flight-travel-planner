@@ -384,6 +384,7 @@ async function syncUi({
           }
         });
       },
+      tripMeta: latestState.tripMeta, // 실제 여행 일정 전달
     }
   );
 
@@ -905,9 +906,16 @@ async function handleWaypointDetails(waypoint, poiInfo) {
   }
 
   try {
+    // 현재 상태에서 tripMeta와 waypoints 정보 가져오기
+    const currentState = getState();
+    const waypointIndex = currentState.waypoints.findIndex(w => w === waypoint);
+    
     const result = await openPlaceModal({
       details,
       defaultStayMinutes: waypoint.stayMinutes ?? 60,
+      tripMeta: currentState.tripMeta,
+      waypoints: currentState.waypoints,
+      waypointIndex: waypointIndex >= 0 ? waypointIndex : 0,
     });
 
     if (result?.confirmed) {

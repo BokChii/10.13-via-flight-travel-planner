@@ -356,3 +356,65 @@ export function createTravelTimeInfo(startTime, durationMinutes = 60, timeZone =
 export function createCurrentTravelTimeInfo(durationMinutes = 60, timeZone = 'Asia/Seoul') {
   return createTravelTimeInfo(new Date(), durationMinutes, timeZone);
 }
+
+/**
+ * 실제 여행 일정을 기반으로 경유지 방문 시간을 계산합니다
+ * @param {Object} tripMeta - 여행 메타데이터
+ * @param {Array} waypoints - 전체 경유지 목록
+ * @param {number} waypointIndex - 현재 경유지 인덱스
+ * @param {number} durationMinutes - 체류 시간 (분)
+ * @returns {Object} 여행 시간 정보
+ */
+export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, durationMinutes = 60) {
+  if (!tripMeta || !tripMeta.arrival) {
+    console.log('⚠️ [DEBUG] tripMeta 또는 arrival이 없음 - 현재 시간 사용');
+    return createCurrentTravelTimeInfo(durationMinutes);
+  }
+
+  try {
+    // 도착 시간 (UTC)
+    const arrivalTime = new Date(tripMeta.arrival);
+    console.log('🕐 [DEBUG] arrivalTime (UTC):', arrivalTime);
+    
+    // 경유지 방문 시간 계산
+    const visitTime = calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex);
+    console.log('🕐 [DEBUG] visitTime 계산됨:', visitTime);
+    
+    // 시간대 설정 (싱가포르 기본, 또는 tripMeta에서 추출)
+    const timeZone = tripMeta.timeZone || 'Asia/Singapore';
+    console.log('🌍 [DEBUG] timeZone:', timeZone);
+    
+    return createTravelTimeInfo(visitTime, durationMinutes, timeZone);
+  } catch (error) {
+    console.warn('❌ [DEBUG] 여행 시간 계산 실패:', error);
+    return createCurrentTravelTimeInfo(durationMinutes);
+  }
+}
+
+/**
+ * 경유지별 방문 시간을 계산합니다
+ * @param {Date} arrivalTime - 도착 시간
+ * @param {Array} waypoints - 전체 경유지 목록
+ * @param {number} waypointIndex - 현재 경유지 인덱스
+ * @returns {Date} 방문 시간
+ */
+function calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex) {
+  let visitTime = new Date(arrivalTime);
+  
+  // 이전 경유지들의 체류 시간과 이동 시간을 합산
+  for (let i = 0; i < waypointIndex; i++) {
+    const waypoint = waypoints[i];
+    const stayMinutes = waypoint.stayMinutes || 60;
+    
+    // 체류 시간 추가
+    visitTime.setMinutes(visitTime.getMinutes() + stayMinutes);
+    
+    // 이동 시간 추가 (기본 30분, 실제로는 라우팅 API에서 가져와야 함)
+    const travelMinutes = 30; // TODO: 실제 이동 시간으로 교체
+    visitTime.setMinutes(visitTime.getMinutes() + travelMinutes);
+    
+    console.log(`🕐 [DEBUG] 경유지 ${i + 1} 처리 후 시간:`, visitTime);
+  }
+  
+  return visitTime;
+}

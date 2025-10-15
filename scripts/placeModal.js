@@ -1,6 +1,7 @@
 ﻿import { 
   checkBusinessStatus, 
-  createCurrentTravelTimeInfo 
+  createCurrentTravelTimeInfo,
+  createTravelTimeFromTripMeta 
 } from './poiManager.js';
 
 let modalEl;
@@ -56,7 +57,7 @@ export function initPlaceModal() {
   });
 }
 
-export function openPlaceModal({ details, defaultStayMinutes = 60 }) {
+export function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = null, waypoints = [], waypointIndex = 0 }) {
   console.log('🚪 [DEBUG] openPlaceModal 호출됨');
   console.log('📋 [DEBUG] details:', details);
   console.log('⏰ [DEBUG] defaultStayMinutes:', defaultStayMinutes);
@@ -72,7 +73,7 @@ export function openPlaceModal({ details, defaultStayMinutes = 60 }) {
   }
 
   console.log('✅ [DEBUG] fillModalContent 호출 시작');
-  fillModalContent(details, defaultStayMinutes);
+  fillModalContent(details, defaultStayMinutes, tripMeta, waypoints, waypointIndex);
   console.log('✅ [DEBUG] fillModalContent 호출 완료');
   
   modalEl.hidden = false;
@@ -94,7 +95,7 @@ function closeModal() {
   stayInput?.classList.remove("modal__input--invalid");
 }
 
-function fillModalContent(details = {}, defaultStayMinutes) {
+function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, waypoints = [], waypointIndex = 0) {
   const {
     name,
     formatted_address,
@@ -154,8 +155,14 @@ function fillModalContent(details = {}, defaultStayMinutes) {
     console.log('🔍 [DEBUG] 모달 영업 상태 확인 시작');
     console.log('📋 [DEBUG] details:', details);
     console.log('⏰ [DEBUG] defaultStayMinutes:', defaultStayMinutes);
+    console.log('📅 [DEBUG] tripMeta:', tripMeta);
+    console.log('📍 [DEBUG] waypointIndex:', waypointIndex);
     
-    const travelTime = createCurrentTravelTimeInfo(defaultStayMinutes);
+    // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
+    const travelTime = tripMeta 
+      ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
+      : createCurrentTravelTimeInfo(defaultStayMinutes);
+    
     console.log('🕐 [DEBUG] travelTime:', travelTime);
     
     const businessStatus = checkBusinessStatus(details, travelTime);
