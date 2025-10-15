@@ -751,7 +751,14 @@ async function handleWaypointSelection(place, inputElement) {
       showPreviewMarker({ position, label: details.name ?? place.name });
     }
 
-    const result = await openPlaceModal({ details, defaultStayMinutes: 60 });
+    const currentState = getState();
+    const result = await openPlaceModal({ 
+      details, 
+      defaultStayMinutes: 60,
+      tripMeta: currentState.tripMeta,
+      waypoints: currentState.waypoints,
+      waypointIndex: currentState.waypoints.length
+    });
     if (result?.confirmed) {
       const waypoint = buildWaypointFromDetails(details, result.stayMinutes, place);
       updateState((draft) => {
