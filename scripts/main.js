@@ -226,7 +226,6 @@ function wireEventHandlers({
 
     updateState((draft) => {
       draft.waypoints = [...draft.waypoints, { label: value, address: value, location: null }];
-      draft.tripMeta = null;
       resetNavigationDraft(draft);
     });
 
@@ -340,7 +339,6 @@ async function syncUi({
       onRemove: (index) =>
         updateState((draft) => {
           draft.waypoints = draft.waypoints.filter((_, i) => i !== index);
-          draft.tripMeta = null;
           resetNavigationDraft(draft);
           setViewMode("planning");
         }),
@@ -349,7 +347,6 @@ async function syncUi({
           if (index === 0) return;
           const next = [...draft.waypoints];
           [next[index - 1], next[index]] = [next[index], next[index - 1]];
-          draft.tripMeta = null;
           draft.waypoints = next;
           resetNavigationDraft(draft);
           setViewMode("planning");
@@ -359,7 +356,6 @@ async function syncUi({
           const { waypoints } = draft;
           if (index === waypoints.length - 1) return;
           const next = [...waypoints];
-          draft.tripMeta = null;
           [next[index], next[index + 1]] = [next[index + 1], next[index]];
           draft.waypoints = next;
           resetNavigationDraft(draft);
@@ -371,7 +367,6 @@ async function syncUi({
           const waypoint = draft.waypoints[index];
           if (waypoint) {
             waypoint.stayMinutes = newStayMinutes;
-            draft.tripMeta = null;
             resetNavigationDraft(draft);
             setViewMode("planning");
             
@@ -763,7 +758,6 @@ async function handleWaypointSelection(place, inputElement) {
       const waypoint = buildWaypointFromDetails(details, result.stayMinutes, place);
       updateState((draft) => {
         draft.waypoints = [...draft.waypoints, waypoint];
-        draft.tripMeta = null;
         resetNavigationDraft(draft);
       });
       showToast({ message: `${waypoint.label}을(를) 일정에 추가했습니다.`, type: 'success' });
