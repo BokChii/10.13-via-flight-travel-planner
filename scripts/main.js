@@ -325,6 +325,10 @@ async function syncUi({
   navigationStatus,
   navigationOverlay,
 }, latestState, progress) {
+  console.log('🔍 [DEBUG] syncUi 호출됨');
+  console.log('📅 [DEBUG] latestState.tripMeta:', latestState.tripMeta);
+  console.log('📍 [DEBUG] latestState.waypoints.length:', latestState.waypoints.length);
+  
   if (latestState.origin?.address) {
     origin.value = latestState.origin.address;
   }
@@ -332,6 +336,7 @@ async function syncUi({
     destination.value = latestState.destination.address;
   }
 
+  console.log('🚀 [DEBUG] renderWaypoints 호출 전 - tripMeta 전달:', latestState.tripMeta);
   await renderWaypoints(
     waypointList,
     latestState.waypoints,
@@ -409,6 +414,10 @@ async function syncUi({
 
 async function calculateRoute() {
   const current = getState();
+  console.log('🔍 [DEBUG] calculateRoute 호출됨');
+  console.log('📅 [DEBUG] current.tripMeta:', current.tripMeta);
+  console.log('📍 [DEBUG] current.waypoints.length:', current.waypoints.length);
+  
   const stops = buildStopList(current);
   if (!googleMaps || stops.length < 2) return;
 
@@ -440,6 +449,7 @@ async function calculateRoute() {
 
     updateState((draft) => {
       draft.routePlan = buildRoutePlan({ segments, stops: labeledStops, colors });
+      console.log('🔍 [DEBUG] calculateRoute 후 updateState - draft.tripMeta:', draft.tripMeta);
     });
   } catch (error) {
     console.error(error);

@@ -36,6 +36,11 @@ export function getElements() {
 }
 
 export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime, tripMeta } = {}) {
+  console.log('🔍 [DEBUG] renderWaypoints 호출됨');
+  console.log('📅 [DEBUG] 받은 tripMeta:', tripMeta);
+  console.log('📍 [DEBUG] waypoints.length:', waypoints.length);
+  console.log('🔍 [DEBUG] tripMeta 존재 여부:', !!tripMeta);
+  
   listElement.innerHTML = "";
 
   if (!waypoints.length) {
@@ -96,10 +101,14 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
 
     // 영업 상태 표시 추가
     if (poiInfo) {
+      console.log(`🔍 [DEBUG] 경유지 ${index} - tripMeta 존재 여부:`, !!tripMeta);
+      
       // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
       const travelTime = tripMeta 
         ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
         : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      
+      console.log(`🕐 [DEBUG] 경유지 ${index} - travelTime:`, travelTime);
       
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
       
