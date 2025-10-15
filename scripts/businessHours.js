@@ -1,15 +1,12 @@
 /**
- * 영업 시간 처리 모듈
- * 기존 app.js의 영업 시간 로직을 모듈화하여 현재 프로젝트에 통합
+ * 영업 시간 처리 모듈 - 기존 서비스 검증된 코드
+ * 24시간 영업, 브레이크 타임, UTC offset 보정 모두 지원
  */
-
-// 캐시 관리
-const openStatusCache = new Map();
 
 /**
- * 로컬 시간대 정보 추출
+ * 시간대별 날짜 정보 추출
  */
-export function getLocalParts(date, timeZone) {
+function getLocalParts(date, timeZone) {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -37,7 +34,7 @@ export function getLocalParts(date, timeZone) {
 /**
  * 시간 문자열을 24시간 형식으로 변환
  */
-export function convertTo24h(timeStr) {
+function convertTo24h(timeStr) {
   const minutes = parseTimeString(timeStr);
   if (minutes == null) return '00:00';
   const normalized = ((minutes % 1440) + 1440) % 1440;
@@ -46,6 +43,9 @@ export function convertTo24h(timeStr) {
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 }
 
+/**
+ * 요일 이름 매핑
+ */
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_NAME_MAP = DAY_NAMES.reduce((acc, name, index) => {
   acc[name] = index;
@@ -53,9 +53,9 @@ const DAY_NAME_MAP = DAY_NAMES.reduce((acc, name, index) => {
 }, {});
 
 /**
- * 시간 문자열을 분 단위로 파싱
+ * 시간 문자열 파싱 (AM/PM, 24시간 형식 지원)
  */
-export function parseTimeString(timeStr) {
+function parseTimeString(timeStr) {
   if (timeStr == null) return null;
   if (typeof timeStr === 'number' && Number.isFinite(timeStr)) {
     return Math.round(timeStr);
@@ -99,7 +99,7 @@ export function parseTimeString(timeStr) {
 /**
  * 주간 분 단위로 정규화
  */
-export function normalizeWeekMinutes(day, timeStr) {
+function normalizeWeekMinutes(day, timeStr) {
   const dayIndex = (typeof day === 'number' && !Number.isNaN(day)) ? day : 0;
   const minutes = parseTimeString(timeStr);
   const safeMinutes = minutes == null ? 0 : minutes;
@@ -107,9 +107,9 @@ export function normalizeWeekMinutes(day, timeStr) {
 }
 
 /**
- * 텍스트 영업 시간 파싱
+ * 텍스트 영업 시간 파싱 (24시간, 브레이크 타임 지원)
  */
-export function parseTextOperatingHours(entry, dayIdx, asWeekly = false) {
+function parseTextOperatingHours(entry, dayIdx, asWeekly = false) {
   if (!entry) return [];
   
   let value = entry;
@@ -133,7 +133,7 @@ export function parseTextOperatingHours(entry, dayIdx, asWeekly = false) {
   
   if (value.length === 0 || /closed/i.test(value)) return [];
   
-  // 24시간 영업 감지
+  // 24시간 영업 처리
   if (/24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(value)) {
     if (asWeekly) {
       const base = localDayIdx * 1440;
@@ -142,7 +142,7 @@ export function parseTextOperatingHours(entry, dayIdx, asWeekly = false) {
     return [{ start: 0, end: 1440 }];
   }
   
-  // 시간 구간 파싱
+  // 여러 시간대 파싱 (브레이크 타임 지원)
   const segments = value.split(/,|;/).map(seg => seg.trim()).filter(Boolean);
   const slots = [];
   
@@ -172,15 +172,14 @@ export function parseTextOperatingHours(entry, dayIdx, asWeekly = false) {
 }
 
 /**
- * 영업 시간 구간 빌드
+ * 영업 시간 간격 구축 (periods와 weekday_text 모두 지원)
  */
-export function buildOpeningIntervals(opening) {
+function buildOpeningIntervals(opening) {
   const intervals = [];
   if (!opening) return intervals;
   
+  // periods 배열 처리
   const periods = Array.isArray(opening.periods) ? opening.periods : [];
-  
-  // periods 데이터 처리
   for (const period of periods) {
     const open = period.open;
     if (!open?.time) continue;
@@ -203,7 +202,7 @@ export function buildOpeningIntervals(opening) {
     return intervals;
   }
   
-  // weekday_text 데이터 처리
+  // weekday_text 처리
   if (Array.isArray(opening?.weekday_text)) {
     for (const entry of opening.weekday_text) {
       const dayMatch = entry.match(/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)/i);
@@ -222,9 +221,9 @@ export function buildOpeningIntervals(opening) {
 }
 
 /**
- * 로컬 분 단위 해결
+ * 로컬 시간 분 단위로 변환 (UTC offset 보정)
  */
-export function resolveLocalMinutes(date, timeZone, offsetMinutes) {
+function resolveLocalMinutes(date, timeZone, offsetMinutes) {
   if (typeof offsetMinutes === 'number') {
     const local = new Date(date.getTime() + offsetMinutes * 60000);
     return { day: local.getUTCDay(), minutes: local.getUTCHours() * 60 + local.getUTCMinutes() };
@@ -235,10 +234,11 @@ export function resolveLocalMinutes(date, timeZone, offsetMinutes) {
 }
 
 /**
- * 구간 내 포함 여부 확인
+ * 간격 내 포함 여부 확인 (주간 순환 고려)
  */
-export function isWithinIntervals(intervals, startMin, endMin) {
+function isWithinIntervals(intervals, startMin, endMin) {
   const WEEK = 7 * 1440;
+  
   if (endMin - startMin >= WEEK) {
     return intervals.length > 0;
   }
@@ -258,80 +258,14 @@ export function isWithinIntervals(intervals, startMin, endMin) {
 }
 
 /**
- * 영업 상태 평가 (핵심 함수)
+ * 특정 요일의 영업 시간 가져오기
  */
-export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, timeZone, offsetMinutes) {
-  console.log('🔍 [FIXED] evaluateOperatingStatus 호출됨');
-  console.log('📅 [FIXED] startDate:', startDate);
-  console.log('⏰ [FIXED] stayMinutes:', stayMinutes);
-  console.log('🌍 [FIXED] timeZone:', timeZone);
-  console.log('📊 [FIXED] openingHours:', openingHours);
-  
-  if (!openingHours) {
-    console.log('⚠️ [FIXED] openingHours 없음 - true 반환');
-    return true;
-  }
-  
-  const intervals = buildOpeningIntervals(openingHours);
-  const WEEK = 7 * 1440;
-  const stay = Math.max(1, stayMinutes || 0);
-  const endDate = new Date(startDate.getTime() + stay * 60000);
-  
-  const startInfo = resolveLocalMinutes(startDate, timeZone, offsetMinutes);
-  const endInfo = resolveLocalMinutes(endDate, timeZone, offsetMinutes);
-  
-  let startMin = startInfo.day * 1440 + startInfo.minutes;
-  let endMin = endInfo.day * 1440 + endInfo.minutes;
-  
-  console.log('🕐 [FIXED] startMin:', startMin);
-  console.log('🕐 [FIXED] endMin:', endMin);
-  
-  if (endMin < startMin) {
-    endMin += WEEK;
-  }
-  
-  if (intervals.length && isWithinIntervals(intervals, startMin, endMin)) {
-    console.log('✅ [FIXED] intervals 내에 있음 - true 반환');
-    return true;
-  }
-  
-  const localStart = offsetMinutes != null ? new Date(startDate.getTime() + offsetMinutes * 60000) : new Date(startDate);
-  const localEnd = offsetMinutes != null ? new Date(endDate.getTime() + offsetMinutes * 60000) : new Date(endDate);
-  
-  const startSlots = getTodayOperatingHours(openingHours, localStart.getDay());
-  if (startSlots && startSlots.length) {
-    if (!isWithinOperatingTime(startSlots, localStart)) {
-      return false;
-    }
-    if (isWithinOperatingTime(startSlots, localEnd)) {
-      return true;
-    }
-    
-    const nextSlots = getTodayOperatingHours(openingHours, localEnd.getDay());
-    if (nextSlots && nextSlots.length) {
-      return isWithinOperatingTime(nextSlots, localEnd);
-    }
-    return false;
-  }
-  
-  if (Array.isArray(openingHours.weekday_text)) {
-    const is24 = openingHours.weekday_text.some(text => /24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(text));
-    if (is24) {
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-/**
- * 오늘의 영업 시간 가져오기
- */
-export function getTodayOperatingHours(openingHours, dayOfWeek) {
+function getTodayOperatingHours(openingHours, dayOfWeek) {
   if (!openingHours) return null;
   
   const slots = [];
   
+  // periods 배열에서 해당 요일 찾기
   if (Array.isArray(openingHours.periods)) {
     const todays = openingHours.periods.filter(period => period.open && period.open.day === dayOfWeek);
     for (const period of todays) {
@@ -361,6 +295,7 @@ export function getTodayOperatingHours(openingHours, dayOfWeek) {
     }
   }
   
+  // weekday_text에서 해당 요일 찾기
   if (Array.isArray(openingHours.weekday_text)) {
     const entry = openingHours.weekday_text.find(text => text.startsWith(DAY_NAMES[dayOfWeek]));
     if (entry) {
@@ -371,6 +306,7 @@ export function getTodayOperatingHours(openingHours, dayOfWeek) {
     }
   }
   
+  // 문자열 형태의 영업 시간 처리
   if (typeof openingHours === 'string') {
     const parsed = parseTextOperatingHours(openingHours, dayOfWeek, false);
     if (parsed.length) {
@@ -384,7 +320,7 @@ export function getTodayOperatingHours(openingHours, dayOfWeek) {
 /**
  * 영업 시간 내 포함 여부 확인
  */
-export function isWithinOperatingTime(slots, hourOrDate, minute) {
+function isWithinOperatingTime(slots, hourOrDate, minute) {
   if (!Array.isArray(slots) || slots.length === 0) return false;
   
   let minutes;
@@ -417,10 +353,85 @@ export function isWithinOperatingTime(slots, hourOrDate, minute) {
 }
 
 /**
+ * 영업 상태 평가 (핵심 함수) - 기존 서비스 코드
+ */
+export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, timeZone, offsetMinutes) {
+  console.log('🔍 [FIXED] evaluateOperatingStatus 호출됨 - 기존 서비스 코드');
+  console.log('📅 [FIXED] startDate:', startDate);
+  console.log('⏰ [FIXED] stayMinutes:', stayMinutes);
+  console.log('🌍 [FIXED] timeZone:', timeZone);
+  console.log('📊 [FIXED] openingHours:', openingHours);
+  
+  if (!openingHours) {
+    console.log('⚠️ [FIXED] openingHours 없음 - true 반환');
+    return true;
+  }
+  
+  const intervals = buildOpeningIntervals(openingHours);
+  const WEEK = 7 * 1440;
+  const stay = Math.max(1, stayMinutes || 0);
+  const endDate = new Date(startDate.getTime() + stay * 60000);
+  
+  const startInfo = resolveLocalMinutes(startDate, timeZone, offsetMinutes);
+  const endInfo = resolveLocalMinutes(endDate, timeZone, offsetMinutes);
+  
+  let startMin = startInfo.day * 1440 + startInfo.minutes;
+  let endMin = endInfo.day * 1440 + endInfo.minutes;
+  
+  console.log('🕐 [FIXED] startMin:', startMin);
+  console.log('🕐 [FIXED] endMin:', endMin);
+  console.log('📊 [FIXED] intervals:', intervals);
+  
+  if (endMin < startMin) {
+    endMin += WEEK;
+  }
+  
+  if (intervals.length && isWithinIntervals(intervals, startMin, endMin)) {
+    console.log('✅ [FIXED] intervals 내에 있음 - true 반환');
+    return true;
+  }
+  
+  const localStart = offsetMinutes != null ? new Date(startDate.getTime() + offsetMinutes * 60000) : new Date(startDate);
+  const localEnd = offsetMinutes != null ? new Date(endDate.getTime() + offsetMinutes * 60000) : new Date(endDate);
+  
+  const startSlots = getTodayOperatingHours(openingHours, localStart.getDay());
+  if (startSlots && startSlots.length) {
+    if (!isWithinOperatingTime(startSlots, localStart)) {
+      console.log('❌ [FIXED] 시작 시간이 영업 시간 밖 - false 반환');
+      return false;
+    }
+    if (isWithinOperatingTime(startSlots, localEnd)) {
+      console.log('✅ [FIXED] 종료 시간이 영업 시간 내 - true 반환');
+      return true;
+    }
+    
+    const nextSlots = getTodayOperatingHours(openingHours, localEnd.getDay());
+    if (nextSlots && nextSlots.length) {
+      const result = isWithinOperatingTime(nextSlots, localEnd);
+      console.log('📊 [FIXED] 다음 날 영업 시간 확인:', result);
+      return result;
+    }
+    console.log('❌ [FIXED] 다음 날 영업 시간 없음 - false 반환');
+    return false;
+  }
+  
+  if (Array.isArray(openingHours.weekday_text)) {
+    const is24 = openingHours.weekday_text.some(text => /24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(text));
+    if (is24) {
+      console.log('✅ [FIXED] 24시간 영업 - true 반환');
+      return true;
+    }
+  }
+  
+  console.log('❌ [FIXED] 기본 - false 반환');
+  return false;
+}
+
+/**
  * 영업 상태 판정 (통합 함수)
  */
 export function getBusinessStatus(poi, travelTime = null) {
-  console.log('🔍 [FIXED] getBusinessStatus 호출됨 - 수정된 버전');
+  console.log('🔍 [FIXED] getBusinessStatus 호출됨 - 기존 서비스 코드');
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
@@ -459,29 +470,30 @@ export function getBusinessStatus(poi, travelTime = null) {
  * 영업 상태 아이콘 가져오기
  */
 export function getBusinessStatusIcon(status) {
-  const statusMap = {
-    'OPEN': '🟢',
-    'CLOSED': '🔴',
-    'UNKNOWN': '⚪'
-  };
-  return statusMap[status] || '⚪';
+  switch (status) {
+    case 'OPEN':
+      return '🟢';
+    case 'CLOSED':
+      return '🔴';
+    case 'CLOSING_SOON':
+      return '🟡';
+    default:
+      return '⚪';
+  }
 }
 
 /**
  * 영업 상태 라벨 가져오기
  */
 export function getBusinessStatusLabel(status) {
-  const labelMap = {
-    'OPEN': '영업 중',
-    'CLOSED': '영업 종료',
-    'UNKNOWN': '영업 상태 확인 불가'
-  };
-  return labelMap[status] || '영업 상태 확인 불가';
-}
-
-/**
- * 캐시 무효화
- */
-export function invalidateOpenStatusCache() {
-  openStatusCache.clear();
+  switch (status) {
+    case 'OPEN':
+      return '영업 중';
+    case 'CLOSED':
+      return '영업 종료';
+    case 'CLOSING_SOON':
+      return '곧 영업 종료';
+    default:
+      return '영업 상태 확인 불가';
+  }
 }
