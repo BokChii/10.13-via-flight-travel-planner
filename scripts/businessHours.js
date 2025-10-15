@@ -4,9 +4,13 @@
  */
 
 /**
- * 시간대별 날짜 정보 추출
+ * 시간대별 날짜 정보 추출 - 디버깅 버전
  */
 function getLocalParts(date, timeZone) {
+  console.log('🔍 [DEBUG] getLocalParts 호출됨');
+  console.log('📅 [DEBUG] date:', date);
+  console.log('🌍 [DEBUG] timeZone:', timeZone);
+  
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -21,7 +25,10 @@ function getLocalParts(date, timeZone) {
   const parts = fmt.formatToParts(date).reduce((a, p) => (a[p.type] = p.value, a), {});
   const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday);
   
-  return {
+  console.log('📊 [DEBUG] parts:', parts);
+  console.log('📊 [DEBUG] wd:', wd);
+  
+  const result = {
     Y: Number(parts.year),
     M: Number(parts.month),
     D: Number(parts.day),
@@ -29,6 +36,9 @@ function getLocalParts(date, timeZone) {
     m: Number(parts.minute),
     wd
   };
+  
+  console.log('✅ [DEBUG] getLocalParts 결과:', result);
+  return result;
 }
 
 /**
@@ -221,7 +231,7 @@ function buildOpeningIntervals(opening) {
 }
 
 /**
- * 로컬 시간 분 단위로 변환 (UTC offset 보정)
+ * 로컬 시간 분 단위로 변환 (UTC offset 보정) - 수정된 버전
  */
 function resolveLocalMinutes(date, timeZone, offsetMinutes) {
   if (typeof offsetMinutes === 'number') {
