@@ -1040,20 +1040,16 @@ async function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) 
         console.log('📋 [PLANNER DEBUG] item.opening_hours:', item.opening_hours);
         
         let businessStatus;
-        if (item.opening_hours) {
-          // 기본 검색 결과에 opening_hours가 있으면 사용
+        // 항상 상세 정보를 가져와서 정확한 opening_hours 확인
+        try {
+          console.log(`🔍 [PLANNER DEBUG] ${item.name} 상세 정보 가져오기 중...`);
+          const details = await fetchPlaceDetails(item.place_id);
+          businessStatus = checkBusinessStatus(details, travelTime);
+          console.log(`📋 [PLANNER DEBUG] ${item.name} 상세 정보 opening_hours:`, details.opening_hours);
+        } catch (error) {
+          console.warn(`상세 정보 가져오기 실패: ${item.name}`, error);
+          // 상세 정보 가져오기 실패 시 기본 정보로 확인
           businessStatus = checkBusinessStatus(item, travelTime);
-        } else {
-          // opening_hours가 없으면 상세 정보를 가져와서 확인
-          try {
-            console.log(`🔍 [PLANNER DEBUG] ${item.name} 상세 정보 가져오기 중...`);
-            const details = await fetchPlaceDetails(item.place_id);
-            businessStatus = checkBusinessStatus(details, travelTime);
-            console.log(`📋 [PLANNER DEBUG] ${item.name} 상세 정보 opening_hours:`, details.opening_hours);
-          } catch (error) {
-            console.warn(`상세 정보 가져오기 실패: ${item.name}`, error);
-            businessStatus = { status: 'UNKNOWN' };
-          }
         }
         
         console.log(`📊 [PLANNER DEBUG] ${item.name} 결과:`, businessStatus);
