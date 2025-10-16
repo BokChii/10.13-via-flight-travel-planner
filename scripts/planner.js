@@ -922,7 +922,7 @@ async function fetchPlaceForCategory(categoryKey, usedIds, userDefaultStay, trip
   // 1) NearbySearch by type around selected airport center
   try {
     const near = await executeNearbySearch({ type: config.type });
-    const picked = pickCandidate(near, usedIds, tripMeta, waypoints);
+    const picked = await pickCandidate(near, usedIds, tripMeta, waypoints);
     if (picked) return normalizePlaceResult(picked, config, userDefaultStay);
   } catch (e) {
     console.warn('[planner] nearbySearch failed', categoryKey, e);
@@ -933,7 +933,7 @@ async function fetchPlaceForCategory(categoryKey, usedIds, userDefaultStay, trip
   const query = anchorLabel ? `${anchorLabel} ${config.label}` : config.label;
   try {
     const results = await executeTextSearch({ query, type: config.type });
-    const picked = pickCandidate(results, usedIds, tripMeta, waypoints);
+    const picked = await pickCandidate(results, usedIds, tripMeta, waypoints);
     if (picked) return normalizePlaceResult(picked, config, userDefaultStay);
   } catch (e) {
     console.warn('[planner] textSearch failed', categoryKey, query, e);
@@ -1008,7 +1008,7 @@ function getSearchCenter() {
   return LOCATIONS.DEFAULT_CITY_CENTER;
 }
 
-function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
+async function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
   if (!Array.isArray(results)) return null;
   
   console.log('🔍 [PLANNER DEBUG] pickCandidate 호출됨');
@@ -1023,32 +1023,61 @@ function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
   
   console.log('🕐 [PLANNER DEBUG] 계산된 travelTime:', travelTime);
   
-  const filtered = results.filter((item) => {
+  // 먼저 기본 필터링
+  const basicFiltered = results.filter((item) => {
     const identifier = item.place_id ?? item.formatted_address ?? item.name;
     if (!identifier) return false;
     if (usedIds.has(identifier)) return false;
     if (item.business_status === 'CLOSED_TEMPORARILY') return false;
-    
-    // 영업 상태 확인 (travelTime이 있을 때만)
-    if (travelTime) {
-      console.log(`🔍 [PLANNER DEBUG] ${item.name} 영업 상태 확인 중...`);
-      console.log('📋 [PLANNER DEBUG] item.opening_hours:', item.opening_hours);
-      
-      const businessStatus = checkBusinessStatus(item, travelTime);
-      console.log(`📊 [PLANNER DEBUG] ${item.name} 결과:`, businessStatus);
-      
-      if (businessStatus.status === 'CLOSED') {
-        console.log(`🚫 [PLANNER] ${item.name} - 영업 종료로 제외됨`);
-        return false;
-      }
-    }
-    
     return true;
   });
-
-  console.log(`✅ [PLANNER DEBUG] 필터링 후 남은 POI 수: ${filtered.length}`);
-  filtered.sort((a, b) => computePlaceScore(b) - computePlaceScore(a));
-  return filtered[0] ?? null;
+  
+  // 영업 상태 확인이 필요한 경우
+  if (travelTime) {
+    const businessStatusChecks = await Promise.all(
+      basicFiltered.map(async (item) => {
+        console.log(`🔍 [PLANNER DEBUG] ${item.name} 영업 상태 확인 중...`);
+        console.log('📋 [PLANNER DEBUG] item.opening_hours:', item.opening_hours);
+        
+        let businessStatus;
+        if (item.opening_hours) {
+          // 기본 검색 결과에 opening_hours가 있으면 사용
+          businessStatus = checkBusinessStatus(item, travelTime);
+        } else {
+          // opening_hours가 없으면 상세 정보를 가져와서 확인
+          try {
+            console.log(`🔍 [PLANNER DEBUG] ${item.name} 상세 정보 가져오기 중...`);
+            const details = await fetchPlaceDetails(item.place_id);
+            businessStatus = checkBusinessStatus(details, travelTime);
+            console.log(`📋 [PLANNER DEBUG] ${item.name} 상세 정보 opening_hours:`, details.opening_hours);
+          } catch (error) {
+            console.warn(`상세 정보 가져오기 실패: ${item.name}`, error);
+            businessStatus = { status: 'UNKNOWN' };
+          }
+        }
+        
+        console.log(`📊 [PLANNER DEBUG] ${item.name} 결과:`, businessStatus);
+        
+        return {
+          item,
+          businessStatus
+        };
+      })
+    );
+    
+    const filtered = businessStatusChecks
+      .filter(({ businessStatus }) => businessStatus.status !== 'CLOSED')
+      .map(({ item }) => item);
+    
+    console.log(`✅ [PLANNER DEBUG] 필터링 후 남은 POI 수: ${filtered.length}`);
+    filtered.sort((a, b) => computePlaceScore(b) - computePlaceScore(a));
+    return filtered[0] ?? null;
+  }
+  
+  // travelTime이 없으면 기본 필터링만 적용
+  console.log(`✅ [PLANNER DEBUG] travelTime 없음 - 기본 필터링만 적용`);
+  basicFiltered.sort((a, b) => computePlaceScore(b) - computePlaceScore(a));
+  return basicFiltered[0] ?? null;
 }
 
 function computePlaceScore(place) {
@@ -1087,6 +1116,45 @@ function balanceStayMinutes(waypoints, availableMinutes) {
   waypoints.forEach((wp) => {
     const adjusted = clamp(Math.round((wp.stayMinutes ?? PLANNER_CONFIG.MIN_STAY_MINUTES) * scale), PLANNER_CONFIG.MIN_STAY_MINUTES, PLANNER_CONFIG.MAX_STAY_MINUTES);
     wp.stayMinutes = adjusted;
+  });
+}
+
+/**
+ * 장소 상세 정보를 가져옵니다 (planner.js 전용)
+ * @param {string} placeId - Google Places place_id
+ * @returns {Promise<Object>} 장소 상세 정보
+ */
+async function fetchPlaceDetails(placeId) {
+  if (!plannerServices.placesService) {
+    throw new Error('Places service is not initialized.');
+  }
+  return new Promise((resolve, reject) => {
+    plannerServices.placesService.getDetails(
+      {
+        placeId,
+        language: 'ko',
+        fields: [
+          'place_id',
+          'name',
+          'formatted_address',
+          'geometry',
+          'website',
+          'formatted_phone_number',
+          'opening_hours',
+          'photos',
+          'rating',
+          'user_ratings_total',
+          'reviews',
+        ],
+      },
+      (result, status) => {
+        if (status === plannerServices.googleMaps.maps.places.PlacesServiceStatus.OK && result) {
+          resolve(result);
+        } else {
+          reject(new Error(`Failed to load place details: ${status}`));
+        }
+      }
+    );
   });
 }
 
