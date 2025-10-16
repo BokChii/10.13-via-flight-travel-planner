@@ -926,12 +926,20 @@ async function handleWaypointDetails(waypoint, poiInfo) {
     const currentState = getState();
     const waypointIndex = currentState.waypoints.findIndex(w => w === waypoint);
     
+    // 영업 상태 미리 계산
+    const travelTime = currentState.tripMeta 
+      ? createTravelTimeFromTripMeta(currentState.tripMeta, currentState.waypoints, waypointIndex >= 0 ? waypointIndex : 0, waypoint.stayMinutes ?? 60)
+      : createCurrentTravelTimeInfo(waypoint.stayMinutes ?? 60);
+    
+    const businessStatus = checkBusinessStatus(details, travelTime);
+    
     const result = await openPlaceModal({
       details,
       defaultStayMinutes: waypoint.stayMinutes ?? 60,
       tripMeta: currentState.tripMeta,
       waypoints: currentState.waypoints,
       waypointIndex: waypointIndex >= 0 ? waypointIndex : 0,
+      businessStatus: businessStatus
     });
 
     if (result?.confirmed) {

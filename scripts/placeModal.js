@@ -66,7 +66,7 @@ export function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = nu
     return Promise.resolve({ confirmed: false });
   }
 
-  fillModalContent(details, defaultStayMinutes, tripMeta, waypoints, waypointIndex);
+  fillModalContent(details, defaultStayMinutes, tripMeta, waypoints, waypointIndex, businessStatus);
   
   modalEl.hidden = false;
   document.body.style.overflow = "hidden";
@@ -87,7 +87,7 @@ function closeModal() {
   stayInput?.classList.remove("modal__input--invalid");
 }
 
-function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, waypoints = [], waypointIndex = 0) {
+function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, waypoints = [], waypointIndex = 0, businessStatus = null) {
   const {
     name,
     formatted_address,
