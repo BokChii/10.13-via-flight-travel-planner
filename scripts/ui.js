@@ -35,6 +35,49 @@ export function getElements() {
   );
 }
 
+/**
+ * 영업 종료인 경유지들을 감지합니다
+ * @param {Array} waypoints - 경유지 목록
+ * @param {Object} tripMeta - 여행 메타데이터
+ * @returns {Array} 영업 종료인 경유지 목록
+ */
+export async function hasClosedWaypoints(waypoints, tripMeta) {
+  const closedWaypoints = [];
+  
+  // 모든 경유지에 대해 POI 정보를 병렬로 가져오기
+  const waypointPromises = waypoints.map(async (waypoint, index) => {
+    let poiInfo = null;
+    if (waypoint.placeId) {
+      poiInfo = await getPOIInfo(waypoint.placeId);
+    } else if (waypoint.label) {
+      poiInfo = await searchPOIByName(waypoint.label);
+    }
+    
+    if (poiInfo) {
+      // 실제 여행 시간 기반으로 계산
+      const travelTime = tripMeta 
+        ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
+        : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      
+      const businessStatus = checkBusinessStatus(poiInfo, travelTime);
+      
+      if (businessStatus.status === 'CLOSED') {
+        return {
+          index,
+          name: waypoint.label || waypoint.address || `경유지 ${index + 1}`,
+          businessStatus,
+          poiInfo
+        };
+      }
+    }
+    
+    return null;
+  });
+  
+  const results = await Promise.all(waypointPromises);
+  return results.filter(result => result !== null);
+}
+
 export async function renderWaypoints(listElement, waypoints, { onRemove, onMoveUp, onMoveDown, onShowDetails, onUpdateStayTime } = {}, tripMeta = null) {
   listElement.innerHTML = "";
 

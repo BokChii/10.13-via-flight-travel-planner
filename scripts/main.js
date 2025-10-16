@@ -1,4 +1,4 @@
-﻿import { getElements, renderWaypoints } from "./ui.js";
+﻿import { getElements, renderWaypoints, hasClosedWaypoints } from "./ui.js";
 import { getState, subscribe, updateState, resetState } from "./state.js";
 import { renderSummary } from "./summary.js";
 import { renderNavigationStatus } from "./navigationUi.js";
@@ -419,10 +419,37 @@ async function syncUi({
   renderSummary(summaryOutput, latestState.routePlan, progress?.closestSegmentIndex ?? null, latestState.tripMeta);
 }
 
+/**
+ * 영업 종료 경유지 경고 창을 표시합니다
+ * @param {Array} closedWaypoints - 영업 종료인 경유지 목록
+ */
+function showClosedWaypointsWarning(closedWaypoints) {
+  const waypointNames = closedWaypoints.map(wp => wp.name).join(', ');
+  
+  const message = `⚠️ 영업 종료인 경유지가 있습니다!\n\n` +
+                 `영업 종료 경유지: ${waypointNames}\n\n` +
+                 `이 경유지들을 제거한 후 다시 경로를 찾아주세요.`;
+  
+  showToast({ 
+    message, 
+    type: 'error',
+    timeout: 10000 // 더 긴 표시 시간
+  });
+  
+  console.warn('영업 종료 경유지로 인해 경로 찾기가 차단됨:', closedWaypoints);
+}
+
 async function calculateRoute() {
   const current = getState();
   const stops = buildStopList(current);
   if (!googleMaps || stops.length < 2) return;
+
+  // 영업 종료 경유지 확인
+  const closedWaypoints = await hasClosedWaypoints(current.waypoints, current.tripMeta);
+  if (closedWaypoints.length > 0) {
+    showClosedWaypointsWarning(closedWaypoints);
+    return; // 경로 찾기 중단
+  }
 
   try {
     const segments = [];
