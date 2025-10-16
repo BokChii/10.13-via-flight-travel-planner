@@ -3,7 +3,6 @@ import { getState, subscribe, updateState, resetState } from "./state.js";
 import { renderSummary } from "./summary.js";
 import { renderNavigationStatus } from "./navigationUi.js";
 import { loadGoogleMapsSdk, requestDirections } from "./api.js";
-import { checkBusinessStatus, createTravelTimeFromTripMeta, createCurrentTravelTimeInfo } from "./poiManager.js";
 import {
   initMap,
   renderRoute,
@@ -180,7 +179,7 @@ async function bootstrap() {
     initAutocomplete(googleMaps, refreshedElements, {
       onOriginSelect: (place) => handlePlaceSelection("origin", place, refreshedElements.origin),
       onDestinationSelect: (place) => handlePlaceSelection("destination", place, refreshedElements.destination),
-      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),
+      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),ㅇㅇ
     });
 
     // Now check for planner result after Google Maps is initialized
@@ -760,32 +759,14 @@ async function handleWaypointSelection(place, inputElement) {
     }
 
     const currentState = getState();
-    
-    // 영업 상태 미리 확인
-    const travelTime = currentState.tripMeta 
-      ? createTravelTimeFromTripMeta(currentState.tripMeta, currentState.waypoints, currentState.waypoints.length, 60)
-      : createCurrentTravelTimeInfo(60);
-    
-    const businessStatus = checkBusinessStatus(details, travelTime);
-    
     const result = await openPlaceModal({ 
       details, 
       defaultStayMinutes: 60,
       tripMeta: currentState.tripMeta,
       waypoints: currentState.waypoints,
-      waypointIndex: currentState.waypoints.length,
-      businessStatus: businessStatus // 영업 상태 전달
+      waypointIndex: currentState.waypoints.length
     });
-    
     if (result?.confirmed) {
-      // 영업 종료인 경우 경고 표시
-      if (businessStatus.status === 'CLOSED') {
-        showToast({ 
-          message: `⚠️ ${details.name}은(는) 방문 시간에 영업 종료입니다.`, 
-          type: 'warning' 
-        });
-      }
-      
       const waypoint = buildWaypointFromDetails(details, result.stayMinutes, place);
       updateState((draft) => {
         draft.waypoints = [...draft.waypoints, waypoint];
@@ -926,20 +907,12 @@ async function handleWaypointDetails(waypoint, poiInfo) {
     const currentState = getState();
     const waypointIndex = currentState.waypoints.findIndex(w => w === waypoint);
     
-    // 영업 상태 미리 계산
-    const travelTime = currentState.tripMeta 
-      ? createTravelTimeFromTripMeta(currentState.tripMeta, currentState.waypoints, waypointIndex >= 0 ? waypointIndex : 0, waypoint.stayMinutes ?? 60)
-      : createCurrentTravelTimeInfo(waypoint.stayMinutes ?? 60);
-    
-    const businessStatus = checkBusinessStatus(details, travelTime);
-    
     const result = await openPlaceModal({
       details,
       defaultStayMinutes: waypoint.stayMinutes ?? 60,
       tripMeta: currentState.tripMeta,
       waypoints: currentState.waypoints,
       waypointIndex: waypointIndex >= 0 ? waypointIndex : 0,
-      businessStatus: businessStatus
     });
 
     if (result?.confirmed) {
