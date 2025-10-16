@@ -2,6 +2,7 @@
 import { loadGoogleMapsSdk } from './api.js';
 import { getGoogleMapsApiKey } from './config.js';
 import { PLANNER_CONFIG, CATEGORY_STAY_TIMES, LOCATIONS } from './config.js';
+import { checkBusinessStatus, createTravelTimeFromTripMeta } from './poiManager.js';
 
 const CATEGORY_CONFIGS = {
   food: {
@@ -841,9 +842,17 @@ async function createLayoverPlan(values) {
   const usedPlaceIds = new Set();
   const waypoints = [];
 
+  // tripMeta 생성 (영업 상태 확인을 위해)
+  const tripMeta = {
+    arrival: values.arrival.toISOString(),
+    departure: values.departure.toISOString(),
+    entryBufferMinutes: values.entryBufferMinutes,
+    returnBufferMinutes: values.returnBufferMinutes,
+  };
+
   for (const categoryKey of categoryOrder) {
     if (waypoints.length >= desiredStops) break;
-    const place = await fetchPlaceForCategory(categoryKey, usedPlaceIds, values.defaultStayMinutes);
+    const place = await fetchPlaceForCategory(categoryKey, usedPlaceIds, values.defaultStayMinutes, tripMeta, waypoints);
     if (place) {
       waypoints.push(place);
       const uniqueId = place.placeId ?? place.address ?? place.label;
@@ -906,14 +915,14 @@ function buildCategorySequence(selectedKeys, desiredStops) {
   return sequence.slice(0, minNeeded);
 }
 
-async function fetchPlaceForCategory(categoryKey, usedIds, userDefaultStay) {
+async function fetchPlaceForCategory(categoryKey, usedIds, userDefaultStay, tripMeta = null, waypoints = []) {
   const config = CATEGORY_CONFIGS[categoryKey];
   if (!config) return null;
 
   // 1) NearbySearch by type around selected airport center
   try {
     const near = await executeNearbySearch({ type: config.type });
-    const picked = pickCandidate(near, usedIds);
+    const picked = pickCandidate(near, usedIds, tripMeta, waypoints);
     if (picked) return normalizePlaceResult(picked, config, userDefaultStay);
   } catch (e) {
     console.warn('[planner] nearbySearch failed', categoryKey, e);
@@ -924,7 +933,7 @@ async function fetchPlaceForCategory(categoryKey, usedIds, userDefaultStay) {
   const query = anchorLabel ? `${anchorLabel} ${config.label}` : config.label;
   try {
     const results = await executeTextSearch({ query, type: config.type });
-    const picked = pickCandidate(results, usedIds);
+    const picked = pickCandidate(results, usedIds, tripMeta, waypoints);
     if (picked) return normalizePlaceResult(picked, config, userDefaultStay);
   } catch (e) {
     console.warn('[planner] textSearch failed', categoryKey, query, e);
@@ -999,13 +1008,29 @@ function getSearchCenter() {
   return LOCATIONS.DEFAULT_CITY_CENTER;
 }
 
-function pickCandidate(results, usedIds) {
+function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
   if (!Array.isArray(results)) return null;
+  
+  // 영업 상태 확인을 위한 travelTime 계산
+  const travelTime = tripMeta 
+    ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypoints.length, 60)
+    : null;
+  
   const filtered = results.filter((item) => {
     const identifier = item.place_id ?? item.formatted_address ?? item.name;
     if (!identifier) return false;
     if (usedIds.has(identifier)) return false;
     if (item.business_status === 'CLOSED_TEMPORARILY') return false;
+    
+    // 영업 상태 확인 (travelTime이 있을 때만)
+    if (travelTime) {
+      const businessStatus = checkBusinessStatus(item, travelTime);
+      if (businessStatus.status === 'CLOSED') {
+        console.log(`🚫 [PLANNER] ${item.name} - 영업 종료로 제외됨`);
+        return false;
+      }
+    }
+    
     return true;
   });
 

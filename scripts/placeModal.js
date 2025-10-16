@@ -57,7 +57,7 @@ export function initPlaceModal() {
   });
 }
 
-export function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = null, waypoints = [], waypointIndex = 0 }) {
+export function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = null, waypoints = [], waypointIndex = 0, businessStatus = null }) {
   if (!modalEl) {
     initPlaceModal();
   }
@@ -144,21 +144,22 @@ function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, way
   // 영업 상태 표시 추가
   const businessStatusElement = modalEl.querySelector("[data-modal-business-status]");
   if (businessStatusElement) {
-    // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
-    const travelTime = tripMeta 
-      ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
-      : createCurrentTravelTimeInfo(defaultStayMinutes);
+    // 전달받은 businessStatus가 있으면 사용, 없으면 계산
+    const finalBusinessStatus = businessStatus || (() => {
+      const travelTime = tripMeta 
+        ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
+        : createCurrentTravelTimeInfo(defaultStayMinutes);
+      return checkBusinessStatus(details, travelTime);
+    })();
     
-    const businessStatus = checkBusinessStatus(details, travelTime);
-    
-    businessStatusElement.innerHTML = `${businessStatus.icon} ${businessStatus.label}`;
-    businessStatusElement.title = `영업 상태: ${businessStatus.label}`;
+    businessStatusElement.innerHTML = `${finalBusinessStatus.icon} ${finalBusinessStatus.label}`;
+    businessStatusElement.title = `영업 상태: ${finalBusinessStatus.label}`;
     
     // 상태에 따른 스타일 적용
-    if (businessStatus.status === 'OPEN') {
+    if (finalBusinessStatus.status === 'OPEN') {
       businessStatusElement.style.color = '#4caf50';
       businessStatusElement.style.fontWeight = '600';
-    } else if (businessStatus.status === 'CLOSED') {
+    } else if (finalBusinessStatus.status === 'CLOSED') {
       businessStatusElement.style.color = '#f44336';
       businessStatusElement.style.fontWeight = '600';
     } else {
