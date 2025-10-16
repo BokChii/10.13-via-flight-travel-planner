@@ -234,13 +234,17 @@ function buildOpeningIntervals(opening) {
  * 로컬 시간 분 단위로 변환 (UTC offset 보정) - 수정된 버전
  */
 function resolveLocalMinutes(date, timeZone, offsetMinutes) {
-  if (typeof offsetMinutes === 'number') {
-    const local = new Date(date.getTime() + offsetMinutes * 60000);
-    return { day: local.getUTCDay(), minutes: local.getUTCHours() * 60 + local.getUTCMinutes() };
-  }
+  console.log('🔍 [DEBUG] resolveLocalMinutes 호출됨');
+  console.log('📅 [DEBUG] date:', date);
+  console.log('🌍 [DEBUG] timeZone:', timeZone);
+  console.log('📊 [DEBUG] offsetMinutes:', offsetMinutes);
   
+  // 항상 getLocalParts를 사용하도록 수정
   const parts = getLocalParts(date, timeZone);
-  return { day: parts.wd, minutes: parts.h * 60 + parts.m };
+  const result = { day: parts.wd, minutes: parts.h * 60 + parts.m };
+  
+  console.log('✅ [DEBUG] resolveLocalMinutes 결과:', result);
+  return result;
 }
 
 /**
