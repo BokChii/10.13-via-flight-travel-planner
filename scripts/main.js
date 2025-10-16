@@ -177,7 +177,7 @@ async function bootstrap() {
     placesService = new googleMaps.maps.places.PlacesService(mapInstance);
     attachPlannerServices({ googleMaps, placesService, map: mapInstance });
     const refreshedElements = getElements();
-    initAutocomplete(googleMaps, refreshedElements, {
+    initAutocomplete(googleMaps, refreshedElements, {a
       onOriginSelect: (place) => handlePlaceSelection("origin", place, refreshedElements.origin),
       onDestinationSelect: (place) => handlePlaceSelection("destination", place, refreshedElements.destination),
       onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),ㅇㅇ

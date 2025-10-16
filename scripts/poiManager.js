@@ -331,6 +331,11 @@ export function createCurrentTravelTimeInfo(durationMinutes = 60, timeZone = 'As
  * @returns {Object} 여행 시간 정보
  */
 export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, durationMinutes = 60) {
+  console.log('🔍 [POI DEBUG] createTravelTimeFromTripMeta 호출됨');
+  console.log('📋 [POI DEBUG] tripMeta:', tripMeta);
+  console.log('📍 [POI DEBUG] waypointIndex:', waypointIndex);
+  console.log('⏰ [POI DEBUG] durationMinutes:', durationMinutes);
+  
   if (!tripMeta || !tripMeta.arrival) {
     console.warn('tripMeta 또는 arrival이 없음 - 현재 시간 사용');
     return createCurrentTravelTimeInfo(durationMinutes);
@@ -339,6 +344,7 @@ export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex,
   try {
     // 도착 시간을 Date 객체로 변환 (UTC 기준)
     const arrivalTime = new Date(tripMeta.arrival);
+    console.log('📅 [POI DEBUG] arrivalTime:', arrivalTime);
     
     // 유효한 날짜인지 확인
     if (isNaN(arrivalTime.getTime())) {
@@ -347,11 +353,14 @@ export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex,
     
     // 경유지 방문 시간 계산
     const visitTime = calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex);
+    console.log('🕐 [POI DEBUG] 계산된 visitTime:', visitTime);
     
     // 시간대 설정 (tripMeta에서 추출하거나 기본값 사용)
     const timeZone = tripMeta.timeZone || 'Asia/Seoul';
+    console.log('🌍 [POI DEBUG] 사용할 timeZone:', timeZone);
     
     const result = createTravelTimeInfo(visitTime, durationMinutes, timeZone);
+    console.log('✅ [POI DEBUG] 최종 travelTimeInfo:', result);
     return result;
   } catch (error) {
     console.warn('여행 시간 계산 실패:', error);
@@ -367,21 +376,33 @@ export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex,
  * @returns {Date} 방문 시간
  */
 function calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex) {
+  console.log('🔍 [POI DEBUG] calculateWaypointVisitTime 호출됨');
+  console.log('📅 [POI DEBUG] arrivalTime:', arrivalTime);
+  console.log('📍 [POI DEBUG] waypointIndex:', waypointIndex);
+  console.log('📋 [POI DEBUG] waypoints.length:', waypoints.length);
+  
   // 새로운 Date 객체 생성 (원본 변경 방지)
   let visitTime = new Date(arrivalTime.getTime());
+  console.log('🕐 [POI DEBUG] 초기 visitTime:', visitTime);
   
   // 이전 경유지들의 체류 시간과 이동 시간을 합산
   for (let i = 0; i < waypointIndex; i++) {
     const waypoint = waypoints[i];
     const stayMinutes = waypoint.stayMinutes || 60;
     
+    console.log(`📍 [POI DEBUG] 경유지 ${i}: 체류 ${stayMinutes}분`);
+    
     // 체류 시간 추가
     visitTime.setMinutes(visitTime.getMinutes() + stayMinutes);
     
     // 이동 시간 추가 (기본 30분)
     const travelMinutes = 30;
+    console.log(`🚗 [POI DEBUG] 이동 시간: ${travelMinutes}분`);
     visitTime.setMinutes(visitTime.getMinutes() + travelMinutes);
+    
+    console.log(`🕐 [POI DEBUG] 경유지 ${i} 후 visitTime:`, visitTime);
   }
   
+  console.log(`✅ [POI DEBUG] 최종 visitTime:`, visitTime);
   return visitTime;
 }

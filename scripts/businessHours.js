@@ -352,8 +352,16 @@ function isWithinOperatingTime(slots, hourOrDate, minute) {
  * 영업 상태 평가 (핵심 함수) - 디버깅 버전
  */
 export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, timeZone, offsetMinutes) {
+  console.log('🔍 [BUSINESS DEBUG] evaluateOperatingStatus 호출됨');
+  console.log('📅 [BUSINESS DEBUG] startDate:', startDate);
+  console.log('⏰ [BUSINESS DEBUG] stayMinutes:', stayMinutes);
+  console.log('🌍 [BUSINESS DEBUG] timeZone:', timeZone);
+  console.log('📊 [BUSINESS DEBUG] offsetMinutes:', offsetMinutes);
+  console.log('📋 [BUSINESS DEBUG] openingHours:', openingHours);
+  
   // openingHours가 없으면 영업 상태 불명으로 간주 (기본적으로 true 반환)
   if (!openingHours) {
+    console.log('⚠️ [BUSINESS DEBUG] openingHours 없음 - true 반환');
     return true;
   }
   
@@ -361,28 +369,43 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
   const stay = Math.max(1, stayMinutes || 0);
   const endDate = new Date(startDate.getTime() + stay * 60000);
   
+  console.log('🕐 [BUSINESS DEBUG] 계산된 endDate:', endDate);
+  console.log('🕐 [BUSINESS DEBUG] 체류 시간:', stay, '분');
+  
   // 시간대 정보가 없으면 기본값 사용
   const effectiveTimeZone = timeZone || 'Asia/Seoul';
   const effectiveOffsetMinutes = offsetMinutes || 0;
+  
+  console.log('🌍 [BUSINESS DEBUG] 사용할 timeZone:', effectiveTimeZone);
+  console.log('🌍 [BUSINESS DEBUG] 사용할 offsetMinutes:', effectiveOffsetMinutes);
   
   // 로컬 시간으로 변환
   const startInfo = resolveLocalMinutes(startDate, effectiveTimeZone, effectiveOffsetMinutes);
   const endInfo = resolveLocalMinutes(endDate, effectiveTimeZone, effectiveOffsetMinutes);
   
+  console.log('🕐 [BUSINESS DEBUG] startInfo:', startInfo);
+  console.log('🕐 [BUSINESS DEBUG] endInfo:', endInfo);
+  
   // 주간 분 단위로 변환
   let startMin = startInfo.day * 1440 + startInfo.minutes;
   let endMin = endInfo.day * 1440 + endInfo.minutes;
   
+  console.log('📊 [BUSINESS DEBUG] startMin (주간 분):', startMin);
+  console.log('📊 [BUSINESS DEBUG] endMin (주간 분):', endMin);
+  
   // 다음 날로 넘어가는 경우 처리
   if (endMin < startMin) {
     endMin += 7 * 1440; // 7일 = 1주
+    console.log('📊 [BUSINESS DEBUG] 다음 날로 넘어감, 조정된 endMin:', endMin);
   }
   
   // 영업 시간 간격 구축
   const intervals = buildOpeningIntervals(openingHours);
+  console.log('📋 [BUSINESS DEBUG] 구축된 intervals:', intervals);
   
   // 간격 내에 포함되는지 확인
   if (intervals.length > 0 && isWithinIntervals(intervals, startMin, endMin)) {
+    console.log('✅ [BUSINESS DEBUG] intervals 내에 있음 - true 반환');
     return true;
   }
   
@@ -392,6 +415,7 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
       /24\s*hour|24\s*hours|24\/7|24\s*시간/i.test(text)
     );
     if (is24) {
+      console.log('✅ [BUSINESS DEBUG] 24시간 영업 - true 반환');
       return true;
     }
   }
@@ -405,10 +429,12 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
       return openTime === 0 && (!closeTime || closeTime === 1440);
     });
     if (is24) {
+      console.log('✅ [BUSINESS DEBUG] periods에서 24시간 영업 - true 반환');
       return true;
     }
   }
   
+  console.log('❌ [BUSINESS DEBUG] 기본 - false 반환');
   return false;
 }
 
@@ -416,20 +442,31 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
  * 영업 상태 판정 (통합 함수) - 디버깅 버전
  */
 export function getBusinessStatus(poi, travelTime = null) {
+  console.log('🔍 [BUSINESS DEBUG] getBusinessStatus 호출됨');
+  console.log('📍 [BUSINESS DEBUG] poi:', poi);
+  console.log('🕐 [BUSINESS DEBUG] travelTime:', travelTime);
+  
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
+    console.log('⚠️ [BUSINESS DEBUG] opening_hours 없음 - UNKNOWN 반환');
     return 'UNKNOWN';
   }
   
   // Google Places API의 business_status가 명시적으로 폐업/휴업인 경우
   if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
+    console.log('❌ [BUSINESS DEBUG] CLOSED_TEMPORARILY/PERMANENTLY - CLOSED 반환');
     return 'CLOSED';
   }
   
   // 여행 시간이 주어진 경우 영업 시간 비교
   if (travelTime && travelTime.start && travelTime.durationMinutes) {
+    console.log('🕐 [BUSINESS DEBUG] travelTime 있음 - evaluateOperatingStatus 호출');
+    console.log('📅 [BUSINESS DEBUG] travelTime.start:', travelTime.start);
+    console.log('⏰ [BUSINESS DEBUG] travelTime.durationMinutes:', travelTime.durationMinutes);
+    console.log('🌍 [BUSINESS DEBUG] travelTime.timeZone:', travelTime.timeZone);
+    
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
@@ -437,9 +474,14 @@ export function getBusinessStatus(poi, travelTime = null) {
       travelTime.timeZone || 'Asia/Seoul',
       poi.utc_offset_minutes || 0
     );
-    return isOpen ? 'OPEN' : 'CLOSED';
+    
+    console.log('📊 [BUSINESS DEBUG] evaluateOperatingStatus 결과:', isOpen);
+    const result = isOpen ? 'OPEN' : 'CLOSED';
+    console.log('✅ [BUSINESS DEBUG] 최종 결과:', result);
+    return result;
   }
   
+  console.log('⚠️ [BUSINESS DEBUG] travelTime 없음 - UNKNOWN 반환');
   return 'UNKNOWN';
 }
 

@@ -1011,10 +1011,17 @@ function getSearchCenter() {
 function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
   if (!Array.isArray(results)) return null;
   
+  console.log('🔍 [PLANNER DEBUG] pickCandidate 호출됨');
+  console.log('📊 [PLANNER DEBUG] tripMeta:', tripMeta);
+  console.log('📍 [PLANNER DEBUG] waypoints.length:', waypoints.length);
+  console.log('📋 [PLANNER DEBUG] results.length:', results.length);
+  
   // 영업 상태 확인을 위한 travelTime 계산
   const travelTime = tripMeta 
     ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypoints.length, 60)
     : null;
+  
+  console.log('🕐 [PLANNER DEBUG] 계산된 travelTime:', travelTime);
   
   const filtered = results.filter((item) => {
     const identifier = item.place_id ?? item.formatted_address ?? item.name;
@@ -1024,7 +1031,12 @@ function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
     
     // 영업 상태 확인 (travelTime이 있을 때만)
     if (travelTime) {
+      console.log(`🔍 [PLANNER DEBUG] ${item.name} 영업 상태 확인 중...`);
+      console.log('📋 [PLANNER DEBUG] item.opening_hours:', item.opening_hours);
+      
       const businessStatus = checkBusinessStatus(item, travelTime);
+      console.log(`📊 [PLANNER DEBUG] ${item.name} 결과:`, businessStatus);
+      
       if (businessStatus.status === 'CLOSED') {
         console.log(`🚫 [PLANNER] ${item.name} - 영업 종료로 제외됨`);
         return false;
@@ -1034,6 +1046,7 @@ function pickCandidate(results, usedIds, tripMeta = null, waypoints = []) {
     return true;
   });
 
+  console.log(`✅ [PLANNER DEBUG] 필터링 후 남은 POI 수: ${filtered.length}`);
   filtered.sort((a, b) => computePlaceScore(b) - computePlaceScore(a));
   return filtered[0] ?? null;
 }
