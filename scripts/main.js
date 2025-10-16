@@ -177,10 +177,10 @@ async function bootstrap() {
     placesService = new googleMaps.maps.places.PlacesService(mapInstance);
     attachPlannerServices({ googleMaps, placesService, map: mapInstance });
     const refreshedElements = getElements();
-    initAutocomplete(googleMaps, refreshedElements, {a
+    initAutocomplete(googleMaps, refreshedElements, {
       onOriginSelect: (place) => handlePlaceSelection("origin", place, refreshedElements.origin),
       onDestinationSelect: (place) => handlePlaceSelection("destination", place, refreshedElements.destination),
-      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),ㅇㅇ
+      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),
     });
 
     // Now check for planner result after Google Maps is initialized
