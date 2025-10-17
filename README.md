@@ -1,6 +1,6 @@
 # 환승 여행 내비게이터 (Via Flight Travel Planner)
 
-도보와 대중교통만으로 창이 환승 일정을 계획하는 웹 애플리케이션입니다.
+도보와 대중교통만으로 최적의 환승 일정을 계획하는 웹 애플리케이션입니다.
 
 ## 🚀 주요 기능
 
@@ -26,8 +26,7 @@
 
 이 프로젝트는 GitHub Pages를 통해 자동 배포됩니다.
 
-**배포 URL**: https://bokchii.github.io/10.13-via-flight-travel-planner_codex-cursor/
+**배포 URL**: https://bokchii.github.io/10.13-via-flight-travel-planner/
 
 ## 📄 라이선스
-
-MIT License
+- 
