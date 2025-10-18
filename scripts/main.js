@@ -179,7 +179,7 @@ async function bootstrap() {
     initAutocomplete(googleMaps, refreshedElements, {
       onOriginSelect: (place) => handlePlaceSelection("origin", place, refreshedElements.origin),
       onDestinationSelect: (place) => handlePlaceSelection("destination", place, refreshedElements.destination),
-      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),ㅇㅇ
+      onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),
     });
 
     // Now check for planner result after Google Maps is initialized
