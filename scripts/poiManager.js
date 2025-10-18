@@ -9,6 +9,7 @@ import {
   getBusinessStatusIcon, 
   getBusinessStatusLabel 
 } from './businessHours.js';
+import { calculateTravelTime } from './api.js';
 
 // POI 카테고리 매핑 (더 세분화된 매핑)
 const POI_CATEGORIES = {
@@ -328,83 +329,79 @@ export function createCurrentTravelTimeInfo(durationMinutes = 60, timeZone = 'As
  * @param {Array} waypoints - 전체 경유지 목록
  * @param {number} waypointIndex - 현재 경유지 인덱스
  * @param {number} durationMinutes - 체류 시간 (분)
- * @returns {Object} 여행 시간 정보
+ * @param {Object} googleMaps - Google Maps SDK (선택사항)
+ * @returns {Promise<Object>} 여행 시간 정보
  */
-export function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, durationMinutes = 60) {
-  console.log('🔍 [DEBUG] createTravelTimeFromTripMeta 호출됨');
-  console.log('📋 [DEBUG] tripMeta:', tripMeta);
-  console.log('📍 [DEBUG] waypoints.length:', waypoints.length);
-  console.log('📍 [DEBUG] waypointIndex:', waypointIndex);
-  console.log('⏰ [DEBUG] durationMinutes:', durationMinutes);
-  
+export async function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, durationMinutes = 60, googleMaps = null) {
   if (!tripMeta || !tripMeta.arrival) {
-    console.log('⚠️ [DEBUG] tripMeta 또는 arrival이 없음 - 현재 시간 사용');
     return createCurrentTravelTimeInfo(durationMinutes);
   }
 
   try {
     // 도착 시간을 Date 객체로 변환 (UTC 기준)
     const arrivalTime = new Date(tripMeta.arrival);
-    console.log('📅 [DEBUG] 원본 arrivalTime:', tripMeta.arrival);
-    console.log('📅 [DEBUG] 변환된 arrivalTime:', arrivalTime);
     
     // 유효한 날짜인지 확인
     if (isNaN(arrivalTime.getTime())) {
       throw new Error('Invalid arrival time');
     }
     
-    // 경유지 방문 시간 계산
-    const visitTime = calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex);
-    console.log('🕐 [DEBUG] 계산된 visitTime:', visitTime);
+    // 경유지 방문 시간 계산 (실제 이동 시간 사용)
+    const visitTime = await calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex, googleMaps);
     
     // 시간대 설정 (tripMeta에서 추출하거나 기본값 사용)
     const timeZone = tripMeta.timeZone || 'Asia/Seoul';
-    console.log('🌍 [DEBUG] 사용할 timeZone:', timeZone);
     
-    const result = createTravelTimeInfo(visitTime, durationMinutes, timeZone);
-    console.log('✅ [DEBUG] 최종 travelTimeInfo:', result);
-    return result;
+    return createTravelTimeInfo(visitTime, durationMinutes, timeZone);
   } catch (error) {
-    console.warn('❌ [DEBUG] 여행 시간 계산 실패:', error);
+    console.warn('여행 시간 계산 실패:', error);
     return createCurrentTravelTimeInfo(durationMinutes);
   }
 }
 
 /**
- * 경유지별 방문 시간을 계산합니다
+ * 경유지별 방문 시간을 계산합니다 (실제 이동 시간 사용)
  * @param {Date} arrivalTime - 도착 시간
  * @param {Array} waypoints - 전체 경유지 목록
  * @param {number} waypointIndex - 현재 경유지 인덱스
- * @returns {Date} 방문 시간
+ * @param {Object} googleMaps - Google Maps SDK (선택사항)
+ * @returns {Promise<Date>} 방문 시간
  */
-function calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex) {
-  console.log('🔍 [DEBUG] calculateWaypointVisitTime 호출됨');
-  console.log('📅 [DEBUG] arrivalTime:', arrivalTime);
-  console.log('📍 [DEBUG] waypointIndex:', waypointIndex);
-  console.log('📋 [DEBUG] waypoints.length:', waypoints.length);
-  
+async function calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex, googleMaps = null) {
   // 새로운 Date 객체 생성 (원본 변경 방지)
   let visitTime = new Date(arrivalTime.getTime());
-  console.log('🕐 [DEBUG] 초기 visitTime:', visitTime);
   
   // 이전 경유지들의 체류 시간과 이동 시간을 합산
   for (let i = 0; i < waypointIndex; i++) {
     const waypoint = waypoints[i];
     const stayMinutes = waypoint.stayMinutes || 60;
     
-    console.log(`📍 [DEBUG] 경유지 ${i}: 체류 ${stayMinutes}분`);
-    
     // 체류 시간 추가
     visitTime.setMinutes(visitTime.getMinutes() + stayMinutes);
     
-    // 이동 시간 추가 (기본 30분)
-    const travelMinutes = 30;
-    console.log(`🚗 [DEBUG] 이동 시간: ${travelMinutes}분`);
-    visitTime.setMinutes(visitTime.getMinutes() + travelMinutes);
+    // 실제 이동 시간 계산 (Google Maps API 사용)
+    let travelMinutes = 30; // 기본값
     
-    console.log(`🕐 [DEBUG] 경유지 ${i} 후 visitTime:`, visitTime);
+    if (googleMaps && i < waypoints.length - 1) {
+      try {
+        const currentWaypoint = waypoints[i];
+        const nextWaypoint = waypoints[i + 1];
+        
+        // 위치 정보가 있는 경우에만 실제 이동 시간 계산
+        if (currentWaypoint.location && nextWaypoint.location) {
+          travelMinutes = await calculateTravelTime(
+            googleMaps,
+            currentWaypoint.location,
+            nextWaypoint.location
+          );
+        }
+      } catch (error) {
+        console.warn(`경유지 ${i} → ${i + 1} 이동 시간 계산 실패, 기본값 사용:`, error.message);
+      }
+    }
+    
+    visitTime.setMinutes(visitTime.getMinutes() + travelMinutes);
   }
   
-  console.log(`✅ [DEBUG] 최종 visitTime:`, visitTime);
   return visitTime;
 }

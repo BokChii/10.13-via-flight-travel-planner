@@ -42,8 +42,6 @@ export function getElements() {
  * @returns {Array} 영업 종료인 경유지 목록
  */
 export async function hasClosedWaypoints(waypoints, tripMeta) {
-  const closedWaypoints = [];
-  
   // 모든 경유지에 대해 POI 정보를 병렬로 가져오기
   const waypointPromises = waypoints.map(async (waypoint, index) => {
     let poiInfo = null;
@@ -56,7 +54,7 @@ export async function hasClosedWaypoints(waypoints, tripMeta) {
     if (poiInfo) {
       // 실제 여행 시간 기반으로 계산
       const travelTime = tripMeta 
-        ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
+        ? await createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
         : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
       
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
@@ -101,12 +99,20 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       poiInfo = await searchPOIByName(waypoint.label);
     }
     
-    return { waypoint, poiInfo, index };
+    // 영업 상태 계산을 위한 travelTime 정보도 미리 계산
+    let travelTime = null;
+    if (poiInfo) {
+      travelTime = tripMeta 
+        ? await createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
+        : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+    }
+    
+    return { waypoint, poiInfo, travelTime, index };
   });
 
   const waypointData = await Promise.all(waypointPromises);
 
-  waypointData.forEach(({ waypoint, poiInfo, index }) => {
+  waypointData.forEach(({ waypoint, poiInfo, travelTime, index }) => {
     const item = document.createElement("li");
     item.className = "waypoint-item";
 
@@ -138,20 +144,8 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
     }
 
     // 영업 상태 표시 추가
-    if (poiInfo) {
-      console.log(`🔍 [DEBUG] 경유지 ${index} 영업 상태 확인 시작`);
-      console.log(`📍 [DEBUG] waypoint:`, waypoint);
-      console.log(`📋 [DEBUG] tripMeta:`, tripMeta);
-      
-      // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
-      const travelTime = tripMeta 
-        ? createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
-        : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
-      
-      console.log(`🕐 [DEBUG] 경유지 ${index} travelTime:`, travelTime);
-      
+    if (poiInfo && travelTime) {
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
-      console.log(`📊 [DEBUG] 경유지 ${index} businessStatus:`, businessStatus);
       
       const statusElement = document.createElement("span");
       statusElement.className = "waypoint-item__status";
