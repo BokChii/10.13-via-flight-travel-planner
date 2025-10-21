@@ -1,0 +1,460 @@
+/* Airport Main Page Styles */
+/* ========================================== */
+
+.airport-main-page {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: white;
+}
+
+.airport-main-page .app-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.airport-main-page .app-header h1 {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.airport-main-page .app-header .tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+
+.airport-main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* Progress Indicator */
+.progress-container {
+  margin-bottom: 60px;
+}
+
+.progress-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.step.active {
+  opacity: 1;
+}
+
+.step.completed {
+  opacity: 1;
+}
+
+.step-number {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+  background: white;
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.step.completed .step-number {
+  background: rgba(76, 175, 80, 0.8);
+  color: white;
+}
+
+.step-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.step.active .step-label,
+.step.completed .step-label {
+  color: white;
+  font-weight: 600;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 25px;
+  left: 100%;
+  width: 100px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(-50px);
+}
+
+.step.active:not(:last-child)::after,
+.step.completed:not(:last-child)::after {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, white, rgba(255, 255, 255, 0.8));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Transfer Summary */
+.transfer-summary {
+  margin-bottom: 60px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.summary-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+}
+
+.summary-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0 0 24px;
+}
+
+.summary-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-label {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* Choice Section */
+.choice-section {
+  margin-bottom: 80px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.choice-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 20px;
+}
+
+.choice-description {
+  font-size: 1.2rem;
+  text-align: center;
+  opacity: 0.9;
+  margin: 0 0 60px;
+  line-height: 1.6;
+}
+
+.choice-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.choice-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 40px 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  text-decoration: none;
+  display: block;
+}
+
+.choice-card:hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.choice-card.selected {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: white;
+  transform: translateY(-8px);
+}
+
+.choice-icon {
+  font-size: 4rem;
+  margin-bottom: 24px;
+}
+
+.choice-card-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.choice-card-description {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0 0 24px;
+  line-height: 1.6;
+}
+
+.choice-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.feature-tag {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.choice-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+}
+
+.benefit-icon {
+  width: 20px;
+  height: 20px;
+  background: rgba(76, 175, 80, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Recommendations Section */
+.recommendations-section {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.recommendations-title {
+  font-size: 2rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 40px;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+}
+
+.recommendation-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 30px;
+}
+
+.recommendation-card h4 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.recommendation-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.recommendation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.item-icon {
+  font-size: 1.2rem;
+}
+
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.course-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.course-time {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.course-content strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.course-content p {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .airport-main-content {
+    padding: 30px 16px;
+  }
+
+  .choice-title {
+    font-size: 2rem;
+  }
+
+  .choice-description {
+    font-size: 1.1rem;
+  }
+
+  .choice-cards {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .choice-card {
+    padding: 30px 20px;
+  }
+
+  .choice-icon {
+    font-size: 3rem;
+  }
+
+  .choice-card-title {
+    font-size: 1.6rem;
+  }
+
+  .summary-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .recommendation-items {
+    grid-template-columns: 1fr;
+  }
+
+  .course-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .course-time {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .choice-title {
+    font-size: 1.8rem;
+  }
+
+  .choice-card-title {
+    font-size: 1.4rem;
+  }
+
+  .summary-content {
+    grid-template-columns: 1fr;
+  }
+
+  .choice-features {
+    gap: 6px;
+  }
+
+  .feature-tag {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+}

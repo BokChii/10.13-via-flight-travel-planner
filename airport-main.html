@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <title>여행 스타일 선택 - Via Flight</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/pages/airport-main.css" />
+    <link rel="stylesheet" href="styles/components/buttons.css" />
+    <link rel="stylesheet" href="styles/components/cards.css" />
+    <link rel="stylesheet" href="styles/components/steps.css" />
+  </head>
+  <body class="app airport-main-page">
+    <header class="app-header">
+      <h1>Via Flight</h1>
+      <p class="tagline">어떤 여행을 원하시나요?</p>
+      <nav class="breadcrumb">
+        <a href="transfer-info.html" class="breadcrumb__link">← 환승 정보 수정</a>
+      </nav>
+    </header>
+
+    <main class="airport-main-content">
+      <!-- Progress Indicator -->
+      <div class="progress-container">
+        <div class="progress-steps">
+          <div class="step completed">
+            <div class="step-number">✓</div>
+            <div class="step-label">환승 정보</div>
+          </div>
+          <div class="step active">
+            <div class="step-number">2</div>
+            <div class="step-label">여행 스타일</div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-label">일정 생성</div>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 66%"></div>
+        </div>
+      </div>
+
+      <!-- Transfer Summary -->
+      <section class="transfer-summary">
+        <div class="summary-card">
+          <h2 class="summary-title" id="summary-title">환승 정보</h2>
+          <div class="summary-content">
+            <div class="summary-item">
+              <span class="summary-label">경유 도시</span>
+              <span class="summary-value" id="summary-city">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">환승 시간</span>
+              <span class="summary-value" id="summary-duration">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">도착 시간</span>
+              <span class="summary-value" id="summary-arrival">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">출발 시간</span>
+              <span class="summary-value" id="summary-departure">-</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Choice Section -->
+      <section class="choice-section">
+        <h2 class="choice-title">어떤 여행을 원하시나요?</h2>
+        <p class="choice-description">
+          환승 시간 동안 어떻게 보내고 싶으신지 선택해주세요.<br>
+          선택에 따라 맞춤형 일정을 만들어드립니다.
+        </p>
+
+        <div class="choice-cards">
+          <button class="choice-card" onclick="chooseAirportOnly()">
+            <div class="choice-icon">🏢</div>
+            <h3 class="choice-card-title">공항에만 있을래요</h3>
+            <p class="choice-card-description">
+              면세점, 라운지, 문화체험 등<br>
+              공항 내부에서만 즐기는 여행
+            </p>
+            <div class="choice-features">
+              <span class="feature-tag">면세점</span>
+              <span class="feature-tag">라운지</span>
+              <span class="feature-tag">문화체험</span>
+              <span class="feature-tag">식당</span>
+            </div>
+            <div class="choice-benefits">
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>입국 심사 불필요</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>짐 보관소 이용 가능</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>안전하고 편리함</span>
+              </div>
+            </div>
+          </button>
+
+          <button class="choice-card" onclick="chooseAirportExternal()">
+            <div class="choice-icon">🌍</div>
+            <h3 class="choice-card-title">공항 밖에도 나갈래요</h3>
+            <p class="choice-card-description">
+              도시 관광 + 공항 내부<br>
+              더 풍부한 환승 여행 경험
+            </p>
+            <div class="choice-features">
+              <span class="feature-tag">로컬 맛집</span>
+              <span class="feature-tag">관광지</span>
+              <span class="feature-tag">쇼핑</span>
+              <span class="feature-tag">문화체험</span>
+            </div>
+            <div class="choice-benefits">
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>로컬 문화 체험</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>다양한 활동</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✓</span>
+                <span>특별한 추억</span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Recommendations Section -->
+      <section class="recommendations-section">
+        <h3 class="recommendations-title">💡 추천 정보</h3>
+        <div class="recommendations-grid">
+          <div class="recommendation-card">
+            <h4>공항에서 뭐하지?</h4>
+            <div class="recommendation-items">
+              <div class="recommendation-item">
+                <span class="item-icon">🛍️</span>
+                <span>면세점 쇼핑</span>
+              </div>
+              <div class="recommendation-item">
+                <span class="item-icon">🍽️</span>
+                <span>공항 맛집</span>
+              </div>
+              <div class="recommendation-item">
+                <span class="item-icon">🎨</span>
+                <span>문화체험</span>
+              </div>
+              <div class="recommendation-item">
+                <span class="item-icon">💆</span>
+                <span>스파 & 마사지</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="recommendation-card">
+            <h4>베스트 환승 여행 코스</h4>
+            <div class="course-list">
+              <div class="course-item">
+                <div class="course-time">2-3시간</div>
+                <div class="course-content">
+                  <strong>공항 내부 탐험</strong>
+                  <p>면세점 + 식당 + 라운지</p>
+                </div>
+              </div>
+              <div class="course-item">
+                <div class="course-time">4-6시간</div>
+                <div class="course-content">
+                  <strong>도시 나들이</strong>
+                  <p>명소 + 맛집 + 쇼핑</p>
+                </div>
+              </div>
+              <div class="course-item">
+                <div class="course-time">6시간+</div>
+                <div class="course-content">
+                  <strong>통합 여행</strong>
+                  <p>공항 + 도시 + 문화체험</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="scripts/router.js"></script>
+    <script>
+      // 전역 상태
+      let transferInfo = null;
+      let selectedChoice = null;
+
+      // 페이지 로드 시 환승 정보 표시
+      document.addEventListener('DOMContentLoaded', function() {
+        loadTransferInfo();
+        updateSummary();
+        
+        // 애니메이션 효과
+        setTimeout(() => {
+          document.querySelector('.transfer-summary').style.opacity = '1';
+          document.querySelector('.transfer-summary').style.transform = 'translateY(0)';
+        }, 300);
+        
+        setTimeout(() => {
+          document.querySelector('.choice-section').style.opacity = '1';
+          document.querySelector('.choice-section').style.transform = 'translateY(0)';
+        }, 600);
+        
+        setTimeout(() => {
+          document.querySelector('.recommendations-section').style.opacity = '1';
+          document.querySelector('.recommendations-section').style.transform = 'translateY(0)';
+        }, 900);
+      });
+
+      // 환승 정보 로드
+      function loadTransferInfo() {
+        const state = window.getAppState();
+        if (state.transferInfo) {
+          transferInfo = state.transferInfo;
+        } else {
+          // 기본값 설정
+          transferInfo = {
+            city: '서울',
+            arrival: new Date(),
+            departure: new Date(Date.now() + 4 * 60 * 60 * 1000),
+            duration: 4 * 60 * 60 * 1000
+          };
+        }
+      }
+
+      // 요약 정보 업데이트
+      function updateSummary() {
+        if (!transferInfo) return;
+
+        document.getElementById('summary-city').textContent = transferInfo.city;
+        document.getElementById('summary-duration').textContent = formatDuration(transferInfo.duration);
+        document.getElementById('summary-arrival').textContent = formatDateTime(transferInfo.arrival);
+        document.getElementById('summary-departure').textContent = formatDateTime(transferInfo.departure);
+      }
+
+      // 시간 포맷팅
+      function formatDuration(durationMs) {
+        const hours = Math.floor(durationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let result = '';
+        if (hours > 0) result += `${hours}시간`;
+        if (minutes > 0) result += ` ${minutes}분`;
+        
+        return result || '0분';
+      }
+
+      // 날짜 시간 포맷팅
+      function formatDateTime(date) {
+        if (!date) return '-';
+        
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        
+        return `${year}.${month}.${day} ${hours}:${minutes}`;
+      }
+
+      // 공항에만 있을래요 선택
+      function chooseAirportOnly() {
+        selectedChoice = 'airport-only';
+        
+        // 선택 상태 표시
+        document.querySelectorAll('.choice-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        event.target.closest('.choice-card').classList.add('selected');
+        
+        // 라우터를 통해 다음 페이지로 이동
+        setTimeout(() => {
+          window.navigateTo('/airport-only', { userChoice: selectedChoice });
+        }, 500);
+      }
+
+      // 공항 밖에도 나갈래요 선택
+      function chooseAirportExternal() {
+        selectedChoice = 'airport-external';
+        
+        // 선택 상태 표시
+        document.querySelectorAll('.choice-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        event.target.closest('.choice-card').classList.add('selected');
+        
+        // 라우터를 통해 다음 페이지로 이동
+        setTimeout(() => {
+          window.navigateTo('/airport-external', { userChoice: selectedChoice });
+        }, 500);
+      }
+
+      // 뒤로가기
+      function goBack() {
+        window.goBack();
+      }
+    </script>
+  </body>
+</html>
