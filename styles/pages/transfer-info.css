@@ -25,9 +25,10 @@
 }
 
 .transfer-info-main {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 60px 20px;
+  min-height: calc(100vh - 200px);
 }
 
 /* Progress Indicator */
@@ -127,8 +128,9 @@
 .form-container {
   background: white;
   border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 50px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   opacity: 0;
   transform: translateY(30px);
   transition: all 0.6s ease;
@@ -180,18 +182,24 @@
 }
 
 .form-input {
-  padding: 16px 20px;
-  border: 2px solid #e0e0e0;
+  padding: 18px 24px;
+  border: 2px solid #e2e8f0;
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
   background: white;
+  color: var(--color-text);
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+  background: #fafbfc;
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .form-input:invalid {
@@ -304,18 +312,22 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .transfer-info-main {
+    padding: 40px 16px;
+  }
+
   .transfer-form-section {
     grid-template-columns: 1fr;
     gap: 40px;
   }
 
   .form-container {
-    padding: 30px 20px;
+    padding: 40px 24px;
   }
 
   .form-row {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
 
   .progress-steps {
@@ -333,6 +345,10 @@
 
   .form-description {
     font-size: 1rem;
+  }
+
+  .form-input {
+    padding: 16px 20px;
   }
 }
 

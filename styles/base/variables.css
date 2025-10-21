@@ -12,14 +12,15 @@
   --color-info: #17a2b8;
   
   /* 텍스트 색상 */
-  --color-text: #0f1c2e;
-  --color-text-light: #6c757d;
-  --color-text-muted: #adb5bd;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #4a5568;
+  --color-text-light: #718096;
+  --color-text-muted: #a0aec0;
   
   /* 배경 색상 */
   --color-bg: #ffffff;
-  --color-bg-light: #f8f9fa;
-  --color-bg-dark: #343a40;
+  --color-bg-light: #f7fafc;
+  --color-bg-dark: #2d3748;
   
   /* 테두리 색상 */
   --color-border: #dee2e6;
