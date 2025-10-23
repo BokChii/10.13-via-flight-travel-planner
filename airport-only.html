@@ -203,6 +203,8 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script src="scripts/airportDatabase.js"></script>
+    <script src="scripts/airportAPI.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -211,11 +213,23 @@
       let currentStep = 'preferences';
 
       // 페이지 로드 시 초기화
-      document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', async function() {
+        await initializeAirportData();
         loadTransferInfo();
         updateSummary();
         initializePreferences();
       });
+
+      // 공항 데이터 초기화
+      async function initializeAirportData() {
+        try {
+          await window.airportAPI.init();
+          console.log('✅ Airport data initialized');
+        } catch (error) {
+          console.error('❌ Failed to initialize airport data:', error);
+          showToast({ message: '공항 정보를 불러오는데 실패했습니다.', type: 'error' });
+        }
+      }
 
       // 환승 정보 로드
       function loadTransferInfo() {
@@ -277,20 +291,20 @@
       }
 
       // POI 선택 단계로 이동
-      function nextToPOISelection() {
+      async function nextToPOISelection() {
         if (selectedPreferences.length === 0) return;
         
         currentStep = 'poi-selection';
         document.getElementById('preferences-step').style.display = 'none';
         document.getElementById('poi-selection-step').style.display = 'block';
         
-        initializePOISelection();
+        await initializePOISelection();
       }
 
       // POI 선택 초기화
-      function initializePOISelection() {
+      async function initializePOISelection() {
         generateFilterButtons();
-        generatePOICards();
+        await generatePOICards();
         updatePOINextButton();
       }
 
@@ -327,62 +341,142 @@
         return labels[category] || category;
       }
 
-      // POI 카드 생성 (임시 데이터)
-      function generatePOICards() {
+      // POI 카드 생성 (실제 공항 데이터)
+      async function generatePOICards() {
         const container = document.getElementById('poi-grid');
-        container.innerHTML = '';
+        container.innerHTML = '<div class="loading">공항 시설을 불러오는 중...</div>';
         
-        // 임시 POI 데이터
-        const samplePOIs = [
-          { id: 1, name: '면세점 A', category: 'shopping', description: '브랜드 면세점', estimatedTime: 60 },
-          { id: 2, name: '공항 카페', category: 'food', description: '로컬 커피 전문점', estimatedTime: 30 },
-          { id: 3, name: '문화 전시관', category: 'culture', description: '한국 전통 문화 체험', estimatedTime: 45 },
-          { id: 4, name: '스파 & 마사지', category: 'relax', description: '공항 내 휴식 공간', estimatedTime: 90 },
-          { id: 5, name: '게임존', category: 'entertainment', description: 'VR 게임 체험', estimatedTime: 30 },
-          { id: 6, name: '은행 ATM', category: 'services', description: '환전 및 현금 인출', estimatedTime: 15 }
-        ];
-        
-        samplePOIs.forEach(poi => {
-          if (selectedPreferences.includes(poi.category) || selectedPreferences.length === 0) {
-            const card = createPOICard(poi);
-            container.appendChild(card);
+        try {
+          // 추천 시설 조회
+          const facilities = await window.airportAPI.getRecommendedFacilities('SIN', 20);
+          
+          if (facilities.length === 0) {
+            container.innerHTML = '<div class="no-data">표시할 시설이 없습니다.</div>';
+            return;
           }
-        });
+
+          // 카테고리 필터링 적용
+          const filteredFacilities = facilities.filter(facility => {
+            if (selectedPreferences.length === 0) return true;
+            
+            // 카테고리 매핑
+            const categoryMapping = {
+              'shopping': ['Fashion', 'Beauty', 'Beverage', 'Snack', 'Duty_free', 'Entertainment'],
+              'food': ['Meal', 'Cafe', 'Dessert'],
+              'culture': ['Attraction'],
+              'relax': ['Lounge', 'Rest', 'Hotel'],
+              'entertainment': ['Attraction', 'Entertainment'],
+              'services': ['Duty_free']
+            };
+            
+            return selectedPreferences.some(pref => {
+              const mappedCategories = categoryMapping[pref] || [];
+              return mappedCategories.includes(facility.type);
+            });
+          });
+
+          container.innerHTML = '';
+          
+          filteredFacilities.forEach(facility => {
+            const card = createPOICard(facility);
+            container.appendChild(card);
+          });
+
+        } catch (error) {
+          console.error('❌ Failed to load POI cards:', error);
+          container.innerHTML = '<div class="error">시설 정보를 불러오는데 실패했습니다.</div>';
+          showToast({ message: '시설 정보를 불러오는데 실패했습니다.', type: 'error' });
+        }
       }
 
       // POI 카드 생성
-      function createPOICard(poi) {
+      function createPOICard(facility) {
         const card = document.createElement('div');
         card.className = 'poi-card';
-        card.dataset.poiId = poi.id;
-        card.dataset.category = poi.category;
+        card.dataset.poiId = facility.id;
+        card.dataset.table = facility.table_name;
+        card.dataset.category = facility.type;
+        
+        const nameField = window.airportAPI.getNameField(facility.table_name);
+        const facilityName = facility[nameField] || '이름 없음';
+        const operatingStatus = window.airportAPI.getFacilityOperatingStatus(facility);
+        
+        // 예상 소요시간 계산 (카테고리별 기본값)
+        const estimatedTime = getEstimatedTime(facility.type);
         
         card.innerHTML = `
-          <div class="poi-header">
-            <h4>${poi.name}</h4>
-            <span class="poi-category">${getCategoryLabel(poi.category)}</span>
+          <div class="poi-image">
+            <img src="${facility.image_url || 'https://via.placeholder.com/200x150'}" 
+                 alt="${facilityName}" 
+                 loading="lazy"
+                 onerror="this.src='https://via.placeholder.com/200x150'">
+            <div class="poi-category">${facility.type || '기타'}</div>
+            <div class="poi-status ${operatingStatus.statusClass}">
+              ${operatingStatus.statusText}
+            </div>
           </div>
-          <p class="poi-description">${poi.description}</p>
-          <div class="poi-footer">
-            <span class="estimated-time">예상 소요시간: ${poi.estimatedTime}분</span>
-            <button class="btn btn--small" onclick="togglePOI(${poi.id})">선택</button>
+          <div class="poi-content">
+            <div class="poi-header">
+              <h4>${facilityName}</h4>
+              <span class="poi-category">${getCategoryLabel(facility.type)}</span>
+            </div>
+            <p class="poi-location">${facility.location || '위치 정보 없음'}</p>
+            <p class="poi-description">${facility.information ? facility.information.substring(0, 100) + '...' : '설명 없음'}</p>
+            <div class="poi-hours">
+              <small>${operatingStatus.businessHours || '운영시간 정보 없음'}</small>
+            </div>
+            <div class="poi-footer">
+              <span class="estimated-time">예상 소요시간: ${estimatedTime}분</span>
+              <button class="btn btn--small ${operatingStatus.isOperating ? '' : 'btn--disabled'}" 
+                      onclick="togglePOI('${facility.id}', '${facility.table_name}')"
+                      ${operatingStatus.isOperating ? '' : 'disabled'}>
+                ${operatingStatus.isOperating ? '선택' : '영업 종료'}
+              </button>
+            </div>
           </div>
         `;
         
         return card;
       }
 
+      // 카테고리별 예상 소요시간 계산
+      function getEstimatedTime(category) {
+        const timeMapping = {
+          'Lounge': 120,
+          'Rest': 60,
+          'Hotel': 180,
+          'Attraction': 45,
+          'Meal': 60,
+          'Cafe': 30,
+          'Dessert': 20,
+          'Fashion': 45,
+          'Beauty': 30,
+          'Beverage': 15,
+          'Snack': 20,
+          'Duty_free': 30,
+          'Entertainment': 60,
+          'FoodSpot': 90,
+          'paid_tour': 180,
+          'free_tour': 150
+        };
+        
+        return timeMapping[category] || 30;
+      }
+
       // POI 토글
-      function togglePOI(poiId) {
+      function togglePOI(poiId, tableName) {
         const card = document.querySelector(`[data-poi-id="${poiId}"]`);
         const button = card.querySelector('button');
         
-        if (selectedPOIs.includes(poiId)) {
-          selectedPOIs = selectedPOIs.filter(id => id !== poiId);
+        // POI ID와 테이블명을 조합한 고유 키 생성
+        const uniqueKey = `${poiId}_${tableName}`;
+        
+        if (selectedPOIs.includes(uniqueKey)) {
+          selectedPOIs = selectedPOIs.filter(key => key !== uniqueKey);
           card.classList.remove('selected');
           button.textContent = '선택';
         } else {
-          selectedPOIs.push(poiId);
+          selectedPOIs.push(uniqueKey);
           card.classList.add('selected');
           button.textContent = '선택됨';
         }
@@ -392,7 +486,7 @@
       }
 
       // 선택된 POI 목록 업데이트
-      function updateSelectedPOIsList() {
+      async function updateSelectedPOIsList() {
         const container = document.getElementById('selected-list');
         
         if (selectedPOIs.length === 0) {
@@ -400,23 +494,38 @@
           return;
         }
         
-        container.innerHTML = selectedPOIs.map(poiId => {
-          const card = document.querySelector(`[data-poi-id="${poiId}"]`);
-          const name = card.querySelector('h4').textContent;
-          const category = card.querySelector('.poi-category').textContent;
-          const time = card.querySelector('.estimated-time').textContent;
+        try {
+          const selectedItems = await Promise.all(
+            selectedPOIs.map(async (uniqueKey) => {
+              const [poiId, tableName] = uniqueKey.split('_');
+              const facility = await window.airportAPI.getFacilityDetails(poiId, tableName);
+              
+              if (!facility) return null;
+              
+              const nameField = window.airportAPI.getNameField(tableName);
+              const facilityName = facility[nameField] || '이름 없음';
+              const operatingStatus = window.airportAPI.getFacilityOperatingStatus(facility);
+              const estimatedTime = getEstimatedTime(facility.type);
+              
+              return `
+                <div class="selected-poi-item">
+                  <div class="poi-info">
+                    <h5>${facilityName}</h5>
+                    <span class="poi-category">${facility.type || '기타'}</span>
+                    <span class="poi-status ${operatingStatus.statusClass}">${operatingStatus.statusText}</span>
+                  </div>
+                  <div class="poi-time">예상 소요시간: ${estimatedTime}분</div>
+                  <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}', '${tableName}')">제거</button>
+                </div>
+              `;
+            })
+          );
           
-          return `
-            <div class="selected-poi-item">
-              <div class="poi-info">
-                <h5>${name}</h5>
-                <span class="poi-category">${category}</span>
-              </div>
-              <div class="poi-time">${time}</div>
-              <button class="btn btn--small btn--ghost" onclick="togglePOI(${poiId})">제거</button>
-            </div>
-          `;
-        }).join('');
+          container.innerHTML = selectedItems.filter(item => item !== null).join('');
+        } catch (error) {
+          console.error('❌ Failed to update selected POIs list:', error);
+          container.innerHTML = '<p class="error-message">선택된 시설 정보를 불러오는데 실패했습니다.</p>';
+        }
       }
 
       // POI 다음 버튼 업데이트
