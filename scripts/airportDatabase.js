@@ -441,5 +441,3 @@ class AirportDatabase {
 
 // 전역 인스턴스 생성
 window.airportDB = new AirportDatabase();
-
-export default AirportDatabase;

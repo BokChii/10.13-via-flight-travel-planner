@@ -3,7 +3,7 @@
  * 공항 데이터베이스와 연동하여 공항 정보를 제공하는 API 서비스
  */
 
-import { airportDB } from './airportDatabase.js';
+// airportDB는 전역에서 사용 가능
 
 class AirportAPIService {
   constructor() {
@@ -17,7 +17,7 @@ class AirportAPIService {
     if (this.isInitialized) return;
     
     try {
-      await airportDB.init();
+      await window.airportDB.init();
       this.isInitialized = true;
       console.log('✅ Airport API Service initialized');
     } catch (error) {
@@ -54,7 +54,7 @@ class AirportAPIService {
     // 각 카테고리별 시설 수 조회
     for (const category of categories) {
       try {
-        const facilities = await airportDB.getFacilitiesByCategory(airportId, category.id);
+        const facilities = await window.airportDB.getFacilitiesByCategory(airportId, category.id);
         category.count = facilities.length;
         category.hasFacilities = facilities.length > 0;
       } catch (error) {
@@ -80,7 +80,7 @@ class AirportAPIService {
       sortBy = 'name'
     } = options;
 
-    let facilities = await airportDB.getFacilitiesByCategory(airportId, category);
+    let facilities = await window.airportDB.getFacilitiesByCategory(airportId, category);
 
     // 검색어 필터링
     if (searchTerm) {
@@ -94,7 +94,7 @@ class AirportAPIService {
     // 운영 중인 시설만 필터링
     if (!includeClosed) {
       facilities = facilities.filter(facility => 
-        airportDB.isFacilityOperating(facility)
+        window.airportDB.isFacilityOperating(facility)
       );
     }
 
@@ -115,7 +115,7 @@ class AirportAPIService {
   async getFacilityDetails(facilityId, tableName) {
     await this.init();
 
-    const result = airportDB.db.exec(
+    const result = window.airportDB.db.exec(
       `SELECT * FROM ${tableName} WHERE id = ?`,
       [facilityId]
     );
@@ -140,7 +140,7 @@ class AirportAPIService {
    */
   async getAirportInfo(airportId = 'SIN') {
     await this.init();
-    return await airportDB.getAirportInfo(airportId);
+    return await window.airportDB.getAirportInfo(airportId);
   }
 
   /**
@@ -155,7 +155,7 @@ class AirportAPIService {
       limit = 20
     } = options;
 
-    let facilities = await airportDB.searchFacilities(airportId, searchTerm);
+    let facilities = await window.airportDB.searchFacilities(airportId, searchTerm);
 
     // 카테고리 필터링
     if (categories && categories.length > 0) {
@@ -167,7 +167,7 @@ class AirportAPIService {
     // 운영 중인 시설만 필터링
     if (!includeClosed) {
       facilities = facilities.filter(facility => 
-        airportDB.isFacilityOperating(facility)
+        window.airportDB.isFacilityOperating(facility)
       );
     }
 
@@ -204,7 +204,7 @@ class AirportAPIService {
   async getFacilitiesByOperatingHours(airportId, timeRange) {
     await this.init();
 
-    const allFacilities = await airportDB.getAirportFacilities(airportId);
+    const allFacilities = await window.airportDB.getAirportFacilities(airportId);
     const filteredFacilities = [];
 
     for (const facility of allFacilities) {
@@ -286,7 +286,7 @@ class AirportAPIService {
    * 시설 운영 상태 정보 반환
    */
   getFacilityOperatingStatus(facility) {
-    const isOperating = airportDB.isFacilityOperating(facility);
+    const isOperating = window.airportDB.isFacilityOperating(facility);
     const openTime = facility.open_time;
     const closeTime = facility.close_time;
     const businessHours = facility.business_hours;
@@ -304,5 +304,3 @@ class AirportAPIService {
 
 // 전역 인스턴스 생성
 window.airportAPI = new AirportAPIService();
-
-export default AirportAPIService;

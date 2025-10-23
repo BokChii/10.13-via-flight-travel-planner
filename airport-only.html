@@ -205,6 +205,7 @@
     <script type="module" src="scripts/router.js"></script>
     <script src="scripts/airportDatabase.js"></script>
     <script src="scripts/airportAPI.js"></script>
+    <script src="scripts/toast.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -236,15 +237,31 @@
         const state = window.getAppState();
         if (state.transferInfo) {
           transferInfo = state.transferInfo;
+          console.log('✅ Transfer info loaded:', transferInfo);
+        } else {
+          console.warn('⚠️ No transfer info found in state');
         }
       }
 
       // 요약 정보 업데이트
       function updateSummary() {
-        if (!transferInfo) return;
+        if (!transferInfo) {
+          console.warn('⚠️ No transfer info available for summary');
+          return;
+        }
 
-        document.getElementById('summary-city').textContent = transferInfo.city;
-        document.getElementById('summary-duration').textContent = formatDuration(transferInfo.duration);
+        console.log('📊 Updating summary with transfer info:', transferInfo);
+
+        const cityElement = document.getElementById('summary-city');
+        const durationElement = document.getElementById('summary-duration');
+        
+        if (cityElement) {
+          cityElement.textContent = transferInfo.city || '정보 없음';
+        }
+        
+        if (durationElement) {
+          durationElement.textContent = formatDuration(transferInfo.duration);
+        }
       }
 
       // 시간 포맷팅
