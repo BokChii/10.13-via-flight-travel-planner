@@ -33,8 +33,14 @@ jobs:
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
-          npm install
-          npm run prepare
+          # 정적 파일들을 dist 폴더로 복사
+          mkdir -p dist
+          cp -r *.html dist/
+          cp -r scripts dist/
+          cp -r styles dist/
+          cp -r data dist/
+          cp -r tools dist/
+          cp -r assets dist/ 2>/dev/null || true
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
