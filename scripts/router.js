@@ -10,6 +10,7 @@ class ViaFlightRouter {
       '/airport-main': 'airport-main.html',
       '/airport-only': 'airport-only.html',
       '/airport-external': 'airport-external.html',
+      '/trip-summary': 'trip-summary.html',
       '/navigation': 'navigation.html'
     };
     
@@ -126,7 +127,8 @@ class ViaFlightRouter {
       'airport-main.html': 'transfer-info.html',
       'airport-only.html': 'airport-main.html',
       'airport-external.html': 'airport-main.html',
-      'navigation.html': 'landing.html'
+      'trip-summary.html': 'landing.html',
+      'navigation.html': 'trip-summary.html'
     };
     
     const backPage = backRoutes[this.currentPage];
@@ -193,6 +195,7 @@ class ViaFlightRouter {
       'airport-main.html': ['transferInfo'],
       'airport-only.html': ['transferInfo', 'userChoice'],
       'airport-external.html': ['transferInfo', 'userChoice'],
+      'trip-summary.html': ['schedule'],
       'navigation.html': ['schedule']
     };
     
@@ -325,6 +328,26 @@ window.initAirportOnlyPage = () => {
   }
 };
 
+window.initAirportExternalPage = () => {
+  console.log('Airport External Page 초기화');
+  const state = window.viaFlightRouter.getState();
+  if (!state.transferInfo || state.userChoice !== 'airport-external') {
+    console.warn('잘못된 접근입니다. Airport Main 페이지로 이동합니다.');
+    window.viaFlightRouter.navigate('/airport-main');
+    return;
+  }
+};
+
+window.initTripSummaryPage = () => {
+  console.log('Trip Summary Page 초기화');
+  const state = window.viaFlightRouter.getState();
+  if (!state.schedule) {
+    console.warn('일정 정보가 없습니다. 홈으로 이동합니다.');
+    window.viaFlightRouter.goHome();
+    return;
+  }
+};
+
 window.initNavigationPage = () => {
   console.log('Navigation Page 초기화');
   const state = window.viaFlightRouter.getState();
@@ -351,6 +374,12 @@ document.addEventListener('DOMContentLoaded', function() {
       break;
     case 'airport-only.html':
       window.initAirportOnlyPage();
+      break;
+    case 'airport-external.html':
+      window.initAirportExternalPage();
+      break;
+    case 'trip-summary.html':
+      window.initTripSummaryPage();
       break;
     case 'navigation.html':
       window.initNavigationPage();

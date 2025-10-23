@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <title>여행 일정 요약 - Via Flight</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/pages/trip-summary.css" />
+    <link rel="stylesheet" href="styles/components/buttons.css" />
+    <link rel="stylesheet" href="styles/components/cards.css" />
+    <link rel="stylesheet" href="styles/components/forms.css" />
+  </head>
+  <body class="app trip-summary-page">
+    <header class="app-header">
+      <h1>Via Flight</h1>
+      <p class="tagline">여행 일정 요약</p>
+      <nav class="breadcrumb">
+        <a href="landing.html" class="breadcrumb__link">← 홈으로</a>
+      </nav>
+    </header>
+
+    <main class="trip-summary-main">
+      <!-- Transfer Summary -->
+      <section class="transfer-summary">
+        <div class="summary-card">
+          <h2 class="summary-title">여행 정보</h2>
+          <div class="summary-content">
+            <div class="summary-item">
+              <span class="summary-label">경유 도시</span>
+              <span class="summary-value" id="summary-city">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">환승 시간</span>
+              <span class="summary-value" id="summary-duration">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">도착 시간</span>
+              <span class="summary-value" id="summary-arrival">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">출발 시간</span>
+              <span class="summary-value" id="summary-departure">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">여행 스타일</span>
+              <span class="summary-value" id="summary-style">-</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schedule Overview -->
+      <section class="schedule-overview">
+        <div class="overview-container">
+          <h2 class="overview-title">전체 일정</h2>
+          <p class="overview-description">
+            선택하신 장소들로 구성된 최적의 여행 일정입니다.
+          </p>
+
+          <div class="schedule-sections" id="schedule-sections">
+            <!-- 동적으로 생성됨 -->
+          </div>
+
+          <div class="schedule-stats">
+            <div class="stat-card">
+              <div class="stat-icon">📍</div>
+              <div class="stat-content">
+                <div class="stat-number" id="total-locations">0</div>
+                <div class="stat-label">방문 장소</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">⏱️</div>
+              <div class="stat-content">
+                <div class="stat-number" id="total-time">0분</div>
+                <div class="stat-label">총 소요시간</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🚶</div>
+              <div class="stat-content">
+                <div class="stat-number" id="walking-time">0분</div>
+                <div class="stat-label">이동시간</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tips and Recommendations -->
+      <section class="tips-section">
+        <div class="tips-container">
+          <h2 class="tips-title">💡 여행 팁</h2>
+          <div class="tips-grid" id="tips-grid">
+            <!-- 동적으로 생성됨 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Action Buttons -->
+      <section class="action-section">
+        <div class="action-container">
+          <div class="action-buttons">
+            <button class="btn btn--ghost" onclick="editSchedule()">
+              일정 수정하기
+            </button>
+            <button class="btn btn--primary" onclick="startNavigation()">
+              네비게이션 시작
+            </button>
+          </div>
+          
+          <div class="share-section">
+            <h3>일정 공유하기</h3>
+            <div class="share-buttons">
+              <button class="btn btn--small btn--ghost" onclick="shareSchedule('link')">
+                링크 공유
+              </button>
+              <button class="btn btn--small btn--ghost" onclick="shareSchedule('image')">
+                이미지 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="scripts/router.js"></script>
+    <script>
+      // 전역 상태
+      let scheduleData = null;
+      let transferInfo = null;
+
+      // 페이지 로드 시 초기화
+      document.addEventListener('DOMContentLoaded', function() {
+        loadScheduleData();
+        updateSummary();
+        generateScheduleOverview();
+        updateStats();
+        generateTips();
+      });
+
+      // 일정 데이터 로드
+      function loadScheduleData() {
+        const state = window.getAppState();
+        if (state.schedule) {
+          scheduleData = state.schedule;
+          transferInfo = state.schedule.transferInfo;
+        } else {
+          // 기본값 설정 (테스트용)
+          scheduleData = {
+            transferInfo: {
+              city: '서울',
+              arrival: new Date(),
+              departure: new Date(Date.now() + 4 * 60 * 60 * 1000),
+              duration: 4 * 60 * 60 * 1000
+            },
+            type: 'airport-only',
+            airportPOIs: [1, 2, 3],
+            cityPOIs: []
+          };
+          transferInfo = scheduleData.transferInfo;
+        }
+      }
+
+      // 요약 정보 업데이트
+      function updateSummary() {
+        if (!transferInfo) return;
+
+        document.getElementById('summary-city').textContent = transferInfo.city;
+        document.getElementById('summary-duration').textContent = formatDuration(transferInfo.duration);
+        document.getElementById('summary-arrival').textContent = formatDateTime(transferInfo.arrival);
+        document.getElementById('summary-departure').textContent = formatDateTime(transferInfo.departure);
+        
+        const styleText = scheduleData.type === 'airport-only' ? '공항 내부만' : '공항 + 도시';
+        document.getElementById('summary-style').textContent = styleText;
+      }
+
+      // 시간 포맷팅
+      function formatDuration(durationMs) {
+        const hours = Math.floor(durationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let result = '';
+        if (hours > 0) result += `${hours}시간`;
+        if (minutes > 0) result += ` ${minutes}분`;
+        
+        return result || '0분';
+      }
+
+      // 날짜 시간 포맷팅
+      function formatDateTime(date) {
+        if (!date) return '-';
+        
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        
+        return `${year}.${month}.${day} ${hours}:${minutes}`;
+      }
+
+      // 일정 개요 생성
+      function generateScheduleOverview() {
+        const container = document.getElementById('schedule-sections');
+        container.innerHTML = '';
+
+        if (scheduleData.type === 'airport-only') {
+          generateAirportOnlySchedule(container);
+        } else if (scheduleData.type === 'airport-external') {
+          generateAirportExternalSchedule(container);
+        }
+      }
+
+      // 공항 내부만 일정 생성
+      function generateAirportOnlySchedule(container) {
+        const section = document.createElement('div');
+        section.className = 'schedule-section airport-section';
+        
+        section.innerHTML = `
+          <h3>🏢 공항 내부 일정</h3>
+          <div class="timeline" id="airport-timeline">
+            ${generateTimelineItems(scheduleData.airportPOIs || [], 'airport')}
+          </div>
+        `;
+        
+        container.appendChild(section);
+      }
+
+      // 공항 + 도시 일정 생성
+      function generateAirportExternalSchedule(container) {
+        // 공항 내부 섹션
+        const airportSection = document.createElement('div');
+        airportSection.className = 'schedule-section airport-section';
+        
+        airportSection.innerHTML = `
+          <h3>🏢 공항 내부 일정</h3>
+          <div class="timeline" id="airport-timeline">
+            ${generateTimelineItems(scheduleData.airportPOIs || [], 'airport')}
+          </div>
+        `;
+        
+        container.appendChild(airportSection);
+
+        // 도시 섹션
+        const citySection = document.createElement('div');
+        citySection.className = 'schedule-section city-section';
+        
+        citySection.innerHTML = `
+          <h3>🏙️ 도시 탐방 일정</h3>
+          <div class="timeline" id="city-timeline">
+            ${generateTimelineItems(scheduleData.cityPOIs || [], 'city')}
+          </div>
+        `;
+        
+        container.appendChild(citySection);
+      }
+
+      // 타임라인 아이템 생성
+      function generateTimelineItems(poiIds, type) {
+        if (!poiIds || poiIds.length === 0) {
+          return '<p class="empty-timeline">선택된 장소가 없습니다.</p>';
+        }
+
+        // 임시 POI 데이터
+        const samplePOIs = {
+          airport: [
+            { id: 1, name: '면세점 A', category: '쇼핑', estimatedTime: 60 },
+            { id: 2, name: '공항 카페', category: '음식', estimatedTime: 30 },
+            { id: 3, name: '문화 전시관', category: '문화체험', estimatedTime: 45 },
+            { id: 4, name: '스파 & 마사지', category: '휴식', estimatedTime: 90 },
+            { id: 5, name: '게임존', category: '엔터테인먼트', estimatedTime: 30 },
+            { id: 6, name: '은행 ATM', category: '편의시설', estimatedTime: 15 }
+          ],
+          city: [
+            { id: 101, name: '도시 랜드마크', category: '관광명소', estimatedTime: 120 },
+            { id: 102, name: '로컬 시장', category: '쇼핑', estimatedTime: 90 },
+            { id: 103, name: '전통 맛집', category: '음식', estimatedTime: 60 },
+            { id: 104, name: '박물관', category: '문화체험', estimatedTime: 90 },
+            { id: 105, name: '중앙 공원', category: '자연', estimatedTime: 60 },
+            { id: 106, name: '야경 전망대', category: '야경/야생활', estimatedTime: 45 }
+          ]
+        };
+
+        const arrivalTime = new Date(transferInfo.arrival);
+        let currentTime = new Date(arrivalTime);
+        
+        // 도시 일정의 경우 공항 내부 일정 후 시작
+        if (type === 'city') {
+          currentTime.setHours(currentTime.getHours() + 2);
+        }
+
+        return poiIds.map(poiId => {
+          const poi = samplePOIs[type].find(p => p.id === poiId);
+          if (!poi) return '';
+
+          const startTime = new Date(currentTime);
+          const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
+          
+          const timelineItem = `
+            <div class="timeline-item">
+              <div class="timeline-time">
+                <span class="start-time">${formatTime(startTime)}</span>
+                <span class="end-time">${formatTime(endTime)}</span>
+              </div>
+              <div class="timeline-content">
+                <h4>${poi.name}</h4>
+                <span class="timeline-category">${poi.category}</span>
+                <p>${poi.estimatedTime}분 체류</p>
+              </div>
+            </div>
+          `;
+          
+          currentTime = endTime;
+          return timelineItem;
+        }).join('');
+      }
+
+      // 시간 포맷팅 (HH:MM)
+      function formatTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+
+      // 통계 업데이트
+      function updateStats() {
+        const airportCount = scheduleData.airportPOIs ? scheduleData.airportPOIs.length : 0;
+        const cityCount = scheduleData.cityPOIs ? scheduleData.cityPOIs.length : 0;
+        const totalLocations = airportCount + cityCount;
+        
+        document.getElementById('total-locations').textContent = totalLocations;
+
+        // 총 소요시간 계산 (임시)
+        const totalTime = totalLocations * 60; // 평균 60분씩
+        document.getElementById('total-time').textContent = `${totalTime}분`;
+
+        // 이동시간 계산 (임시)
+        const walkingTime = Math.max(0, totalLocations - 1) * 15; // 장소 간 이동 15분씩
+        document.getElementById('walking-time').textContent = `${walkingTime}분`;
+      }
+
+      // 팁 생성
+      function generateTips() {
+        const container = document.getElementById('tips-grid');
+        const tips = getTipsForSchedule(scheduleData);
+        
+        container.innerHTML = tips.map(tip => `
+          <div class="tip-card">
+            <div class="tip-icon">${tip.icon}</div>
+            <h4>${tip.title}</h4>
+            <p>${tip.description}</p>
+          </div>
+        `).join('');
+      }
+
+      // 일정에 따른 팁 가져오기
+      function getTipsForSchedule(schedule) {
+        const baseTips = [
+          {
+            icon: '🎒',
+            title: '짐 보관소',
+            description: '공항 내 짐 보관소를 이용하면 가벼운 쇼핑과 관광이 가능합니다.'
+          },
+          {
+            icon: '📶',
+            title: '무료 와이파이',
+            description: '공항 내 무료 와이파이를 연결하여 실시간 정보를 확인하세요.'
+          },
+          {
+            icon: '⏰',
+            title: '시간 관리',
+            description: '출발 시간을 고려하여 충분한 여유 시간을 확보하세요.'
+          }
+        ];
+
+        if (schedule.type === 'airport-external') {
+          baseTips.push(
+            {
+              icon: '🚇',
+              title: '교통편',
+              description: '공항에서 도시까지의 교통편을 미리 확인하고 시간을 고려하세요.'
+            },
+            {
+              icon: '🗺️',
+              title: '지도 앱',
+              description: '오프라인 지도를 다운로드하여 인터넷 없이도 길을 찾을 수 있습니다.'
+            }
+          );
+        }
+
+        return baseTips;
+      }
+
+      // 일정 수정하기
+      function editSchedule() {
+        if (scheduleData.type === 'airport-only') {
+          window.navigateTo('/airport-only');
+        } else {
+          window.navigateTo('/airport-external');
+        }
+      }
+
+      // 네비게이션 시작
+      function startNavigation() {
+        window.navigateTo('/navigation', { schedule: scheduleData });
+      }
+
+      // 일정 공유하기
+      function shareSchedule(type) {
+        if (type === 'link') {
+          // 링크 공유 로직
+          const shareUrl = window.location.origin + window.location.pathname;
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('링크가 클립보드에 복사되었습니다!');
+          });
+        } else if (type === 'image') {
+          // 이미지 저장 로직
+          alert('이미지 저장 기능은 준비 중입니다.');
+        }
+      }
+    </script>
+  </body>
+</html>
