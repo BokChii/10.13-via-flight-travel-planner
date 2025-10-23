@@ -1,0 +1,3 @@
+[33m924bfc3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m 오류 수정 - 모듈 시스템 문제 해결, showToast 함수 추가, 환승 정보 표시 개선
+[33md367dcc[m GitHub Pages 배포 수정 - index.html 추가 및 워크플로우 수정
+[33m72296d7[m 공항 정보 데이터베이스 통합 완료 - SQLite 데이터베이스 생성, API 서비스 구현, Airport Only 페이지 실제 데이터 연동
