@@ -1,0 +1,182 @@
+/* Enhanced Accessibility and Contrast Improvements */
+/* ========================================== */
+
+/* 텍스트 가독성 개선 */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+p, span, div {
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* 링크 색상 개선 */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* 폼 요소 가독성 개선 */
+input, textarea, select {
+  color: var(--color-text);
+  background-color: #ffffff;
+  border: 2px solid #e2e8f0;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  outline: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* 카드 및 패널 배경 개선 */
+.card, .panel, .modal-content {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* 버튼 대비 개선 */
+.btn {
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  border: 2px solid var(--color-primary);
+}
+
+.btn--primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+}
+
+.btn--ghost:hover {
+  background: var(--color-bg-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* 상태 표시 개선 */
+.status-open {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.status-closed {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.status-warning {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+/* 그림자 및 깊이감 개선 */
+.shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-md {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-lg {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 반응형 텍스트 크기 */
+@media (max-width: 768px) {
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.3rem; }
+  h4 { font-size: 1.1rem; }
+  
+  .btn {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.4rem; }
+  h3 { font-size: 1.2rem; }
+  
+  .btn {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text: #000000;
+    --color-text-secondary: #333333;
+    --color-border: #666666;
+    --color-primary: #0066cc;
+  }
+  
+  .btn--primary {
+    background: #0066cc;
+    border-color: #0066cc;
+  }
+  
+  .btn--ghost {
+    border-color: #000000;
+    color: #000000;
+  }
+}
+
+/* 다크 모드 개선 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text: #ffffff;
+    --color-text-secondary: #e2e8f0;
+    --color-text-light: #a0aec0;
+    --color-text-muted: #718096;
+    --color-bg: #1a202c;
+    --color-bg-light: #2d3748;
+    --color-border: #4a5568;
+    --color-border-light: #2d3748;
+  }
+  
+  .card, .panel, .modal-content {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  input, textarea, select {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #ffffff;
+  }
+  
+  input::placeholder, textarea::placeholder {
+    color: #a0aec0;
+  }
+}

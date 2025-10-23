@@ -98,7 +98,9 @@
               <label class="form-label">
                 <span class="label-text">환승 시간</span>
                 <div class="duration-display" id="duration-display">
-                  <span class="duration-text">시간을 입력하면 자동으로 계산됩니다</span>
+                  <div class="duration-content">
+                    <span class="duration-text">시간을 입력하면 자동으로 계산됩니다</span>
+                  </div>
                 </div>
                 <div class="input-hint">도착 시간과 출발 시간을 입력하면 자동으로 계산됩니다</div>
               </label>
@@ -203,13 +205,19 @@
           }
           
           durationDisplay.innerHTML = `
-            <span class="duration-value">${durationText}</span>
-            <span class="duration-label">환승 시간</span>
+            <div class="duration-content">
+              <span class="duration-value">${durationText}</span>
+              <span class="duration-label">환승 시간</span>
+            </div>
           `;
           
           validateForm();
         } else {
-          durationDisplay.innerHTML = '<span class="duration-text">시간을 입력하면 자동으로 계산됩니다</span>';
+          durationDisplay.innerHTML = `
+            <div class="duration-content">
+              <span class="duration-text">시간을 입력하면 자동으로 계산됩니다</span>
+            </div>
+          `;
           nextButton.disabled = true;
         }
       }
