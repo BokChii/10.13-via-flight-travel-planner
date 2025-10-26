@@ -7,6 +7,7 @@
     <title>공항 밖 여행 일정 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/airport-external.css" />
+    <link rel="stylesheet" href="styles/pages/airport-only.css" />
     <link rel="stylesheet" href="styles/components/buttons.css" />
     <link rel="stylesheet" href="styles/components/cards.css" />
     <link rel="stylesheet" href="styles/components/forms.css" />
@@ -68,90 +69,88 @@
         </div>
       </section>
 
-      <!-- Step 3.1: Airport Preferences -->
-      <section class="preferences-step" id="preferences-step">
+      <!-- Step 3: Airport Preferences + POI Selection (통합) -->
+      <section class="preferences-poi-step" id="preferences-poi-step">
         <div class="step-container">
           <h2 class="step-title">공항 내부에서 어떤 것을 좋아하시나요?</h2>
           <p class="step-description">
-            공항 내부에서 관심 있는 카테고리를 선택해주세요.<br>
-            선택한 카테고리에 맞는 장소들을 추천해드립니다.
+            관심 있는 카테고리를 선택하고<br>
+            방문하고 싶은 장소를 선택해주세요.
           </p>
 
-          <div class="preference-cards">
-            <button class="preference-card" data-category="shopping" onclick="togglePreference('shopping')">
-              <div class="preference-icon">🛍️</div>
-              <h3>쇼핑</h3>
-              <p>면세점, 기념품, 브랜드샵</p>
-            </button>
-            <button class="preference-card" data-category="food" onclick="togglePreference('food')">
-              <div class="preference-icon">🍽️</div>
-              <h3>음식</h3>
-              <p>공항 맛집, 카페, 바</p>
-            </button>
-            <button class="preference-card" data-category="culture" onclick="togglePreference('culture')">
-              <div class="preference-icon">🎨</div>
-              <h3>문화체험</h3>
-              <p>박물관, 갤러리, 전시</p>
-            </button>
-            <button class="preference-card" data-category="relax" onclick="togglePreference('relax')">
-              <div class="preference-icon">💆</div>
-              <h3>휴식</h3>
-              <p>스파, 마사지, 라운지</p>
-            </button>
-            <button class="preference-card" data-category="entertainment" onclick="togglePreference('entertainment')">
-              <div class="preference-icon">🎮</div>
-              <h3>엔터테인먼트</h3>
-              <p>게임, 영화, 라이브 공연</p>
-            </button>
-            <button class="preference-card" data-category="services" onclick="togglePreference('services')">
-              <div class="preference-icon">🏪</div>
-              <h3>편의시설</h3>
-              <p>은행, 약국, 짐보관소</p>
-            </button>
+          <!-- 카테고리 선택 섹션 -->
+          <div class="preferences-section">
+            <h3 class="section-title">카테고리 선택</h3>
+            <div class="preference-cards">
+              <button class="preference-card" data-table="rests_db_frame">
+                <div class="preference-icon">💆</div>
+                <h3>휴식 & 라운지</h3>
+                <p>라운지, 휴식공간, 호텔</p>
+              </button>
+              <button class="preference-card" data-table="meal_options_db_frame">
+                <div class="preference-icon">🍽️</div>
+                <h3>식사 & 음료</h3>
+                <p>식당, 카페, 디저트</p>
+              </button>
+              <button class="preference-card" data-table="shopping_options_db_frame">
+                <div class="preference-icon">🛍️</div>
+                <h3>쇼핑 & 면세</h3>
+                <p>면세점, 브랜드샵, 기념품</p>
+              </button>
+              <button class="preference-card" data-table="airport_events_db_frame">
+                <div class="preference-icon">🎮</div>
+                <h3>체험 & 이벤트</h3>
+                <p>문화체험, 엔터테인먼트</p>
+              </button>
+            </div>
           </div>
 
-          <div class="step-actions">
-            <button class="btn btn--primary" onclick="nextToAirportPOISelection()" id="preferences-next" disabled>
-              다음 단계로
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Step 3.2: Airport POI Selection -->
-      <section class="poi-selection-step" id="airport-poi-step" style="display: none;">
-        <div class="step-container">
-          <h2 class="step-title">공항 내부 방문할 장소를 선택해주세요</h2>
-          <p class="step-description">
-            선택한 카테고리의 추천 장소들을 확인하고<br>
-            공항 내부에서 방문하고 싶은 장소를 선택해주세요.
-          </p>
-
-          <div class="poi-selection-content">
+          <!-- POI 선택 섹션 -->
+          <div class="poi-selection-section" id="poi-selection-section" style="display: none;">
+            <h3 class="section-title">방문할 장소 선택</h3>
+            
+            <!-- 카테고리 필터 -->
             <div class="filters-section">
-              <h3>카테고리 필터</h3>
-              <div class="filter-buttons" id="airport-filter-buttons">
+              <h4>카테고리 필터</h4>
+              <div class="filter-buttons" id="filter-buttons">
                 <!-- 동적으로 생성됨 -->
               </div>
             </div>
 
-            <div class="poi-grid" id="airport-poi-grid">
-              <!-- POI 카드들이 동적으로 생성됨 -->
+            <!-- 좌우 분할 레이아웃 -->
+            <div class="poi-selection-layout">
+              <!-- 좌측: POI 리스트 -->
+              <div class="poi-list-container">
+                <div class="poi-list-header">
+                  <h4>장소 목록</h4>
+                </div>
+                <div class="poi-list" id="poi-list">
+                  <!-- POI 리스트 항목들이 동적으로 생성됨 -->
+                </div>
+              </div>
+
+              <!-- 우측: 상세 정보 패널 -->
+              <div class="poi-detail-container">
+                <!-- POI 상세 정보 -->
+                <div class="poi-detail-panel" id="poi-detail-panel">
+                  <div class="poi-detail-placeholder">
+                    <p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="selected-pois">
-              <h3>선택한 공항 내부 장소</h3>
-              <div class="selected-list" id="airport-selected-list">
+            <!-- 선택된 POI 목록 (화면 하단) -->
+            <div class="selected-pois-summary-bottom">
+              <h4>선택한 장소</h4>
+              <div class="selected-list" id="selected-list">
                 <p class="empty-message">아직 선택한 장소가 없습니다.</p>
               </div>
             </div>
           </div>
 
           <div class="step-actions">
-            <button class="btn btn--ghost" onclick="backToAirportPreferences()">
-              이전
-            </button>
-            <button class="btn btn--primary" onclick="nextToCityPreferences()" id="airport-poi-next" disabled>
+            <button class="btn btn--primary" onclick="nextToCityPreferences()" id="preferences-poi-next" disabled>
               도시 탐방으로
             </button>
           </div>
@@ -164,40 +163,54 @@
           <h2 class="step-title">도시에서 어떤 것을 좋아하시나요?</h2>
           <p class="step-description">
             도시 탐방에서 관심 있는 카테고리를 선택해주세요.<br>
-            선택한 카테고리에 맞는 도시 내 장소들을 추천해드립니다.
+            선택한 카테고리에 맞는 도시 내 장소들을 추천해드립니다. (최대 3개)
           </p>
 
           <div class="preference-cards">
-            <button class="preference-card" data-category="attractions" onclick="toggleCityPreference('attractions')">
-              <div class="preference-icon">🏛️</div>
-              <h3>관광명소</h3>
-              <p>랜드마크, 유적지, 전망대</p>
-            </button>
-            <button class="preference-card" data-category="shopping" onclick="toggleCityPreference('shopping')">
-              <div class="preference-icon">🛍️</div>
-              <h3>쇼핑</h3>
-              <p>상점가, 시장, 백화점</p>
-            </button>
-            <button class="preference-card" data-category="food" onclick="toggleCityPreference('food')">
+            <button class="preference-card" data-category="food">
               <div class="preference-icon">🍽️</div>
-              <h3>음식</h3>
-              <p>로컬 맛집, 카페, 바</p>
+              <h3>미식 & 로컬 맛집</h3>
+              <p>현지 맛집과 특색 있는 음식</p>
             </button>
-            <button class="preference-card" data-category="culture" onclick="toggleCityPreference('culture')">
-              <div class="preference-icon">🎨</div>
-              <h3>문화체험</h3>
-              <p>박물관, 갤러리, 공연</p>
+            <button class="preference-card" data-category="shopping">
+              <div class="preference-icon">🛍️</div>
+              <h3>쇼핑 & 기념품</h3>
+              <p>현지 상품과 기념품 쇼핑</p>
             </button>
-            <button class="preference-card" data-category="nature" onclick="toggleCityPreference('nature')">
-              <div class="preference-icon">🌳</div>
-              <h3>자연</h3>
-              <p>공원, 해변, 산책로</p>
+            <button class="preference-card" data-category="culture">
+              <div class="preference-icon">🏛️</div>
+              <h3>문화 & 역사</h3>
+              <p>박물관, 역사적 장소</p>
             </button>
-            <button class="preference-card" data-category="nightlife" onclick="toggleCityPreference('nightlife')">
-              <div class="preference-icon">🌃</div>
-              <h3>야경/야생활</h3>
-              <p>야경 명소, 클럽, 바</p>
+            <button class="preference-card" data-category="nature">
+              <div class="preference-icon">🌿</div>
+              <h3>자연 & 정원</h3>
+              <p>공원, 정원, 자연 경관</p>
             </button>
+            <button class="preference-card" data-category="view">
+              <div class="preference-icon">🌆</div>
+              <h3>전망 & 야경</h3>
+              <p>전망대, 야경 명소</p>
+            </button>
+          </div>
+
+          <!-- 기본 체류 시간 설정 -->
+          <div class="stay-time-section" style="margin-top: 2rem;">
+            <h4 style="margin-bottom: 1rem; color: var(--color-text);">장소별 기본 체류 시간</h4>
+            <div class="stay-time-input" style="display: flex; align-items: center; gap: 1rem;">
+              <div class="stay-time-slider" style="flex: 1;">
+                <input id="city-default-stay" type="range" min="20" max="240" step="5" value="60" class="stay-slider" style="width: 100%;" />
+                <div class="stay-time-labels" style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                  <span style="font-size: 0.875rem; color: var(--color-text-secondary);">20분</span>
+                  <span style="font-size: 0.875rem; color: var(--color-text-secondary);">240분</span>
+                </div>
+              </div>
+              <div class="stay-time-display" style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="number" id="city-stay-number" min="20" max="240" step="5" value="60" style="width: 80px; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 4px;" />
+                <span style="color: var(--color-text-secondary);">분</span>
+              </div>
+            </div>
+            <small style="display: block; margin-top: 0.5rem; color: var(--color-text-muted); font-size: 0.875rem;">각 장소에서 보낼 예상 시간입니다</small>
           </div>
 
           <div class="step-actions">
@@ -251,10 +264,68 @@
         </div>
       </section>
 
-      <!-- Step 3.5: Schedule Summary -->
-      <section class="schedule-step" id="schedule-step" style="display: none;">
+      <!-- Step 3.2: Airport Schedule Summary -->
+      <section class="schedule-step" id="airport-schedule-step" style="display: none;">
         <div class="step-container">
-          <h2 class="step-title">공항 + 도시 여행 일정 완성!</h2>
+          <h2 class="step-title">공항 내부 일정 완성!</h2>
+          <p class="step-description">
+            선택한 장소들로 최적의 일정을 만들어드렸습니다.<br>
+            일정을 확인하고 다음 단계로 진행해주세요.
+          </p>
+
+          <!-- 공항 팁 섹션 (상단) -->
+          <div class="tips-section">
+            <h3>💡 공항 팁</h3>
+            <div class="tips-grid">
+              <div class="tip-card">
+                <div class="tip-icon">🎒</div>
+                <h4>짐 보관소</h4>
+                <p>공항 내 짐 보관소를 이용하면 가벼운 쇼핑과 관광이 가능합니다.</p>
+              </div>
+              <div class="tip-card">
+                <div class="tip-icon">📶</div>
+                <h4>무료 와이파이</h4>
+                <p>공항 내 무료 와이파이를 연결하여 실시간 정보를 확인하세요.</p>
+              </div>
+              <div class="tip-card">
+                <div class="tip-icon">🛂</div>
+                <h4>보안 검색</h4>
+                <p>출발 2시간 전에는 보안 검색대가 혼잡할 수 있으니 미리 준비하세요.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 공항 내부 일정 (하단) -->
+          <div class="schedule-content">
+            <div class="schedule-header">
+              <h3>📅 공항 내부 일정</h3>
+            </div>
+            <div class="timeline" id="timeline">
+              <!-- 타임라인이 동적으로 생성됨 -->
+            </div>
+          </div>
+
+          <div class="step-actions">
+            <button class="btn btn--ghost" onclick="backToPOISelection()">
+              장소 다시 선택
+            </button>
+            <button class="btn btn--secondary" onclick="saveSchedule()">
+              💾 일정 저장
+            </button>
+            <button class="btn btn--secondary" onclick="shareSchedule()">
+              📤 일정 공유
+            </button>
+            <button class="btn btn--primary" onclick="goToCityPreferences()">
+              공항 외부 일정 구성하기
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 4: Full Schedule Summary -->
+      <section class="full-schedule-step" id="full-schedule-step" style="display: none;">
+        <div class="step-container">
+          <h2 class="step-title">전체 여행 일정 완성!</h2>
           <p class="step-description">
             공항 내부와 도시 탐방을 포함한 최적의 일정을 만들어드렸습니다.<br>
             일정을 확인하고 여행을 시작해보세요.
@@ -311,21 +382,33 @@
       </section>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/airportPOIService.js"></script>
+    <script type="module" src="scripts/cityPOIService.js"></script>
+    <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script src="scripts/sqliteClient.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
-      let selectedAirportPreferences = [];
-      let selectedAirportPOIs = [];
+      let selectedTable = null;
+      let selectedTypes = [];
+      let selectedPOIs = [];
+      let allPOIs = [];
+      let currentStep = 'preferences';
+      let expandedGroups = new Set();
+      let currentExpandedGroup = null;
+      
+      // City preferences
       let selectedCityPreferences = [];
       let selectedCityPOIs = [];
-      let currentStep = 'preferences';
 
       // 페이지 로드 시 초기화
       document.addEventListener('DOMContentLoaded', function() {
         loadTransferInfo();
         updateSummary();
-        initializeAirportPreferences();
+        initializePreferences();
       });
 
       // 환승 정보 로드
@@ -357,13 +440,385 @@
       }
 
       // 공항 선호도 초기화
-      function initializeAirportPreferences() {
-        const cards = document.querySelectorAll('#preferences-step .preference-card');
+      function initializePreferences() {
+        const cards = document.querySelectorAll('#preferences-poi-step .preference-card');
         cards.forEach(card => {
           card.addEventListener('click', function() {
-            togglePreference(this.dataset.category);
+            toggleTableSelection(this.dataset.table);
           });
         });
+      }
+
+      // 테이블 선택 토글
+      function toggleTableSelection(tableName) {
+        const card = document.querySelector(`[data-table="${tableName}"]`);
+        
+        if (selectedTable === tableName) {
+          selectedTable = null;
+          selectedTypes = [];
+          card.classList.remove('selected');
+        } else {
+          selectedTable = tableName;
+          selectedTypes = [];
+          document.querySelectorAll('.preference-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+        }
+        
+        togglePOISelectionSection();
+        updatePreferencesPOINextButton();
+      }
+
+      function updatePreferencesPOINextButton() {
+        const nextButton = document.getElementById('preferences-poi-next');
+        const hasTable = selectedTable !== null;
+        const hasSelectedPOIs = selectedPOIs.length > 0;
+        nextButton.disabled = !hasTable || !hasSelectedPOIs;
+      }
+
+      function togglePOISelectionSection() {
+        const poiSection = document.getElementById('poi-selection-section');
+        if (selectedTable !== null) {
+          poiSection.style.display = 'block';
+          initializePOISelection();
+        } else {
+          poiSection.style.display = 'none';
+        }
+      }
+
+      function initializePOISelection() {
+        generateFilterButtons();
+        generatePOIList();
+        updatePOINextButton();
+      }
+
+      function generateFilterButtons() {
+        const container = document.getElementById('filter-buttons');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        const allButton = document.createElement('button');
+        allButton.className = 'filter-btn active';
+        allButton.textContent = '전체';
+        allButton.dataset.type = 'all';
+        allButton.onclick = () => filterPOIs('all');
+        container.appendChild(allButton);
+        
+        if (selectedTable) {
+          getTableTypes(selectedTable).then(types => {
+            types.forEach(type => {
+              const existingButton = container.querySelector(`[data-type="${type}"]`);
+              if (!existingButton) {
+                const button = document.createElement('button');
+                button.className = 'filter-btn';
+                button.textContent = getTypeLabel(type);
+                button.dataset.type = type;
+                button.onclick = () => filterPOIs(type);
+                container.appendChild(button);
+              }
+            });
+          });
+        }
+      }
+
+      async function getTableTypes(tableName) {
+        try {
+          await window.sqliteClient.initialize();
+          const types = await window.sqliteClient.getTableTypes(tableName);
+          return types;
+        } catch (error) {
+          console.error('테이블 타입 조회 실패:', error);
+          return [];
+        }
+      }
+
+      function getTypeLabel(type) {
+        const labels = {
+          'Lounge': '라운지', 'Rest': '휴식공간', 'Hotel': '호텔',
+          'Meal': '식당', 'Cafe': '카페', 'Dessert': '디저트',
+          'Fashion': '패션', 'Beauty': '뷰티', 'Beverage': '음료',
+          'Snack': '스낵', 'Duty_free': '면세점',
+          'Attraction': '관광명소', 'Entertainment': '엔터테인먼트'
+        };
+        return labels[type] || type;
+      }
+
+      async function generatePOIList() {
+        selectedTypes = [];
+        await loadPOIListWithFilter();
+      }
+
+      async function loadPOIListWithFilter(categoryFilter = null) {
+        if (!selectedTable) return;
+        
+        try {
+          console.log(`SQLite 데이터베이스에서 ${selectedTable} 테이블 POI 데이터 로드 시작... (필터: ${categoryFilter || '전체'})`);
+          
+          await window.sqliteClient.initialize();
+          const pois = await window.sqliteClient.getTablePOIs(selectedTable, categoryFilter);
+          
+          allPOIs = pois;
+          const groupedPOIs = groupDuplicatePOIs(pois);
+          
+          renderPOIList(groupedPOIs);
+          console.log(`SQLite 데이터베이스에서 POI 로드 완료: ${pois.length}개 발견 (${groupedPOIs.length}개 그룹)`);
+        } catch (error) {
+          console.error('SQLite 데이터베이스 로드 실패:', error);
+        }
+      }
+
+      function groupDuplicatePOIs(pois) {
+        const grouped = {};
+        pois.forEach(poi => {
+          const key = poi.name;
+          if (!grouped[key]) {
+            grouped[key] = {
+              name: poi.name,
+              category: poi.category,
+              categoryIcon: poi.categoryIcon,
+              items: []
+            };
+          }
+          grouped[key].items.push(poi);
+        });
+        return Object.values(grouped);
+      }
+
+      function renderPOIList(groupedPOIs) {
+        const container = document.getElementById('poi-list');
+        container.innerHTML = '';
+        
+        groupedPOIs.forEach((group, index) => {
+          const item = createPOIListItem(group, index);
+          container.appendChild(item);
+        });
+      }
+
+      function createPOIListItem(group, index) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'poi-list-item';
+        wrapper.dataset.poiGroup = index;
+        
+        const count = group.items.length;
+        const isMultiple = count > 1;
+        
+        const firstItem = group.items[0];
+        const shortDescription = firstItem.description ? 
+          (firstItem.description.length > 50 ? firstItem.description.substring(0, 50) + '...' : firstItem.description) : 
+          firstItem.location || '';
+        
+        wrapper.innerHTML = `
+          <div class="poi-list-item-main" data-group-index="${index}">
+            <div class="poi-list-item-header">
+              <h5>${group.name}${isMultiple ? ` (${count}곳)` : ''}</h5>
+            </div>
+            <p class="poi-list-item-description">${shortDescription}</p>
+            ${isMultiple ? '<div class="poi-list-item-arrow">▼</div>' : ''}
+          </div>
+        `;
+        
+        const mainElement = wrapper.querySelector('.poi-list-item-main');
+        mainElement.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectPOIItem(group, index);
+        });
+        
+        if (isMultiple) {
+          const subContainer = document.createElement('div');
+          subContainer.className = 'poi-list-subitems';
+          subContainer.style.display = 'none';
+          subContainer.id = `subitems-${index}`;
+          wrapper.appendChild(subContainer);
+        }
+        
+        return wrapper;
+      }
+
+      function selectPOIItem(group, index) {
+        const count = group.items.length;
+        if (count > 1) {
+          toggleGroupExpanded(group, index);
+        } else {
+          showPOIDetailSingle(group.items[0]);
+        }
+      }
+
+      function toggleGroupExpanded(group, index) {
+        const subContainer = document.getElementById(`subitems-${index}`);
+        const arrow = document.querySelector(`[data-group-index="${index}"] .poi-list-item-arrow`);
+        
+        if (expandedGroups.has(index)) {
+          expandedGroups.delete(index);
+          subContainer.style.display = 'none';
+          arrow.textContent = '▼';
+          const panel = document.getElementById('poi-detail-panel');
+          panel.innerHTML = '<div class="poi-detail-placeholder"><p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p></div>';
+          currentExpandedGroup = null;
+        } else {
+          expandedGroups.add(index);
+          subContainer.style.display = 'block';
+          arrow.textContent = '▲';
+          subContainer.innerHTML = '';
+          group.items.forEach((item, idx) => {
+            const subItem = createSubItem(group.name, item, idx);
+            subContainer.appendChild(subItem);
+          });
+        }
+      }
+
+      function createSubItem(groupName, item, idx) {
+        const subItem = document.createElement('div');
+        subItem.className = 'poi-list-subitem';
+        subItem.innerHTML = `
+          <div class="poi-list-subitem-header">
+            <h6>📍 ${item.location || '위치 정보 없음'}</h6>
+            ${item.businessHours ? `<p class="poi-list-subitem-hours">🕐 ${item.businessHours}</p>` : ''}
+          </div>
+        `;
+        
+        subItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showPOIDetailSingle(item);
+        });
+        
+        return subItem;
+      }
+
+      function showPOIDetailSingle(poi) {
+        const panel = document.getElementById('poi-detail-panel');
+        panel.innerHTML = `
+          ${poi.imageUrl ? `<img src="${poi.imageUrl}" alt="${poi.name}" class="poi-detail-image" onerror="this.style.display='none'">` : ''}
+          <div class="poi-detail-header">
+            <h3>${poi.name}</h3>
+          </div>
+          <div class="poi-detail-content">
+            ${poi.description ? `<p class="poi-detail-description">${poi.description}</p>` : ''}
+            ${poi.location ? `<p class="poi-detail-location">📍 ${poi.location}</p>` : ''}
+            ${poi.businessHours ? `<p class="poi-detail-hours">🕐 ${poi.businessHours}</p>` : ''}
+            ${poi.phoneNumber ? `<p class="poi-detail-phone">📞 ${poi.phoneNumber}</p>` : ''}
+            ${poi.website ? `<p class="poi-detail-website">🌐 <a href="${poi.website}" target="_blank">${poi.website}</a></p>` : ''}
+            ${poi.cost ? `<p class="poi-detail-cost">💰 ${poi.cost}</p>` : ''}
+          </div>
+          <div class="poi-detail-actions">
+            <div class="time-input-section">
+              <label class="time-label">예상 소요시간:</label>
+              <input type="number" class="time-input" value="${poi.estimatedTime || 5}" min="1" max="300" 
+                     onchange="updatePOITimeForItem('${poi.id}', this.value)">
+              <span class="time-unit">분</span>
+            </div>
+            <button class="btn btn--primary" onclick="selectPOISingle('${poi.id}')">
+              선택
+            </button>
+          </div>
+        `;
+      }
+
+      function selectPOISingle(poiId) {
+        const poi = allPOIs.find(p => p.id === poiId);
+        if (!poi) return;
+        if (!selectedPOIs.includes(poiId)) {
+          selectedPOIs.push(poiId);
+          updateSelectedPOIsList();
+          updatePOINextButton();
+        }
+      }
+
+      function updatePOITimeForItem(poiId, time) {
+        const timeValue = parseInt(time);
+        if (isNaN(timeValue) || timeValue < 1 || timeValue > 300) {
+          const input = document.querySelector('.poi-detail-actions .time-input');
+          if (input) input.value = 10;
+          return;
+        }
+        const poi = allPOIs.find(p => p.id === poiId);
+        if (poi) {
+          poi.estimatedTime = timeValue;
+        }
+        updateSelectedPOIsList();
+      }
+
+      function togglePOI(poiId) {
+        selectedPOIs = selectedPOIs.filter(id => id !== poiId);
+        updateSelectedPOIsList();
+        updatePOINextButton();
+      }
+
+      function updateSelectedPOIsList() {
+        const container = document.getElementById('selected-list');
+        if (!container) return;
+        
+        if (selectedPOIs.length === 0) {
+          container.innerHTML = '<p class="empty-message">아직 선택한 장소가 없습니다.</p>';
+          return;
+        }
+        
+        container.innerHTML = selectedPOIs.map(poiId => {
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (!poi) return '';
+          
+          return `
+            <div class="selected-poi-item">
+              <div class="poi-info">
+                <h5>${poi.name}</h5>
+              </div>
+              <div class="poi-time">
+                <span class="time-label">소요시간:</span>
+                <span class="time-value">${poi.estimatedTime}분</span>
+              </div>
+              <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}')">제거</button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function updatePOINextButton() {
+        const nextButton = document.getElementById('preferences-poi-next');
+        if (nextButton) {
+          nextButton.disabled = selectedPOIs.length === 0;
+        }
+      }
+
+      function filterPOIs(type) {
+        const buttons = document.querySelectorAll('.filter-btn');
+        buttons.forEach(btn => {
+          if (btn.dataset.type === type) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+        
+        loadPOIListWithFilter(type === 'all' ? null : type);
+      }
+
+      // 도시 선호도 초기화
+      function initializeCityPreferences() {
+        const cards = document.querySelectorAll('#city-preferences-step .preference-card');
+        cards.forEach(card => {
+          card.addEventListener('click', function() {
+            toggleCityPreference(this.dataset.category);
+          });
+        });
+
+        // 체류 시간 슬라이더와 숫자 입력 동기화
+        const slider = document.getElementById('city-default-stay');
+        const numberInput = document.getElementById('city-stay-number');
+        
+        if (slider && numberInput) {
+          // 슬라이더 값 변경 시 숫자 입력 업데이트
+          slider.addEventListener('input', function() {
+            numberInput.value = this.value;
+          });
+          
+          // 숫자 입력 값 변경 시 슬라이더 업데이트
+          numberInput.addEventListener('input', function() {
+            let value = parseInt(this.value);
+            if (value < 20) value = 20;
+            if (value > 240) value = 240;
+            this.value = value;
+            slider.value = value;
+          });
+        }
       }
 
       // 공항 선호도 토글
@@ -475,30 +930,34 @@
         const card = document.querySelector(`#airport-poi-grid [data-poi-id="${poiId}"]`);
         const button = card.querySelector('button');
         
-        if (selectedAirportPOIs.includes(poiId)) {
-          selectedAirportPOIs = selectedAirportPOIs.filter(id => id !== poiId);
+        if (selectedPOIs.includes(poiId)) {
+          selectedPOIs = selectedPOIs.filter(id => id !== poiId);
           card.classList.remove('selected');
           button.textContent = '선택';
         } else {
-          selectedAirportPOIs.push(poiId);
+          selectedPOIs.push(poiId);
           card.classList.add('selected');
           button.textContent = '선택됨';
         }
         
-        updateAirportSelectedPOIsList();
-        updateAirportPOINextButton();
+        updateSelectedPOIsList();
+        updatePOINextButton();
       }
 
-      // 선택된 공항 POI 목록 업데이트
+      // 선택된 공항 POI 목록 업데이트 (deprecated, using updateSelectedPOIsList)
       function updateAirportSelectedPOIsList() {
+        updateSelectedPOIsList();
+      }
+      
+      function updateAirportSelectedPOIsList2() {
         const container = document.getElementById('airport-selected-list');
         
-        if (selectedAirportPOIs.length === 0) {
+        if (selectedPOIs.length === 0) {
           container.innerHTML = '<p class="empty-message">아직 선택한 장소가 없습니다.</p>';
           return;
         }
         
-        container.innerHTML = selectedAirportPOIs.map(poiId => {
+        container.innerHTML = selectedPOIs.map(poiId => {
           const card = document.querySelector(`#airport-poi-grid [data-poi-id="${poiId}"]`);
           const name = card.querySelector('h4').textContent;
           const category = card.querySelector('.poi-category').textContent;
@@ -520,7 +979,7 @@
       // 공항 POI 다음 버튼 업데이트
       function updateAirportPOINextButton() {
         const nextButton = document.getElementById('airport-poi-next');
-        nextButton.disabled = selectedAirportPOIs.length === 0;
+        nextButton.disabled = selectedPOIs.length === 0;
       }
 
       // 공항 필터 적용
@@ -539,16 +998,27 @@
 
       // 도시 선호도 토글
       function toggleCityPreference(category) {
+        console.log('toggleCityPreference 호출됨:', category);
+        console.log('현재 selectedCityPreferences:', selectedCityPreferences);
+        
         const card = document.querySelector(`#city-preferences-step [data-category="${category}"]`);
         
         if (selectedCityPreferences.includes(category)) {
           selectedCityPreferences = selectedCityPreferences.filter(p => p !== category);
           card.classList.remove('selected');
+          console.log('도시 선택 해제:', category);
         } else {
+          // 최대 3개까지만 선택 가능
+          if (selectedCityPreferences.length >= 3) {
+            alert('최대 3개의 카테고리만 선택할 수 있습니다.');
+            return;
+          }
           selectedCityPreferences.push(category);
           card.classList.add('selected');
+          console.log('도시 선택 추가:', category);
         }
         
+        console.log('업데이트된 selectedCityPreferences:', selectedCityPreferences);
         updateCityPreferencesNextButton();
       }
 
@@ -560,22 +1030,255 @@
 
       // 도시 선호도 단계로 이동
       function nextToCityPreferences() {
-        if (selectedAirportPOIs.length === 0) return;
+        if (selectedPOIs.length === 0) return;
         
+        // 공항 내부 일정 페이지로 이동
+        currentStep = 'airport-schedule';
+        document.getElementById('preferences-poi-step').style.display = 'none';
+        document.getElementById('airport-schedule-step').style.display = 'block';
+        
+        // 공항 내부 일정 생성
+        generateSchedule();
+      }
+
+      // 도시 선호도 페이지로 이동 (공항 내부 일정 페이지에서 호출)
+      function goToCityPreferences() {
         currentStep = 'city-preferences';
-        document.getElementById('airport-poi-step').style.display = 'none';
+        document.getElementById('airport-schedule-step').style.display = 'none';
         document.getElementById('city-preferences-step').style.display = 'block';
+        
+        // 도시 선호도 초기화
+        initializeCityPreferences();
+      }
+
+      function backToPOISelection() {
+        currentStep = 'preferences';
+        document.getElementById('airport-schedule-step').style.display = 'none';
+        document.getElementById('preferences-poi-step').style.display = 'block';
+      }
+
+      function generateSchedule() {
+        console.log('📝 공항 내부 일정 생성 시작');
+        console.log('selectedPOIs:', selectedPOIs);
+        console.log('allPOIs:', allPOIs);
+        
+        const container = document.getElementById('timeline');
+        container.innerHTML = '';
+        
+        const arrivalTime = new Date(transferInfo.arrival);
+        let currentTime = new Date(arrivalTime);
+        
+        selectedPOIs.forEach((poiId, index) => {
+          const poi = allPOIs.find(p => p.id === poiId);
+          console.log(`POI ${index + 1} 조회:`, poiId, poi);
+          if (!poi) return;
+          
+          const timelineItem = document.createElement('div');
+          timelineItem.className = 'timeline-item';
+          
+          const startTime = new Date(currentTime);
+          const endTime = new Date(currentTime.getTime() + (poi.estimatedTime || 10) * 60000);
+          
+          timelineItem.innerHTML = `
+            <div class="timeline-time">
+              <span class="start-time">${formatTime(startTime)}</span>
+              <span class="end-time">${formatTime(endTime)}</span>
+            </div>
+            <div class="timeline-content">
+              <h4>${poi.name}</h4>
+              <p>${poi.location || ''}</p>
+            </div>
+          `;
+          
+          container.appendChild(timelineItem);
+          currentTime = endTime;
+        });
+        
+        console.log('📝 공항 내부 일정 생성 완료');
+      }
+
+      function formatTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+
+      // 일정 저장 (PDF 다운로드)
+      async function saveSchedule() {
+        try {
+          const scheduleContent = document.getElementById('airport-schedule-step');
+          
+          // html2canvas로 HTML을 이미지로 변환
+          const canvas = await html2canvas(scheduleContent, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: '#ffffff'
+          });
+          
+          // PDF 생성
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          // 이미지 크기 계산
+          const imgWidth = 210; // A4 width in mm
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          // 이미지를 PDF에 추가
+          const imgData = canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          
+          // PDF 저장
+          const fileName = `공항내부일정_${transferInfo.city}_${new Date().toISOString().split('T')[0]}.pdf`;
+          pdf.save(fileName);
+          
+          alert('✅ PDF가 다운로드되었습니다!');
+        } catch (error) {
+          console.error('PDF 생성 실패:', error);
+          alert('❌ PDF 생성에 실패했습니다.');
+        }
+      }
+
+      // 일정 공유
+      function shareSchedule() {
+        let shareText = `🏢 공항 내부 일정\n\n`;
+        shareText += `경유 도시: ${transferInfo.city}\n`;
+        shareText += `환승 시간: ${formatDuration(transferInfo.duration)}\n\n`;
+        shareText += `📍 방문 장소:\n`;
+        
+        selectedPOIs.forEach((poiId, index) => {
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (poi) {
+            shareText += `${index + 1}. ${poi.name}\n`;
+            shareText += `   위치: ${poi.location}\n`;
+            shareText += `   소요 시간: ${poi.estimatedTime}분\n`;
+            if (poi.businessHours) {
+              shareText += `   영업 시간: ${poi.businessHours}\n`;
+            }
+            shareText += `\n`;
+          }
+        });
+        
+        // 클립보드에 복사
+        navigator.clipboard.writeText(shareText).then(() => {
+          alert('✅ 일정이 클립보드에 복사되었습니다!\n공유할 곳에 붙여넣기(Ctrl+V) 하세요.');
+        }).catch((error) => {
+          console.error('클립보드 복사 실패:', error);
+          alert('❌ 일정 공유에 실패했습니다.');
+        });
       }
 
       // 도시 POI 선택 단계로 이동
-      function nextToCityPOISelection() {
+      async function nextToCityPOISelection() {
         if (selectedCityPreferences.length === 0) return;
         
-        currentStep = 'city-poi-selection';
-        document.getElementById('city-preferences-step').style.display = 'none';
-        document.getElementById('city-poi-step').style.display = 'block';
+        // 로딩 표시
+        alert('일정을 생성하고 있습니다. 잠시만 기다려주세요...');
         
-        initializeCityPOISelection();
+        try {
+          // 일정 생성
+          await generateCityPlan();
+          
+          // 전체 일정 페이지로 이동
+          currentStep = 'full-schedule';
+          document.getElementById('city-preferences-step').style.display = 'none';
+          document.getElementById('full-schedule-step').style.display = 'block';
+          
+          // 전체 일정 생성
+          generateFullSchedule();
+        } catch (error) {
+          console.error('도시 일정 생성 실패:', error);
+          alert('일정 생성에 실패했습니다. 다시 시도해주세요.');
+        }
+      }
+      
+      // 도시 일정 생성
+      async function generateCityPlan() {
+        // transferInfo에서 도착/출발 시간 가져오기
+        const arrivalTime = new Date(transferInfo.arrival);
+        const departureTime = new Date(transferInfo.departure);
+        
+        // 버퍼 시간 설정 (기본값 사용)
+        const entryBufferMinutes = 90; // 입국 버퍼
+        const returnBufferMinutes = 120; // 복귀 버퍼
+        
+        // 기본 체류 시간 가져오기
+        const defaultStayMinutes = parseInt(document.getElementById('city-stay-number')?.value || '60', 10);
+        
+        // 탐방 가능 시간 계산
+        const startWindow = new Date(arrivalTime.getTime() + entryBufferMinutes * 60000);
+        const endWindow = new Date(departureTime.getTime() - returnBufferMinutes * 60000);
+        const availableMinutes = Math.max((endWindow.getTime() - startWindow.getTime()) / 60000, 0);
+        
+        console.log('도시 탐방 시간:', {
+          start: startWindow.toISOString(),
+          end: endWindow.toISOString(),
+          available: availableMinutes
+        });
+        
+        // 도시 POI 검색 (POI Service Manager 사용)
+        if (!window.poiServiceManager) {
+          throw new Error('POI Service Manager가 초기화되지 않았습니다.');
+        }
+        
+        // 싱가포르 도시 중심 좌표
+        const cityCenter = { lat: 1.3521, lng: 103.8198 }; // Singapore city center
+        
+        // 각 카테고리별 POI 검색
+        const cityPOIs = [];
+        for (const category of selectedCityPreferences) {
+          const pois = await window.poiServiceManager.searchCityPOIs(cityCenter, [category], 10000); // 10km 반경
+          cityPOIs.push(...pois);
+          
+          // 최대 3개까지만 선택
+          if (cityPOIs.length >= 3) break;
+        }
+        
+        // 검색된 POI를 waypoint 형태로 변환
+        const waypoints = cityPOIs.slice(0, 3).map((poi, index) => ({
+          label: poi.name,
+          address: poi.address || poi.location,
+          location: poi.location,
+          categoryKey: poi.category,
+          stayMinutes: defaultStayMinutes
+        }));
+        
+        // 공항 앵커 생성
+        const arriveAnchor = {
+          label: '싱가포르 창이공항',
+          address: 'Singapore Changi Airport',
+          location: { lat: 1.3644, lng: 103.9915 },
+          placeId: null
+        };
+        
+        // 일정 데이터 생성
+        const plan = {
+          origin: arriveAnchor,
+          destination: arriveAnchor,
+          waypoints,
+          meta: {
+            arrival: startWindow.toISOString(),
+            departure: endWindow.toISOString(),
+            entryBufferMinutes,
+            returnBufferMinutes,
+            exploreWindow: {
+              start: startWindow.toISOString(),
+              end: endWindow.toISOString(),
+              availableMinutes: Math.round(availableMinutes)
+            },
+            categoriesUsed: selectedCityPreferences,
+            cityText: 'Singapore'
+          }
+        };
+        
+        // 생성된 일정 저장
+        sessionStorage.setItem('cityPlan', JSON.stringify(plan));
+        
+        console.log('도시 일정 생성 완료:', plan);
+        return plan;
       }
 
       // 도시 POI 선택 초기화
@@ -742,31 +1445,30 @@
       }
 
       // 일정 생성
-      function generateSchedule() {
-        generateAirportSchedule();
+      // 전체 일정 생성 (전체 일정 페이지용)
+      function generateFullSchedule() {
+        generateAirportTimeline();
         generateCitySchedule();
       }
 
-      // 공항 내부 일정 생성
-      function generateAirportSchedule() {
+      // 공항 내부 타임라인 생성 (전체 일정 페이지용)
+      function generateAirportTimeline() {
         const container = document.getElementById('airport-timeline');
+        if (!container) return;
         container.innerHTML = '';
         
         const arrivalTime = new Date(transferInfo.arrival);
         let currentTime = new Date(arrivalTime);
         
-        selectedAirportPOIs.forEach((poiId, index) => {
-          const card = document.querySelector(`#airport-poi-grid [data-poi-id="${poiId}"]`);
-          const name = card.querySelector('h4').textContent;
-          const category = card.querySelector('.poi-category').textContent;
-          const timeText = card.querySelector('.estimated-time').textContent;
-          const estimatedTime = parseInt(timeText.match(/\d+/)[0]);
+        selectedPOIs.forEach((poiId, index) => {
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (!poi) return;
           
           const timelineItem = document.createElement('div');
           timelineItem.className = 'timeline-item';
           
           const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + estimatedTime * 60000);
+          const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
           
           timelineItem.innerHTML = `
             <div class="timeline-time">
@@ -774,9 +1476,8 @@
               <span class="end-time">${formatTime(endTime)}</span>
             </div>
             <div class="timeline-content">
-              <h4>${name}</h4>
-              <span class="timeline-category">${category}</span>
-              <p>${estimatedTime}분 체류</p>
+              <h4>${poi.name}</h4>
+              <p>${poi.location || ''}</p>
             </div>
           `;
           
@@ -788,25 +1489,34 @@
       // 도시 일정 생성
       function generateCitySchedule() {
         const container = document.getElementById('city-timeline');
+        if (!container) return;
         container.innerHTML = '';
         
-        // 도시 탐방 시작 시간 (공항 내부 일정 후)
-        const cityStartTime = new Date(transferInfo.arrival);
-        cityStartTime.setHours(cityStartTime.getHours() + 2); // 공항 내부 2시간 후
-        let currentTime = new Date(cityStartTime);
+        // 저장된 도시 일정 가져오기
+        const cityPlanStr = sessionStorage.getItem('cityPlan');
+        if (!cityPlanStr) {
+          container.innerHTML = '<p class="empty-message">도시 탐방 일정이 없습니다.</p>';
+          return;
+        }
         
-        selectedCityPOIs.forEach((poiId, index) => {
-          const card = document.querySelector(`#city-poi-grid [data-poi-id="${poiId}"]`);
-          const name = card.querySelector('h4').textContent;
-          const category = card.querySelector('.poi-category').textContent;
-          const timeText = card.querySelector('.estimated-time').textContent;
-          const estimatedTime = parseInt(timeText.match(/\d+/)[0]);
-          
+        const cityPlan = JSON.parse(cityPlanStr);
+        const { waypoints, meta } = cityPlan;
+        
+        if (!waypoints || waypoints.length === 0) {
+          container.innerHTML = '<p class="empty-message">방문할 장소가 없습니다.</p>';
+          return;
+        }
+        
+        // 도시 탐방 시작 시간 계산
+        const startWindow = new Date(meta.exploreWindow.start);
+        let currentTime = new Date(startWindow);
+        
+        waypoints.forEach((waypoint, index) => {
           const timelineItem = document.createElement('div');
           timelineItem.className = 'timeline-item';
           
           const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + estimatedTime * 60000);
+          const endTime = new Date(currentTime.getTime() + (waypoint.stayMinutes || 60) * 60000);
           
           timelineItem.innerHTML = `
             <div class="timeline-time">
@@ -814,9 +1524,8 @@
               <span class="end-time">${formatTime(endTime)}</span>
             </div>
             <div class="timeline-content">
-              <h4>${name}</h4>
-              <span class="timeline-category">${category}</span>
-              <p>${estimatedTime}분 체류</p>
+              <h4>${waypoint.label}</h4>
+              <p>${waypoint.address || ''}</p>
             </div>
           `;
           
@@ -834,18 +1543,29 @@
 
       // 네비게이션 시작
       function startNavigation() {
-        // 선택된 모든 정보를 라우터 상태에 저장
-        const scheduleData = {
-          transferInfo,
-          airportPreferences: selectedAirportPreferences,
-          airportPOIs: selectedAirportPOIs,
-          cityPreferences: selectedCityPreferences,
-          cityPOIs: selectedCityPOIs,
-          type: 'airport-external'
+        // 도시 일정 가져오기
+        const cityPlanStr = sessionStorage.getItem('cityPlan');
+        
+        if (!cityPlanStr) {
+          alert('도시 탐방 일정이 생성되지 않았습니다. 다시 시도해주세요.');
+          return;
+        }
+        
+        const cityPlan = JSON.parse(cityPlanStr);
+        
+        // navigation.html에서 사용할 형태로 데이터 저장
+        const plan = {
+          origin: cityPlan.origin,
+          destination: cityPlan.destination,
+          waypoints: cityPlan.waypoints,
+          meta: cityPlan.meta
         };
         
-        // 라우터를 통해 일정 요약 페이지로 이동
-        window.navigateTo('/trip-summary', { schedule: scheduleData });
+        // sessionStorage에 저장
+        sessionStorage.setItem('plannerResult', JSON.stringify(plan));
+        
+        // navigation.html로 이동
+        window.location.href = 'navigation.html';
       }
 
       // 뒤로가기 함수들

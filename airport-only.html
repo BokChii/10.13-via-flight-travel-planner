@@ -64,79 +64,80 @@
         </div>
       </section>
 
-      <!-- Step 3.1.1: Preferences -->
-      <section class="preferences-step" id="preferences-step">
+      <!-- Step 3.1.1: Preferences + POI Selection (통합) -->
+      <section class="preferences-poi-step" id="preferences-poi-step">
         <div class="step-container">
           <h2 class="step-title">어떤 것을 좋아하시나요?</h2>
           <p class="step-description">
-            관심 있는 카테고리를 선택해주세요.<br>
-            선택한 카테고리에 맞는 장소들을 추천해드립니다.
-          </p>
-
-          <div class="preference-cards">
-            <button class="preference-card" data-category="shopping" onclick="togglePreference('shopping')">
-              <div class="preference-icon">🛍️</div>
-              <h3>쇼핑</h3>
-              <p>면세점, 기념품, 브랜드샵</p>
-            </button>
-            <button class="preference-card" data-category="food" onclick="togglePreference('food')">
-              <div class="preference-icon">🍽️</div>
-              <h3>음식</h3>
-              <p>공항 맛집, 카페, 바</p>
-            </button>
-            <button class="preference-card" data-category="culture" onclick="togglePreference('culture')">
-              <div class="preference-icon">🎨</div>
-              <h3>문화체험</h3>
-              <p>박물관, 갤러리, 전시</p>
-            </button>
-            <button class="preference-card" data-category="relax" onclick="togglePreference('relax')">
-              <div class="preference-icon">💆</div>
-              <h3>휴식</h3>
-              <p>스파, 마사지, 라운지</p>
-            </button>
-            <button class="preference-card" data-category="entertainment" onclick="togglePreference('entertainment')">
-              <div class="preference-icon">🎮</div>
-              <h3>엔터테인먼트</h3>
-              <p>게임, 영화, 라이브 공연</p>
-            </button>
-            <button class="preference-card" data-category="services" onclick="togglePreference('services')">
-              <div class="preference-icon">🏪</div>
-              <h3>편의시설</h3>
-              <p>은행, 약국, 짐보관소</p>
-            </button>
-          </div>
-
-          <div class="step-actions">
-            <button class="btn btn--primary" onclick="nextToPOISelection()" id="preferences-next" disabled>
-              다음 단계로
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Step 3.1.2: POI Selection -->
-      <section class="poi-selection-step" id="poi-selection-step" style="display: none;">
-        <div class="step-container">
-          <h2 class="step-title">방문할 장소를 선택해주세요</h2>
-          <p class="step-description">
-            선택한 카테고리의 추천 장소들을 확인하고<br>
+            관심 있는 카테고리를 선택하고<br>
             방문하고 싶은 장소를 선택해주세요.
           </p>
 
-          <div class="poi-selection-content">
+          <!-- 카테고리 선택 섹션 -->
+          <div class="preferences-section">
+            <h3 class="section-title">카테고리 선택</h3>
+            <div class="preference-cards">
+              <button class="preference-card" data-table="rests_db_frame">
+                <div class="preference-icon">💆</div>
+                <h3>휴식 & 라운지</h3>
+                <p>라운지, 휴식공간, 호텔</p>
+              </button>
+              <button class="preference-card" data-table="meal_options_db_frame">
+                <div class="preference-icon">🍽️</div>
+                <h3>식사 & 음료</h3>
+                <p>식당, 카페, 디저트</p>
+              </button>
+              <button class="preference-card" data-table="shopping_options_db_frame">
+                <div class="preference-icon">🛍️</div>
+                <h3>쇼핑 & 면세</h3>
+                <p>면세점, 브랜드샵, 기념품</p>
+              </button>
+              <button class="preference-card" data-table="airport_events_db_frame">
+                <div class="preference-icon">🎮</div>
+                <h3>체험 & 이벤트</h3>
+                <p>문화체험, 엔터테인먼트</p>
+              </button>
+            </div>
+          </div>
+
+          <!-- POI 선택 섹션 -->
+          <div class="poi-selection-section" id="poi-selection-section" style="display: none;">
+            <h3 class="section-title">방문할 장소 선택</h3>
+            
+            <!-- 카테고리 필터 -->
             <div class="filters-section">
-              <h3>카테고리 필터</h3>
+              <h4>카테고리 필터</h4>
               <div class="filter-buttons" id="filter-buttons">
                 <!-- 동적으로 생성됨 -->
               </div>
             </div>
 
-            <div class="poi-grid" id="poi-grid">
-              <!-- POI 카드들이 동적으로 생성됨 -->
+            <!-- 좌우 분할 레이아웃 -->
+            <div class="poi-selection-layout">
+              <!-- 좌측: POI 리스트 -->
+              <div class="poi-list-container">
+                <div class="poi-list-header">
+                  <h4>장소 목록</h4>
+                </div>
+                <div class="poi-list" id="poi-list">
+                  <!-- POI 리스트 항목들이 동적으로 생성됨 -->
+                </div>
+              </div>
+
+              <!-- 우측: 상세 정보 패널 -->
+              <div class="poi-detail-container">
+                <!-- POI 상세 정보 -->
+                <div class="poi-detail-panel" id="poi-detail-panel">
+                  <div class="poi-detail-placeholder">
+                    <p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="selected-pois">
-              <h3>선택한 장소</h3>
+            <!-- 선택된 POI 목록 (화면 하단) -->
+            <div class="selected-pois-summary-bottom">
+              <h4>선택한 장소</h4>
               <div class="selected-list" id="selected-list">
                 <p class="empty-message">아직 선택한 장소가 없습니다.</p>
               </div>
@@ -144,10 +145,7 @@
           </div>
 
           <div class="step-actions">
-            <button class="btn btn--ghost" onclick="backToPreferences()">
-              이전
-            </button>
-            <button class="btn btn--primary" onclick="nextToSchedule()" id="poi-next" disabled>
+            <button class="btn btn--primary" onclick="nextToSchedule()" id="preferences-poi-next" disabled>
               일정 만들기
             </button>
           </div>
@@ -163,30 +161,35 @@
             일정을 확인하고 여행을 시작해보세요.
           </p>
 
+          <!-- 공항 팁 섹션 (상단) -->
+          <div class="tips-section">
+            <h3>💡 공항 팁</h3>
+            <div class="tips-grid">
+              <div class="tip-card">
+                <div class="tip-icon">🎒</div>
+                <h4>짐 보관소</h4>
+                <p>공항 내 짐 보관소를 이용하면 가벼운 쇼핑과 관광이 가능합니다.</p>
+              </div>
+              <div class="tip-card">
+                <div class="tip-icon">📶</div>
+                <h4>무료 와이파이</h4>
+                <p>공항 내 무료 와이파이를 연결하여 실시간 정보를 확인하세요.</p>
+              </div>
+              <div class="tip-card">
+                <div class="tip-icon">🛂</div>
+                <h4>보안 검색</h4>
+                <p>출발 2시간 전에는 보안 검색대가 혼잡할 수 있으니 미리 준비하세요.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 공항 내부 일정 (하단) -->
           <div class="schedule-content">
+            <div class="schedule-header">
+              <h3>📅 공항 내부 일정</h3>
+            </div>
             <div class="timeline" id="timeline">
               <!-- 타임라인이 동적으로 생성됨 -->
-            </div>
-
-            <div class="tips-section">
-              <h3>💡 공항 팁</h3>
-              <div class="tips-grid">
-                <div class="tip-card">
-                  <div class="tip-icon">🎒</div>
-                  <h4>짐 보관소</h4>
-                  <p>공항 내 짐 보관소를 이용하면 가벼운 쇼핑과 관광이 가능합니다.</p>
-                </div>
-                <div class="tip-card">
-                  <div class="tip-icon">📶</div>
-                  <h4>무료 와이파이</h4>
-                  <p>공항 내 무료 와이파이를 연결하여 실시간 정보를 확인하세요.</p>
-                </div>
-                <div class="tip-card">
-                  <div class="tip-icon">🛂</div>
-                  <h4>보안 검색</h4>
-                  <p>출발 2시간 전에는 보안 검색대가 혼잡할 수 있으니 미리 준비하세요.</p>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -194,8 +197,14 @@
             <button class="btn btn--ghost" onclick="backToPOISelection()">
               장소 다시 선택
             </button>
-            <button class="btn btn--primary" onclick="startNavigation()">
-              여행 시작하기
+            <button class="btn btn--secondary" onclick="saveSchedule()">
+              💾 일정 저장
+            </button>
+            <button class="btn btn--secondary" onclick="shareSchedule()">
+              📤 일정 공유
+            </button>
+            <button class="btn btn--primary" onclick="goToAirportMain()">
+              공항 메인으로 돌아가기
             </button>
           </div>
         </div>
@@ -203,12 +212,22 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/airportPOIService.js"></script>
+    <script type="module" src="scripts/cityPOIService.js"></script>
+    <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script src="scripts/sqliteClient.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
-      let selectedPreferences = [];
+      let selectedTable = null; // 선택된 테이블
+      let selectedTypes = []; // 선택된 타입들
       let selectedPOIs = [];
+      let allPOIs = []; // 모든 POI 데이터 저장
       let currentStep = 'preferences';
+      let expandedGroups = new Set(); // 펼쳐진 그룹들의 인덱스
+      let currentExpandedGroup = null; // 현재 펼쳐진 그룹
 
       // 페이지 로드 시 초기화
       document.addEventListener('DOMContentLoaded', function() {
@@ -250,207 +269,514 @@
         const cards = document.querySelectorAll('.preference-card');
         cards.forEach(card => {
           card.addEventListener('click', function() {
-            togglePreference(this.dataset.category);
+            toggleTableSelection(this.dataset.table);
           });
         });
       }
 
-      // 선호도 토글
-      function togglePreference(category) {
-        const card = document.querySelector(`[data-category="${category}"]`);
+      // 테이블 선택 토글
+      function toggleTableSelection(tableName) {
+        console.log('toggleTableSelection 호출됨:', tableName);
         
-        if (selectedPreferences.includes(category)) {
-          selectedPreferences = selectedPreferences.filter(p => p !== category);
+        const card = document.querySelector(`[data-table="${tableName}"]`);
+        
+        if (selectedTable === tableName) {
+          // 같은 테이블을 다시 클릭하면 선택 해제
+          selectedTable = null;
+          selectedTypes = [];
           card.classList.remove('selected');
+          console.log('테이블 선택 해제:', tableName);
         } else {
-          selectedPreferences.push(category);
+          // 다른 테이블 선택
+          selectedTable = tableName;
+          selectedTypes = [];
+          document.querySelectorAll('.preference-card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
+          console.log('테이블 선택:', tableName);
         }
         
-        updatePreferencesNextButton();
+        togglePOISelectionSection();
+        updatePreferencesPOINextButton();
       }
 
-      // 선호도 다음 버튼 업데이트
-      function updatePreferencesNextButton() {
-        const nextButton = document.getElementById('preferences-next');
-        nextButton.disabled = selectedPreferences.length === 0;
+      // 통합된 다음 버튼 업데이트
+      function updatePreferencesPOINextButton() {
+        const nextButton = document.getElementById('preferences-poi-next');
+        const hasTable = selectedTable !== null;
+        const hasSelectedPOIs = selectedPOIs.length > 0;
+        
+        nextButton.disabled = !hasTable || !hasSelectedPOIs;
       }
 
-      // POI 선택 단계로 이동
-      function nextToPOISelection() {
-        if (selectedPreferences.length === 0) return;
-        
-        currentStep = 'poi-selection';
-        document.getElementById('preferences-step').style.display = 'none';
-        document.getElementById('poi-selection-step').style.display = 'block';
-        
-        initializePOISelection();
+      // POI 선택 섹션 표시/숨김
+      function togglePOISelectionSection() {
+        const poiSection = document.getElementById('poi-selection-section');
+        if (selectedTable !== null) {
+          poiSection.style.display = 'block';
+          initializePOISelection();
+        } else {
+          poiSection.style.display = 'none';
+        }
       }
 
       // POI 선택 초기화
       function initializePOISelection() {
         generateFilterButtons();
-        generatePOICards();
+        generatePOIList();
         updatePOINextButton();
       }
 
-      // 필터 버튼 생성
+      // 필터 버튼 생성 (테이블별 타입 기반)
       function generateFilterButtons() {
         const container = document.getElementById('filter-buttons');
+        if (!container) return;
+        
+        // 기존 버튼 완전히 제거
         container.innerHTML = '';
         
+        // "전체" 버튼 생성
         const allButton = document.createElement('button');
         allButton.className = 'filter-btn active';
         allButton.textContent = '전체';
+        allButton.dataset.type = 'all';
         allButton.onclick = () => filterPOIs('all');
         container.appendChild(allButton);
         
-        selectedPreferences.forEach(category => {
-          const button = document.createElement('button');
-          button.className = 'filter-btn';
-          button.textContent = getCategoryLabel(category);
-          button.onclick = () => filterPOIs(category);
-          container.appendChild(button);
-        });
+        // 선택된 테이블의 타입들을 가져와서 필터 버튼 생성
+        if (selectedTable) {
+          getTableTypes(selectedTable).then(types => {
+            // 중복 방지: 기존 버튼이 있는지 확인
+            types.forEach(type => {
+              const existingButton = container.querySelector(`[data-type="${type}"]`);
+              if (!existingButton) {
+                const button = document.createElement('button');
+                button.className = 'filter-btn';
+                button.textContent = getTypeLabel(type);
+                button.dataset.type = type;
+                button.onclick = () => filterPOIs(type);
+                container.appendChild(button);
+              }
+            });
+          });
+        }
       }
 
-      // 카테고리 라벨 가져오기
-      function getCategoryLabel(category) {
+      // 테이블의 타입들 가져오기
+      async function getTableTypes(tableName) {
+        try {
+          await window.sqliteClient.initialize();
+          const types = await window.sqliteClient.getTableTypes(tableName);
+          return types;
+        } catch (error) {
+          console.error('테이블 타입 조회 실패:', error);
+          return [];
+        }
+      }
+
+      // 타입 라벨 가져오기
+      function getTypeLabel(type) {
         const labels = {
-          shopping: '쇼핑',
-          food: '음식',
-          culture: '문화체험',
-          relax: '휴식',
-          entertainment: '엔터테인먼트',
-          services: '편의시설'
+          'Lounge': '라운지',
+          'Rest': '휴식공간',
+          'Hotel': '호텔',
+          'Meal': '식당',
+          'Cafe': '카페',
+          'Dessert': '디저트',
+          'Fashion': '패션',
+          'Beauty': '뷰티',
+          'Beverage': '음료',
+          'Snack': '스낵',
+          'Duty_free': '면세점',
+          'Attraction': '관광명소',
+          'Entertainment': '엔터테인먼트'
         };
-        return labels[category] || category;
+        return labels[type] || type;
       }
 
-      // POI 카드 생성 (임시 데이터)
-      function generatePOICards() {
-        const container = document.getElementById('poi-grid');
-        container.innerHTML = '';
+      // POI 리스트 생성 (테이블별 조회, 중복 그룹화)
+      async function generatePOIList() {
+        // 초기 로드는 전체 데이터
+        selectedTypes = [];
+        await loadPOIListWithFilter();
+      }
+
+      // 중복 데이터 그룹화
+      function groupDuplicatePOIs(pois) {
+        const grouped = {};
         
-        // 임시 POI 데이터
-        const samplePOIs = [
-          { id: 1, name: '면세점 A', category: 'shopping', description: '브랜드 면세점', estimatedTime: 60 },
-          { id: 2, name: '공항 카페', category: 'food', description: '로컬 커피 전문점', estimatedTime: 30 },
-          { id: 3, name: '문화 전시관', category: 'culture', description: '한국 전통 문화 체험', estimatedTime: 45 },
-          { id: 4, name: '스파 & 마사지', category: 'relax', description: '공항 내 휴식 공간', estimatedTime: 90 },
-          { id: 5, name: '게임존', category: 'entertainment', description: 'VR 게임 체험', estimatedTime: 30 },
-          { id: 6, name: '은행 ATM', category: 'services', description: '환전 및 현금 인출', estimatedTime: 15 }
-        ];
-        
-        samplePOIs.forEach(poi => {
-          if (selectedPreferences.includes(poi.category) || selectedPreferences.length === 0) {
-            const card = createPOICard(poi);
-            container.appendChild(card);
+        pois.forEach(poi => {
+          const key = poi.name;
+          if (!grouped[key]) {
+            grouped[key] = {
+              name: poi.name,
+              category: poi.category,
+              categoryIcon: poi.categoryIcon,
+              items: []
+            };
           }
+          grouped[key].items.push(poi);
         });
+        
+        return Object.values(grouped);
       }
 
-      // POI 카드 생성
+      // POI 리스트 항목 생성
+      function createPOIListItem(group, index) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'poi-list-item';
+        wrapper.dataset.poiGroup = index;
+        
+        const count = group.items.length;
+        const isMultiple = count > 1;
+        
+        // 간단한 설명 생성
+        const firstItem = group.items[0];
+        const shortDescription = firstItem.description ? 
+          (firstItem.description.length > 50 ? firstItem.description.substring(0, 50) + '...' : firstItem.description) : 
+          firstItem.location || '';
+        
+        wrapper.innerHTML = `
+          <div class="poi-list-item-main" data-group-index="${index}">
+            <div class="poi-list-item-header">
+              <h5>${group.name}${isMultiple ? ` (${count}곳)` : ''}</h5>
+            </div>
+            <p class="poi-list-item-description">${shortDescription}</p>
+            ${isMultiple ? '<div class="poi-list-item-arrow">▼</div>' : ''}
+          </div>
+        `;
+        
+        // 클릭 이벤트를 메인 영역에만 추가
+        const mainElement = wrapper.querySelector('.poi-list-item-main');
+        mainElement.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectPOIItem(group, index);
+        });
+        
+        // 하위 항목 컨테이너 (여러 위치인 경우)
+        if (isMultiple) {
+          const subContainer = document.createElement('div');
+          subContainer.className = 'poi-list-subitems';
+          subContainer.style.display = 'none';
+          subContainer.id = `subitems-${index}`;
+          wrapper.appendChild(subContainer);
+        }
+        
+        return wrapper;
+      }
+
+      // POI 리스트 항목 클릭 처리
+      function selectPOIItem(group, index) {
+        const count = group.items.length;
+        const isMultiple = count > 1;
+        
+        if (isMultiple) {
+          // 여러 위치인 경우: 펼치기/접기
+          toggleGroupExpanded(group, index);
+        } else {
+          // 단일 위치인 경우: 바로 상세 정보 표시
+          showPOIDetailSingle(group.items[0]);
+        }
+      }
+
+      // 그룹 펼치기/접기
+      function toggleGroupExpanded(group, index) {
+        const subContainer = document.getElementById(`subitems-${index}`);
+        const arrow = document.querySelector(`[data-group-index="${index}"] .poi-list-item-arrow`);
+        
+        if (expandedGroups.has(index)) {
+          // 접기
+          expandedGroups.delete(index);
+          subContainer.style.display = 'none';
+          arrow.textContent = '▼';
+          
+          // 상세 정보 패널 초기화
+          const panel = document.getElementById('poi-detail-panel');
+          panel.innerHTML = '<div class="poi-detail-placeholder"><p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p></div>';
+          
+          currentExpandedGroup = null;
+        } else {
+          // 펼치기
+          expandedGroups.add(index);
+          subContainer.style.display = 'block';
+          arrow.textContent = '▲';
+          
+          // 하위 항목 생성
+          subContainer.innerHTML = '';
+          group.items.forEach((item, idx) => {
+            const subItem = createSubItem(group.name, item, idx);
+            subContainer.appendChild(subItem);
+          });
+        }
+      }
+
+      // 하위 항목 생성
+      function createSubItem(groupName, item, idx) {
+        const subItem = document.createElement('div');
+        subItem.className = 'poi-list-subitem';
+        subItem.dataset.itemIndex = idx;
+        
+        subItem.innerHTML = `
+          <div class="poi-list-subitem-header">
+            <h6>📍 ${item.location || '위치 정보 없음'}</h6>
+            ${item.businessHours ? `<p class="poi-list-subitem-hours">🕐 ${item.businessHours}</p>` : ''}
+          </div>
+        `;
+        
+        subItem.addEventListener('click', (e) => {
+          e.stopPropagation(); // 부모 이벤트 전파 방지
+          showPOIDetailSingle(item);
+        });
+        
+        return subItem;
+      }
+
+      // 단일 항목 상세 정보 표시
+      function showPOIDetailSingle(poi) {
+        const panel = document.getElementById('poi-detail-panel');
+        
+        panel.innerHTML = `
+          ${poi.imageUrl ? `<img src="${poi.imageUrl}" alt="${poi.name}" class="poi-detail-image" onerror="this.style.display='none'">` : ''}
+          <div class="poi-detail-header">
+            <h3>${poi.name}</h3>
+          </div>
+          <div class="poi-detail-content">
+            ${poi.description ? `<p class="poi-detail-description">${poi.description}</p>` : ''}
+            ${poi.location ? `<p class="poi-detail-location">📍 ${poi.location}</p>` : ''}
+            ${poi.businessHours ? `<p class="poi-detail-hours">🕐 ${poi.businessHours}</p>` : ''}
+            ${poi.phoneNumber ? `<p class="poi-detail-phone">📞 ${poi.phoneNumber}</p>` : ''}
+            ${poi.website ? `<p class="poi-detail-website">🌐 <a href="${poi.website}" target="_blank">${poi.website}</a></p>` : ''}
+            ${poi.cost ? `<p class="poi-detail-cost">💰 ${poi.cost}</p>` : ''}
+          </div>
+          <div class="poi-detail-actions">
+            <div class="time-input-section">
+              <label class="time-label">예상 소요시간:</label>
+              <input type="number" class="time-input" value="${poi.estimatedTime || 5}" min="1" max="300" 
+                     onchange="updatePOITimeForItem('${poi.id}', this.value)">
+              <span class="time-unit">분</span>
+            </div>
+            <button class="btn btn--primary" onclick="selectPOISingle('${poi.id}')">
+              선택
+            </button>
+          </div>
+        `;
+      }
+
+
+      // POI 단일 항목 선택
+      function selectPOISingle(poiId) {
+        const poi = allPOIs.find(p => p.id === poiId);
+        if (!poi) return;
+        
+        // 선택된 POI 목록에 추가
+        if (!selectedPOIs.includes(poiId)) {
+          selectedPOIs.push(poiId);
+          updateSelectedPOIsList();
+          updatePOINextButton();
+        }
+      }
+
+      // POI 시간 업데이트 (단일 항목용)
+      function updatePOITimeForItem(poiId, time) {
+        const timeValue = parseInt(time);
+        if (isNaN(timeValue) || timeValue < 1 || timeValue > 300) {
+          const input = document.querySelector('.poi-detail-actions .time-input');
+          if (input) input.value = 5;
+          return;
+        }
+        
+        const poi = allPOIs.find(p => p.id === poiId);
+        if (poi) {
+          poi.estimatedTime = timeValue;
+        }
+        
+        updateSelectedPOIsList();
+      }
+
+      // 폴백 POI 리스트 생성 (기존 하드코딩된 데이터)
+      function generateFallbackPOIList() {
+        const container = document.getElementById('poi-list');
+        container.innerHTML = '<div class="error">DB 연결 실패로 인해 임시 데이터를 사용할 수 없습니다.</div>';
+      }
+
+      // POI 카드 생성 (실제 데이터와 폴백 데이터 모두 지원)
       function createPOICard(poi) {
         const card = document.createElement('div');
         card.className = 'poi-card';
         card.dataset.poiId = poi.id;
         card.dataset.category = poi.category;
         
+        // 실제 데이터인지 폴백 데이터인지 구분
+        const isRealData = poi.rating !== undefined;
+        
         card.innerHTML = `
           <div class="poi-header">
             <h4>${poi.name}</h4>
-            <span class="poi-category">${getCategoryLabel(poi.category)}</span>
           </div>
-          <p class="poi-description">${poi.description}</p>
+          <p class="poi-description">${poi.address || poi.description}</p>
+          ${isRealData ? `
+            <div class="poi-rating">
+              <span class="rating-stars">${'★'.repeat(Math.floor(poi.rating))}${'☆'.repeat(5 - Math.floor(poi.rating))}</span>
+              <span class="rating-value">${poi.rating.toFixed(1)}</span>
+              <span class="rating-count">(${poi.userRatingsTotal}개 리뷰)</span>
+            </div>
+          ` : ''}
           <div class="poi-footer">
-            <span class="estimated-time">예상 소요시간: ${poi.estimatedTime}분</span>
-            <button class="btn btn--small" onclick="togglePOI(${poi.id})">선택</button>
+            <div class="time-input-section">
+              <label class="time-label">예상 소요시간:</label>
+              <input type="number" class="time-input" value="${poi.estimatedTime || 5}" min="1" max="300" 
+                     onchange="updatePOITime('${poi.id}', this.value)">
+              <span class="time-unit">분</span>
+            </div>
+            <button class="btn btn--small" onclick="togglePOI('${poi.id}')">선택</button>
           </div>
         `;
         
         return card;
       }
 
-      // POI 토글
-      function togglePOI(poiId) {
-        const card = document.querySelector(`[data-poi-id="${poiId}"]`);
-        const button = card.querySelector('button');
-        
-        if (selectedPOIs.includes(poiId)) {
-          selectedPOIs = selectedPOIs.filter(id => id !== poiId);
-          card.classList.remove('selected');
-          button.textContent = '선택';
-        } else {
-          selectedPOIs.push(poiId);
-          card.classList.add('selected');
-          button.textContent = '선택됨';
+      // POI 시간 업데이트
+      function updatePOITime(poiId, time) {
+        const timeValue = parseInt(time);
+        if (isNaN(timeValue) || timeValue < 1 || timeValue > 300) {
+          // 유효하지 않은 값이면 기본값으로 설정
+          const input = document.querySelector(`[data-poi-id="${poiId}"] .time-input`);
+          input.value = 5;
+          return;
         }
         
+        // POI 데이터 업데이트
+        const poi = allPOIs.find(p => p.id === poiId);
+        if (poi) {
+          poi.estimatedTime = timeValue;
+        }
+        
+        // 선택된 POI 목록 업데이트
         updateSelectedPOIsList();
-        updatePOINextButton();
       }
 
-      // 선택된 POI 목록 업데이트
+      // POI 토글
+      function togglePOI(poiId) {
+        // 선택된 POI 목록에서 제거
+        if (selectedPOIs.includes(poiId)) {
+          selectedPOIs = selectedPOIs.filter(id => id !== poiId);
+          updateSelectedPOIsList();
+          updatePOINextButton();
+        }
+      }
+
+      // 선택된 POI 목록 업데이트 (수정된 버전)
       function updateSelectedPOIsList() {
         const container = document.getElementById('selected-list');
-        
+        if (!container) {
+          console.warn('selected-list 컨테이너를 찾을 수 없습니다.');
+          return;
+        }
+
         if (selectedPOIs.length === 0) {
           container.innerHTML = '<p class="empty-message">아직 선택한 장소가 없습니다.</p>';
           return;
         }
-        
+
         container.innerHTML = selectedPOIs.map(poiId => {
-          const card = document.querySelector(`[data-poi-id="${poiId}"]`);
-          const name = card.querySelector('h4').textContent;
-          const category = card.querySelector('.poi-category').textContent;
-          const time = card.querySelector('.estimated-time').textContent;
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (!poi) {
+            console.warn(`POI를 찾을 수 없습니다: ${poiId}`);
+            return '';
+          }
           
           return `
             <div class="selected-poi-item">
               <div class="poi-info">
-                <h5>${name}</h5>
-                <span class="poi-category">${category}</span>
+                <h5>${poi.name}</h5>
               </div>
-              <div class="poi-time">${time}</div>
-              <button class="btn btn--small btn--ghost" onclick="togglePOI(${poiId})">제거</button>
+              <div class="poi-time">
+                <span class="time-label">소요시간:</span>
+                <span class="time-value">${poi.estimatedTime}분</span>
+              </div>
+              <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}')">제거</button>
             </div>
           `;
-        }).join('');
+        }).filter(html => html).join('');
       }
 
-      // POI 다음 버튼 업데이트
+      // POI 다음 버튼 업데이트 (통합된 버튼으로 변경)
       function updatePOINextButton() {
-        const nextButton = document.getElementById('poi-next');
-        nextButton.disabled = selectedPOIs.length === 0;
+        updatePreferencesPOINextButton();
       }
 
-      // 필터 적용
-      function filterPOIs(category) {
+      // 필터 적용 (DB에서 다시 조회)
+      async function filterPOIs(type) {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
         
-        document.querySelectorAll('.poi-card').forEach(card => {
-          if (category === 'all' || card.dataset.category === category) {
-            card.style.display = 'block';
-          } else {
-            card.style.display = 'none';
-          }
-        });
+        console.log('필터 적용:', type);
+        
+        // 필터 타입 저장
+        selectedTypes = type === 'all' ? [] : [type];
+        
+        // DB에서 다시 조회
+        await loadPOIListWithFilter();
       }
 
-      // 일정 단계로 이동
+      // 필터를 적용하여 POI 리스트 로드
+      async function loadPOIListWithFilter() {
+        const container = document.getElementById('poi-list');
+        container.innerHTML = '<div class="loading">POI 데이터를 불러오는 중...</div>';
+        
+        if (!selectedTable) {
+          container.innerHTML = '<div class="no-data">카테고리를 먼저 선택해주세요.</div>';
+          return;
+        }
+        
+        try {
+          console.log(`SQLite 데이터베이스에서 ${selectedTable} 테이블 POI 데이터 로드 시작... (필터: ${selectedTypes.join(', ') || '전체'})`);
+          
+          // SQLite 클라이언트 초기화
+          await window.sqliteClient.initialize();
+          
+          // 선택된 필터로 POI 데이터 조회
+          const categoryFilter = selectedTypes.length > 0 ? selectedTypes[0] : 'all';
+          const pois = await window.sqliteClient.getTablePOIs(selectedTable, categoryFilter);
+          
+          container.innerHTML = '';
+          
+          if (pois.length === 0) {
+            container.innerHTML = '<div class="no-data">해당 카테고리의 POI를 찾을 수 없습니다.</div>';
+            return;
+          }
+
+          // allPOIs 업데이트
+          allPOIs = pois;
+
+          // 중복 데이터 그룹화
+          const groupedPOIs = groupDuplicatePOIs(pois);
+          
+          // 리스트 항목 생성
+          groupedPOIs.forEach((group, index) => {
+            const listItem = createPOIListItem(group, index);
+            container.appendChild(listItem);
+          });
+
+          console.log(`SQLite 데이터베이스에서 POI 로드 완료: ${pois.length}개 발견 (${groupedPOIs.length}개 그룹)`);
+
+        } catch (error) {
+          console.error('SQLite 데이터베이스 로드 실패:', error);
+          container.innerHTML = '<div class="error">POI 데이터를 불러오는데 실패했습니다.</div>';
+        }
+      }
+
+      // 일정 단계로 이동 (통합된 페이지에서)
       function nextToSchedule() {
         if (selectedPOIs.length === 0) return;
         
         currentStep = 'schedule';
-        document.getElementById('poi-selection-step').style.display = 'none';
+        document.getElementById('preferences-poi-step').style.display = 'none';
         document.getElementById('schedule-step').style.display = 'block';
         
         generateSchedule();
       }
 
-      // 일정 생성
+      // 일정 생성 (수정된 버전)
       function generateSchedule() {
         const container = document.getElementById('timeline');
         container.innerHTML = '';
@@ -460,17 +786,17 @@
         let currentTime = new Date(arrivalTime);
         
         selectedPOIs.forEach((poiId, index) => {
-          const card = document.querySelector(`[data-poi-id="${poiId}"]`);
-          const name = card.querySelector('h4').textContent;
-          const category = card.querySelector('.poi-category').textContent;
-          const timeText = card.querySelector('.estimated-time').textContent;
-          const estimatedTime = parseInt(timeText.match(/\d+/)[0]);
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (!poi) {
+            console.warn(`POI를 찾을 수 없습니다: ${poiId}`);
+            return;
+          }
           
           const timelineItem = document.createElement('div');
           timelineItem.className = 'timeline-item';
           
           const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + estimatedTime * 60000);
+          const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
           
           timelineItem.innerHTML = `
             <div class="timeline-time">
@@ -478,9 +804,9 @@
               <span class="end-time">${formatTime(endTime)}</span>
             </div>
             <div class="timeline-content">
-              <h4>${name}</h4>
-              <span class="timeline-category">${category}</span>
-              <p>${estimatedTime}분 체류</p>
+              <h4>${poi.name}</h4>
+              <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category}</span>
+              <p>${poi.estimatedTime}분 체류</p>
             </div>
           `;
           
@@ -496,31 +822,111 @@
         return `${hours}:${minutes}`;
       }
 
-      // 네비게이션 시작
-      function startNavigation() {
-        // 선택된 POI 정보를 라우터 상태에 저장
+      // 날짜 시간 포맷팅
+      function formatDateTime(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${year}.${month}.${day} ${hours}:${minutes}`;
+      }
+
+      // 공항 메인으로 돌아가기
+      function goToAirportMain() {
+        // airport-main.html로 이동
+        window.location.href = 'airport-main.html';
+      }
+
+      // 일정 저장 (PDF 다운로드)
+      async function saveSchedule() {
+        try {
+          const scheduleContent = document.getElementById('schedule-step');
+          
+          // html2canvas로 HTML을 이미지로 변환
+          const canvas = await html2canvas(scheduleContent, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: '#ffffff'
+          });
+          
+          // PDF 생성
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          // 이미지 크기 계산
+          const imgWidth = 210; // A4 width in mm
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          // 이미지를 PDF에 추가
+          const imgData = canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          
+          // PDF 저장
+          const fileName = `공항내부일정_${transferInfo.city}_${new Date().toISOString().split('T')[0]}.pdf`;
+          pdf.save(fileName);
+          
+          alert('✅ PDF가 다운로드되었습니다!');
+        } catch (error) {
+          console.error('PDF 생성 실패:', error);
+          alert('❌ PDF 생성에 실패했습니다.');
+        }
+      }
+
+      // 일정 공유
+      function shareSchedule() {
         const scheduleData = {
           transferInfo,
-          selectedPreferences,
+          selectedTable,
           selectedPOIs,
           type: 'airport-only'
         };
         
-        // 라우터를 통해 일정 요약 페이지로 이동
-        window.navigateTo('/trip-summary', { schedule: scheduleData });
+        // 간단한 텍스트 형식으로 변환
+        let shareText = `🏢 공항 내부 일정\n\n`;
+        shareText += `경유 도시: ${transferInfo.city}\n`;
+        shareText += `환승 시간: ${formatDuration(transferInfo.duration)}\n\n`;
+        shareText += `📍 방문 장소:\n`;
+        
+        selectedPOIs.forEach((poiId, index) => {
+          const poi = allPOIs.find(p => p.id === poiId);
+          if (poi) {
+            shareText += `${index + 1}. ${poi.name}\n`;
+            shareText += `   위치: ${poi.location}\n`;
+            shareText += `   소요 시간: ${poi.estimatedTime}분\n`;
+            if (poi.businessHours) {
+              shareText += `   영업 시간: ${poi.businessHours}\n`;
+            }
+            shareText += `\n`;
+          }
+        });
+        
+        // 클립보드에 복사
+        navigator.clipboard.writeText(shareText).then(() => {
+          alert('✅ 일정이 클립보드에 복사되었습니다!\n공유할 곳에 붙여넣기(Ctrl+V) 하세요.');
+        }).catch((error) => {
+          console.error('클립보드 복사 실패:', error);
+          alert('❌ 일정 공유에 실패했습니다.');
+        });
       }
 
-      // 뒤로가기 함수들
+      // 뒤로가기 함수들 (통합된 페이지에 맞게 수정)
       function backToPreferences() {
         currentStep = 'preferences';
-        document.getElementById('poi-selection-step').style.display = 'none';
-        document.getElementById('preferences-step').style.display = 'block';
+        document.getElementById('schedule-step').style.display = 'none';
+        document.getElementById('preferences-poi-step').style.display = 'block';
       }
 
       function backToPOISelection() {
-        currentStep = 'poi-selection';
+        currentStep = 'preferences';
         document.getElementById('schedule-step').style.display = 'none';
-        document.getElementById('poi-selection-step').style.display = 'block';
+        document.getElementById('preferences-poi-step').style.display = 'block';
       }
     </script>
   </body>

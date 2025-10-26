@@ -55,14 +55,21 @@
             <div class="form-group">
               <label class="form-label">
                 <span class="label-text">경유 도시</span>
-                <input 
-                  type="text" 
-                  id="city-input" 
-                  class="form-input" 
-                  placeholder="예: 서울, 도쿄, 두바이, 싱가포르"
-                  required
-                />
-                <div class="input-hint">환승하는 도시나 공항을 입력해주세요</div>
+                <div class="city-selection">
+                  <button type="button" class="city-button" data-city="두바이" disabled>
+                    <span class="city-name">두바이</span>
+                    <span class="city-status">준비중</span>
+                  </button>
+                  <button type="button" class="city-button active" data-city="싱가포르">
+                    <span class="city-name">싱가포르</span>
+                    <span class="city-status">활성화</span>
+                  </button>
+                  <button type="button" class="city-button" data-city="홍콩" disabled>
+                    <span class="city-name">홍콩</span>
+                    <span class="city-status">준비중</span>
+                  </button>
+                </div>
+                <div class="input-hint">현재 싱가포르만 서비스 중입니다</div>
               </label>
             </div>
 
@@ -153,7 +160,7 @@
 
       // DOM 요소들
       const form = document.getElementById('transfer-form');
-      const cityInput = document.getElementById('city-input');
+      const cityButtons = document.querySelectorAll('.city-button');
       const arrivalInput = document.getElementById('arrival-input');
       const departureInput = document.getElementById('departure-input');
       const durationDisplay = document.getElementById('duration-display');
@@ -222,9 +229,26 @@
         }
       }
 
+      // 도시 선택 처리
+      function handleCitySelection(selectedButton) {
+        // 모든 버튼에서 active 클래스 제거
+        cityButtons.forEach(button => {
+          button.classList.remove('active');
+        });
+        
+        // 선택된 버튼에 active 클래스 추가
+        selectedButton.classList.add('active');
+        
+        // 상태 업데이트
+        transferState.city = selectedButton.dataset.city;
+        
+        // 폼 유효성 검사
+        validateForm();
+      }
+
       // 폼 유효성 검사
       function validateForm() {
-        const isValid = cityInput.value.trim() && 
+        const isValid = transferState.city && 
                        arrivalInput.value && 
                        departureInput.value && 
                        transferState.duration > 0;
@@ -246,15 +270,20 @@
         
         if (nextButton.disabled) return;
         
-        // 상태 저장
-        transferState.city = cityInput.value.trim();
-        
         // 라우터를 통해 다음 페이지로 이동
         window.navigateTo('/airport-main', { transferInfo: transferState });
       });
 
+      // 도시 선택 버튼 이벤트 리스너
+      cityButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          if (!button.disabled) {
+            handleCitySelection(button);
+          }
+        });
+      });
+
       // 입력 이벤트 리스너
-      cityInput.addEventListener('input', validateForm);
       arrivalInput.addEventListener('change', updateDuration);
       departureInput.addEventListener('change', updateDuration);
 
@@ -266,6 +295,12 @@
       // 페이지 로드 시 초기화
       document.addEventListener('DOMContentLoaded', function() {
         setDefaultDateTime();
+        
+        // 기본 도시 선택 (싱가포르)
+        const singaporeButton = document.querySelector('.city-button[data-city="싱가포르"]');
+        if (singaporeButton) {
+          handleCitySelection(singaporeButton);
+        }
         
         // 애니메이션 효과
         const formContainer = document.querySelector('.form-container');

@@ -7,7 +7,7 @@
 @import 'components/steps.css';
 @import 'components/modals.css';
 @import 'components/navigation.css';
-@import 'components/accessibility.css';
+@import 'components/poi-cards.css';
 @import 'layouts/main-layout.css';
 
 /* 기본 CSS 변수 (기존 호환성 유지) */

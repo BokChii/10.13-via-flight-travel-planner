@@ -1,5 +1,110 @@
-/* Category Cards Component */
-/* ========================================== */
+/* Preference Cards (선호도 선택 카드) */
+.preference-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+@media (min-width: 768px) {
+  .preference-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+.preference-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 2px solid rgba(15, 28, 46, 0.1);
+  background: #ffffff;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  text-align: center;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.preference-card:hover {
+  border-color: rgba(26, 115, 232, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.15);
+}
+
+.preference-card.selected {
+  border-color: var(--color-primary);
+  background: rgba(26, 115, 232, 0.05);
+  transform: scale(1.02);
+}
+
+.preference-card.selected::before {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.preference-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.preference-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.preference-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(15, 28, 46, 0.6);
+  line-height: 1.4;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .preference-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .preference-card {
+    padding: 24px;
+    min-height: 140px;
+  }
+  
+  .preference-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+  }
+  
+  .preference-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 12px;
+  }
+  
+  .preference-card p {
+    font-size: 1rem;
+  }
+}
 
 /* Category selection cards - 최적화된 레이아웃 */
 .category-grid {
