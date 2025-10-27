@@ -342,6 +342,9 @@
               
               <div class="schedule-section">
                 <h3>🏙️ 도시 탐방 일정</h3>
+                <p class="schedule-note" style="margin-bottom: 1rem; color: var(--color-text-secondary); font-size: 0.875rem;">
+                  ⏰ 구체적인 시간표는 "여행 일정 구성하기"를 눌러 확인할 수 있습니다.
+                </p>
                 <div class="timeline" id="city-timeline">
                   <!-- 도시 타임라인이 동적으로 생성됨 -->
                 </div>
@@ -375,7 +378,7 @@
               장소 다시 선택
             </button>
             <button class="btn btn--primary" onclick="startNavigation()">
-              여행 시작하기
+              여행 일정 구성하기
             </button>
           </div>
         </div>
@@ -1507,30 +1510,36 @@
           return;
         }
         
-        // 도시 탐방 시작 시간 계산
-        const startWindow = new Date(meta.exploreWindow.start);
-        let currentTime = new Date(startWindow);
-        
         waypoints.forEach((waypoint, index) => {
-          const timelineItem = document.createElement('div');
-          timelineItem.className = 'timeline-item';
+          const poiCard = document.createElement('div');
+          poiCard.className = 'city-poi-card';
           
-          const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + (waypoint.stayMinutes || 60) * 60000);
+          // 이미지, 평점, 리뷰 수 정보 표시
+          const imageUrl = waypoint.photos?.[0]?.getUrl() || 'https://via.placeholder.com/300x200?text=No+Image';
+          const rating = waypoint.rating || 4.0;
+          const reviewCount = waypoint.userRatingsTotal || 0;
+          const categoryIcon = waypoint.categoryIcon || '📍';
           
-          timelineItem.innerHTML = `
-            <div class="timeline-time">
-              <span class="start-time">${formatTime(startTime)}</span>
-              <span class="end-time">${formatTime(endTime)}</span>
-            </div>
-            <div class="timeline-content">
-              <h4>${waypoint.label}</h4>
-              <p>${waypoint.address || ''}</p>
+          poiCard.innerHTML = `
+            <div class="poi-card-content">
+              ${waypoint.photos ? `<img src="${imageUrl}" alt="${waypoint.label}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'" />` : ''}
+              <div class="poi-card-details">
+                <h4>${waypoint.label}</h4>
+                <p class="poi-address">${waypoint.address || '주소 정보 없음'}</p>
+                <div class="poi-meta">
+                  <div class="poi-rating">
+                    <span class="rating-stars">⭐ ${rating.toFixed(1)}</span>
+                    <span class="review-count">(${reviewCount.toLocaleString()}리뷰)</span>
+                  </div>
+                  <div class="poi-category-badge">
+                    ${categoryIcon} ${waypoint.category || '기타'}
+                  </div>
+                </div>
+              </div>
             </div>
           `;
           
-          container.appendChild(timelineItem);
-          currentTime = endTime;
+          container.appendChild(poiCard);
         });
       }
 

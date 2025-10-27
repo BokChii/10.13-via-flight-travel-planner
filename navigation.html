@@ -84,6 +84,9 @@
           <button id="emergency-return" class="btn btn--emergency">
             🚨 공항 복귀
           </button>
+          <button id="end-trip" class="btn btn--primary" style="margin-top: 1rem; width: 100%;">
+            🎉 환승 여행 종료하기
+          </button>
         </div>
       </section>
     </main>
@@ -150,7 +153,34 @@
       // 페이지 로드 시 저장된 일정 불러오기
       document.addEventListener('DOMContentLoaded', function() {
         loadSavedSchedule();
+        
+        // "환승 여행 종료하기" 버튼 이벤트 리스너 추가
+        const endTripButton = document.getElementById('end-trip');
+        if (endTripButton) {
+          endTripButton.addEventListener('click', function() {
+            endTransferTrip();
+          });
+        }
       });
+
+      // 환승 여행 종료 함수
+      function endTransferTrip() {
+        // 현재 일정 정보 가져오기 (main.js의 state에서)
+        const plannerResult = sessionStorage.getItem('plannerResult');
+        const currentState = window.getState ? window.getState() : null;
+        
+        // 최종 일정 데이터 저장
+        const finalTripData = {
+          plannerResult: plannerResult ? JSON.parse(plannerResult) : null,
+          currentState: currentState,
+          completedAt: new Date().toISOString()
+        };
+        
+        sessionStorage.setItem('finalTripPlan', JSON.stringify(finalTripData));
+        
+        // trip-summary.html로 이동
+        window.location.href = 'trip-summary.html';
+      }
 
       function loadSavedSchedule() {
         const scheduleData = sessionStorage.getItem('scheduleData');

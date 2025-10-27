@@ -101,13 +101,9 @@
       <!-- Action Buttons -->
       <section class="action-section">
         <div class="action-container">
-          <div class="action-buttons">
-            <button class="btn btn--ghost" onclick="editSchedule()">
-              일정 수정하기
-            </button>
-            <button class="btn btn--primary" onclick="startNavigation()">
-              네비게이션 시작
-            </button>
+          <div class="completion-message">
+            <h2>🎉 환승 여행을 완료하셨습니다!</h2>
+            <p>소중한 여행의 기록을 공유하고 저장해보세요.</p>
           </div>
           
           <div class="share-section">
@@ -119,7 +115,16 @@
               <button class="btn btn--small btn--ghost" onclick="shareSchedule('image')">
                 이미지 저장
               </button>
+              <button class="btn btn--small btn--secondary" onclick="shareSchedule('text')">
+                텍스트 복사
+              </button>
             </div>
+          </div>
+          
+          <div class="action-buttons">
+            <button class="btn btn--primary" onclick="goToHome()">
+              🏠 홈으로 돌아가기
+            </button>
           </div>
         </div>
       </section>
@@ -142,25 +147,50 @@
 
       // 일정 데이터 로드
       function loadScheduleData() {
-        const state = window.getAppState();
-        if (state.schedule) {
-          scheduleData = state.schedule;
-          transferInfo = state.schedule.transferInfo;
+        // sessionStorage에서 최종 일정 데이터 가져오기
+        const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
+        if (finalTripPlanStr) {
+          try {
+            const finalTripPlan = JSON.parse(finalTripPlanStr);
+            const plannerResult = finalTripPlan.plannerResult;
+            
+            if (plannerResult) {
+              scheduleData = {
+                transferInfo: {
+                  city: plannerResult.meta?.cityText || '싱가포르',
+                  arrival: plannerResult.meta?.arrival,
+                  departure: plannerResult.meta?.departure,
+                  duration: plannerResult.meta?.exploreWindow?.availableMinutes * 60000
+                },
+                type: 'airport-external',
+                waypoints: plannerResult.waypoints || [],
+                completedAt: finalTripPlan.completedAt
+              };
+              transferInfo = scheduleData.transferInfo;
+            }
+          } catch (error) {
+            console.error('최종 일정 데이터 로드 실패:', error);
+            setDefaultData();
+          }
         } else {
-          // 기본값 설정 (테스트용)
-          scheduleData = {
-            transferInfo: {
-              city: '서울',
-              arrival: new Date(),
-              departure: new Date(Date.now() + 4 * 60 * 60 * 1000),
-              duration: 4 * 60 * 60 * 1000
-            },
-            type: 'airport-only',
-            airportPOIs: [1, 2, 3],
-            cityPOIs: []
-          };
-          transferInfo = scheduleData.transferInfo;
+          setDefaultData();
         }
+      }
+
+      function setDefaultData() {
+        // 기본값 설정 (테스트용)
+        scheduleData = {
+          transferInfo: {
+            city: '싱가포르',
+            arrival: new Date(),
+            departure: new Date(Date.now() + 4 * 60 * 60 * 1000),
+            duration: 4 * 60 * 60 * 1000
+          },
+          type: 'airport-external',
+          waypoints: [],
+          completedAt: new Date().toISOString()
+        };
+        transferInfo = scheduleData.transferInfo;
       }
 
       // 요약 정보 업데이트
@@ -395,17 +425,9 @@
       }
 
       // 일정 수정하기
-      function editSchedule() {
-        if (scheduleData.type === 'airport-only') {
-          window.navigateTo('/airport-only');
-        } else {
-          window.navigateTo('/airport-external');
-        }
-      }
-
-      // 네비게이션 시작
-      function startNavigation() {
-        window.navigateTo('/navigation', { schedule: scheduleData });
+      // 홈으로 돌아가기
+      function goToHome() {
+        window.location.href = 'landing.html';
       }
 
       // 일정 공유하기
