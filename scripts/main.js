@@ -148,6 +148,15 @@ async function bootstrap() {
     await syncUi(elements, latestState, progress);
     await maybeNotifyReturnDeadline(latestState, progress);
     updateReturnDeadlineTimer(latestState);
+    
+    // routePlan이 변경되면 sessionStorage에 저장
+    if (latestState.routePlan) {
+      try {
+        sessionStorage.setItem('routePlan', JSON.stringify(latestState.routePlan));
+      } catch (error) {
+        console.error('routePlan 저장 실패:', error);
+      }
+    }
   });
   const initialState = getState();
   const initialProgress = computeProgress(initialState);

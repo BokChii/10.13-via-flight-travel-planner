@@ -195,8 +195,8 @@ class ViaFlightRouter {
       'airport-main.html': ['transferInfo'],
       'airport-only.html': ['transferInfo', 'userChoice'],
       'airport-external.html': ['transferInfo', 'userChoice'],
-      'trip-summary.html': ['schedule'],
-      'navigation.html': ['schedule']
+      'trip-summary.html': [], // schedule 필수 아님 (sessionStorage에서 직접 로드)
+      'navigation.html': [] // schedule 필수 아님 (sessionStorage에서 직접 로드)
     };
     
     const required = requiredStates[page] || [];
@@ -339,23 +339,15 @@ window.initAirportExternalPage = () => {
 };
 
 window.initTripSummaryPage = () => {
-  console.log('Trip Summary Page 초기화');
-  const state = window.viaFlightRouter.getState();
-  if (!state.schedule) {
-    console.warn('일정 정보가 없습니다. 홈으로 이동합니다.');
-    window.viaFlightRouter.goHome();
-    return;
-  }
+  console.log('Trip Summary Page 초기화 - sessionStorage에서 데이터 로드하므로 리다이렉트 없음');
+  // sessionStorage에서 직접 로드하므로 router state는 필수가 아님
+  // 리다이렉트 제거하여 페이지 정상 표시
 };
 
 window.initNavigationPage = () => {
-  console.log('Navigation Page 초기화');
-  const state = window.viaFlightRouter.getState();
-  if (!state.schedule) {
-    console.warn('일정 정보가 없습니다. 홈으로 이동합니다.');
-    window.viaFlightRouter.goHome();
-    return;
-  }
+  console.log('Navigation Page 초기화 - sessionStorage에서 데이터 로드하므로 리다이렉트 없음');
+  // sessionStorage에서 직접 로드하므로 router state는 필수가 아님
+  // 리다이렉트 제거하여 페이지 정상 표시
 };
 
 // 페이지 로드 시 자동 초기화

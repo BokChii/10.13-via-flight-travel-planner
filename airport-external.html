@@ -1182,6 +1182,16 @@
         alert('일정을 생성하고 있습니다. 잠시만 기다려주세요...');
         
         try {
+          // 공항 내부 POI 데이터를 sessionStorage에 저장
+          const airportPOIData = {
+            selectedPOIs: selectedPOIs,
+            allPOIs: allPOIs,
+            selectedTable: selectedTable,
+            selectedTypes: selectedTypes
+          };
+          sessionStorage.setItem('airportPOIData', JSON.stringify(airportPOIData));
+          console.log('✅ 공항 내부 POI 데이터 저장 완료:', airportPOIData);
+          
           // 일정 생성
           await generateCityPlan();
           

@@ -138,23 +138,109 @@
 
       // 페이지 로드 시 초기화
       document.addEventListener('DOMContentLoaded', function() {
-        loadScheduleData();
-        updateSummary();
-        generateScheduleOverview();
-        updateStats();
-        generateTips();
+        try {
+          loadScheduleData();
+          
+          if (!scheduleData) {
+            console.warn('⚠️ scheduleData가 없습니다. 기본 데이터로 진행');
+            setDefaultData();
+          }
+          
+          if (transferInfo) {
+            try {
+              updateSummary();
+            } catch (error) {
+              console.error('updateSummary 오류:', error);
+            }
+          }
+          
+          try {
+            generateScheduleOverview();
+          } catch (error) {
+            console.error('generateScheduleOverview 오류:', error);
+          }
+          
+          try {
+            updateStats();
+          } catch (error) {
+            console.error('updateStats 오류:', error);
+          }
+          
+          try {
+            generateTips();
+          } catch (error) {
+            console.error('generateTips 오류:', error);
+          }
+          
+          console.log('✅ trip-summary 초기화 완료');
+        } catch (error) {
+          console.error('❌ trip-summary 초기화 실패:', error);
+          alert('오류가 발생했습니다. 콘솔을 확인해주세요.');
+        }
       });
 
-      // 일정 데이터 로드
-      function loadScheduleData() {
-        // sessionStorage에서 최종 일정 데이터 가져오기
-        const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
-        if (finalTripPlanStr) {
-          try {
-            const finalTripPlan = JSON.parse(finalTripPlanStr);
-            const plannerResult = finalTripPlan.plannerResult;
-            
+       // 일정 데이터 로드
+       function loadScheduleData() {
+         console.log('🚀 trip-summary.html 초기화 시작');
+         
+         // sessionStorage에서 최종 일정 데이터 가져오기
+         const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
+         console.log('📦 sessionStorage에서 finalTripPlan 가져옴:', finalTripPlanStr ? '있음' : '없음');
+         
+         if (finalTripPlanStr) {
+           try {
+             const finalTripPlan = JSON.parse(finalTripPlanStr);
+             const plannerResult = finalTripPlan.plannerResult;
+             console.log('📋 plannerResult:', plannerResult);
+             console.log('📦 finalTripPlan 전체:', finalTripPlan);
+             
             if (plannerResult) {
+              // airport-external 타입인 경우 공항 내부 POI 데이터를 sessionStorage에서 가져옴
+              const airportPOIDataStr = sessionStorage.getItem('airportPOIData');
+              let airportPOIs = [];
+              let cityPOIs = [];
+              
+              if (airportPOIDataStr) {
+                try {
+                  const airportPOIData = JSON.parse(airportPOIDataStr);
+                  
+                  // 선택된 POI ID 목록과 전체 POI 목록을 매칭하여 airportPOIs 생성
+                  airportPOIs = airportPOIData.selectedPOIs
+                    .map(poiId => airportPOIData.allPOIs.find(p => p.id === poiId))
+                    .filter(poi => poi != null)
+                    .map(poi => ({
+                      id: poi.id,
+                      name: poi.name,
+                      address: poi.location || '',
+                      description: poi.description || '',
+                      rating: poi.rating || 4.0,
+                      userRatingsTotal: poi.userRatingsTotal || 0,
+                      categoryIcon: poi.categoryIcon || '📍',
+                      imageUrl: poi.imageUrl || '',
+                      estimatedTime: poi.estimatedTime || 10,
+                      category: poi.category || '기타'
+                    }));
+                  
+                } catch (error) {
+                  console.error('❌ airportPOIData 파싱 실패:', error);
+                }
+              }
+              
+              // waypoints는 city POI로 간주
+              const allWaypoints = plannerResult.waypoints || [];
+              cityPOIs = allWaypoints.map((wp, index) => ({
+                id: `city_${index}`,
+                name: wp.label || 'Unknown',
+                address: wp.address || '',
+                description: wp.description || '',
+                rating: wp.rating || 0,
+                userRatingsTotal: wp.userRatingsTotal || 0,
+                categoryIcon: wp.categoryIcon || '📍',
+                imageUrl: wp.photos?.[0] || '',
+                estimatedTime: wp.stayMinutes || 10,
+                category: wp.categoryKey || '기타'
+              }));
+              
               scheduleData = {
                 transferInfo: {
                   city: plannerResult.meta?.cityText || '싱가포르',
@@ -163,19 +249,31 @@
                   duration: plannerResult.meta?.exploreWindow?.availableMinutes * 60000
                 },
                 type: 'airport-external',
-                waypoints: plannerResult.waypoints || [],
+                waypoints: allWaypoints,
+                airportPOIs: airportPOIs,
+                cityPOIs: cityPOIs,
+                actualTimeline: finalTripPlan.actualTimeline, // 실제 계산된 시간표 추가
                 completedAt: finalTripPlan.completedAt
               };
+              
+              if (finalTripPlan.actualTimeline) {
+                console.log('✅ 실제 계산된 타임라인 로드 완료:', finalTripPlan.actualTimeline.length, '개 세그먼트');
+                console.log('📋 actualTimeline 내용:', finalTripPlan.actualTimeline);
+              } else {
+                console.log('⚠️ actualTimeline 데이터 없음');
+              }
               transferInfo = scheduleData.transferInfo;
+            } else {
+              setDefaultData();
             }
-          } catch (error) {
-            console.error('최종 일정 데이터 로드 실패:', error);
-            setDefaultData();
-          }
-        } else {
-          setDefaultData();
-        }
-      }
+           } catch (error) {
+             console.error('❌ 최종 일정 데이터 로드 실패:', error);
+             setDefaultData();
+           }
+         } else {
+           setDefaultData();
+         }
+       }
 
       function setDefaultData() {
         // 기본값 설정 (테스트용)
@@ -195,10 +293,18 @@
 
       // 요약 정보 업데이트
       function updateSummary() {
-        if (!transferInfo) return;
+        if (!transferInfo) {
+          // 데이터가 없으면 기본 메시지 표시
+          document.getElementById('summary-city').textContent = '데이터 없음';
+          document.getElementById('summary-duration').textContent = '-';
+          document.getElementById('summary-arrival').textContent = '-';
+          document.getElementById('summary-departure').textContent = '-';
+          document.getElementById('summary-style').textContent = '-';
+          return;
+        }
 
-        document.getElementById('summary-city').textContent = transferInfo.city;
-        document.getElementById('summary-duration').textContent = formatDuration(transferInfo.duration);
+        document.getElementById('summary-city').textContent = transferInfo.city || '싱가포르';
+        document.getElementById('summary-duration').textContent = formatDuration(transferInfo.duration || 0);
         document.getElementById('summary-arrival').textContent = formatDateTime(transferInfo.arrival);
         document.getElementById('summary-departure').textContent = formatDateTime(transferInfo.departure);
         
@@ -234,7 +340,21 @@
 
       // 일정 개요 생성
       function generateScheduleOverview() {
+        if (!scheduleData) {
+          console.warn('generateScheduleOverview: scheduleData가 없습니다');
+          const container = document.getElementById('schedule-sections');
+          if (container) {
+            container.innerHTML = '<p class="empty-message">일정 데이터가 없습니다.</p>';
+          }
+          return;
+        }
+        
         const container = document.getElementById('schedule-sections');
+        if (!container) {
+          console.error('schedule-sections 컨테이너를 찾을 수 없습니다');
+          return;
+        }
+        
         container.innerHTML = '';
 
         if (scheduleData.type === 'airport-only') {
@@ -288,31 +408,83 @@
         container.appendChild(citySection);
       }
 
+      // 실제 계산된 타임라인 생성 (navigation.html에서 계산된 실제 시간표 사용)
+      function generateActualTimeline(pois, actualTimeline) {
+        if (!actualTimeline || actualTimeline.length === 0) {
+          return '<p class="empty-timeline">실제 계산된 일정 정보가 없습니다.</p>';
+        }
+
+        const arrivalTime = new Date(transferInfo.arrival);
+        let currentTime = new Date(arrivalTime);
+        
+        // 공항 내부 일정 후 도시 일정 시작
+        currentTime.setHours(currentTime.getHours() + 2);
+
+        return actualTimeline.map((segment, index) => {
+          const poi = pois[index];
+          const poiName = poi?.name || segment.toLabel || 'Unknown';
+          const poiCategory = poi?.category || '기타';
+          
+          // 이동 시간 계산 (세그먼트의 duration을 분으로 변환)
+          const travelTime = Math.round(segment.duration / 60); // 초 -> 분
+          
+          // 이동 중 아이템
+          const travelStartTime = new Date(currentTime);
+          const travelEndTime = new Date(currentTime.getTime() + travelTime * 60000);
+          const travelTimeItem = `
+            <div class="timeline-item timeline-item--travel">
+              <div class="timeline-time">
+                <span class="start-time">${formatTime(travelStartTime)}</span>
+                <span class="end-time">${formatTime(travelEndTime)}</span>
+              </div>
+              <div class="timeline-content">
+                <h4>🚶 이동 중</h4>
+                <p>${travelTime}분 이동 (${segment.distanceText || ''})</p>
+                <p class="details">${segment.fromLabel} → ${segment.toLabel}</p>
+              </div>
+            </div>
+          `;
+          
+          currentTime = travelEndTime;
+          
+          // 체류 시간 계산 (POI의 estimatedTime 또는 기본값 사용)
+          const stayTime = poi?.estimatedTime || poi?.stayMinutes || 60;
+          const stayStartTime = new Date(currentTime);
+          const stayEndTime = new Date(currentTime.getTime() + stayTime * 60000);
+          
+          const timelineItem = `
+            <div class="timeline-item">
+              <div class="timeline-time">
+                <span class="start-time">${formatTime(stayStartTime)}</span>
+                <span class="end-time">${formatTime(stayEndTime)}</span>
+              </div>
+              <div class="timeline-content">
+                <h4>${poiName}</h4>
+                <span class="timeline-category">${poiCategory}</span>
+                <p>${stayTime}분 체류</p>
+                ${poi?.address ? `<p class="address">${poi.address}</p>` : ''}
+              </div>
+            </div>
+          `;
+          
+          currentTime = stayEndTime;
+          return travelTimeItem + timelineItem;
+        }).join('');
+      }
+
       // 타임라인 아이템 생성
-      function generateTimelineItems(poiIds, type) {
-        if (!poiIds || poiIds.length === 0) {
+      function generateTimelineItems(pois, type) {
+        if (!pois || pois.length === 0) {
           return '<p class="empty-timeline">선택된 장소가 없습니다.</p>';
         }
 
-        // 임시 POI 데이터
-        const samplePOIs = {
-          airport: [
-            { id: 1, name: '면세점 A', category: '쇼핑', estimatedTime: 60 },
-            { id: 2, name: '공항 카페', category: '음식', estimatedTime: 30 },
-            { id: 3, name: '문화 전시관', category: '문화체험', estimatedTime: 45 },
-            { id: 4, name: '스파 & 마사지', category: '휴식', estimatedTime: 90 },
-            { id: 5, name: '게임존', category: '엔터테인먼트', estimatedTime: 30 },
-            { id: 6, name: '은행 ATM', category: '편의시설', estimatedTime: 15 }
-          ],
-          city: [
-            { id: 101, name: '도시 랜드마크', category: '관광명소', estimatedTime: 120 },
-            { id: 102, name: '로컬 시장', category: '쇼핑', estimatedTime: 90 },
-            { id: 103, name: '전통 맛집', category: '음식', estimatedTime: 60 },
-            { id: 104, name: '박물관', category: '문화체험', estimatedTime: 90 },
-            { id: 105, name: '중앙 공원', category: '자연', estimatedTime: 60 },
-            { id: 106, name: '야경 전망대', category: '야경/야생활', estimatedTime: 45 }
-          ]
-        };
+        // 실제 계산된 타임라인이 있으면 사용
+        if (scheduleData.actualTimeline && type === 'city') {
+          console.log('📅 실제 계산된 타임라인으로 생성 시작');
+          return generateActualTimeline(pois, scheduleData.actualTimeline);
+        } else {
+          console.log('⚠️ 실제 타임라인 없음, 추정값 사용');
+        }
 
         const arrivalTime = new Date(transferInfo.arrival);
         let currentTime = new Date(arrivalTime);
@@ -322,23 +494,50 @@
           currentTime.setHours(currentTime.getHours() + 2);
         }
 
-        return poiIds.map(poiId => {
-          const poi = samplePOIs[type].find(p => p.id === poiId);
-          if (!poi) return '';
+        return pois.map((poi, index) => {
+          // POI가 ID인지 객체인지 확인
+          const poiData = typeof poi === 'object' ? poi : { id: poi, name: 'Unknown', estimatedTime: 10 };
+          
+          const poiName = poiData.name || 'Unknown';
+          const poiCategory = poiData.category || '기타';
+          const estimatedTime = poiData.estimatedTime || poiData.stayMinutes || 10;
+          const travelTime = poiData.travelTime || 0; // 이전 경유지에서 이동 시간
+
+          // 첫 번째 경유지가 아니고 이동 시간이 있는 경우 이동 시간 표시
+          let travelTimeItem = '';
+          if (index > 0 && travelTime > 0) {
+            const travelStartTime = new Date(currentTime);
+            const travelEndTime = new Date(currentTime.getTime() + travelTime * 60000);
+            travelTimeItem = `
+              <div class="timeline-item timeline-item--travel">
+                <div class="timeline-time">
+                  <span class="start-time">${formatTime(travelStartTime)}</span>
+                  <span class="end-time">${formatTime(travelEndTime)}</span>
+                </div>
+                <div class="timeline-content">
+                  <h4>🚶 이동 중</h4>
+                  <p>${travelTime}분 이동</p>
+                </div>
+              </div>
+            `;
+            currentTime = travelEndTime;
+          }
 
           const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
+          const endTime = new Date(currentTime.getTime() + estimatedTime * 60000);
           
           const timelineItem = `
+            ${travelTimeItem}
             <div class="timeline-item">
               <div class="timeline-time">
                 <span class="start-time">${formatTime(startTime)}</span>
                 <span class="end-time">${formatTime(endTime)}</span>
               </div>
               <div class="timeline-content">
-                <h4>${poi.name}</h4>
-                <span class="timeline-category">${poi.category}</span>
-                <p>${poi.estimatedTime}분 체류</p>
+                <h4>${poiName}</h4>
+                <span class="timeline-category">${poiCategory}</span>
+                <p>${estimatedTime}분 체류</p>
+                ${poiData.address ? `<p class="address">${poiData.address}</p>` : ''}
               </div>
             </div>
           `;
@@ -357,24 +556,49 @@
 
       // 통계 업데이트
       function updateStats() {
+        if (!scheduleData) {
+          console.warn('updateStats: scheduleData가 없습니다');
+          return;
+        }
+        
         const airportCount = scheduleData.airportPOIs ? scheduleData.airportPOIs.length : 0;
         const cityCount = scheduleData.cityPOIs ? scheduleData.cityPOIs.length : 0;
         const totalLocations = airportCount + cityCount;
         
-        document.getElementById('total-locations').textContent = totalLocations;
+        const totalLocationsEl = document.getElementById('total-locations');
+        if (totalLocationsEl) {
+          totalLocationsEl.textContent = totalLocations;
+        }
 
         // 총 소요시간 계산 (임시)
         const totalTime = totalLocations * 60; // 평균 60분씩
-        document.getElementById('total-time').textContent = `${totalTime}분`;
+        const totalTimeEl = document.getElementById('total-time');
+        if (totalTimeEl) {
+          totalTimeEl.textContent = `${totalTime}분`;
+        }
 
         // 이동시간 계산 (임시)
         const walkingTime = Math.max(0, totalLocations - 1) * 15; // 장소 간 이동 15분씩
-        document.getElementById('walking-time').textContent = `${walkingTime}분`;
+        const walkingTimeEl = document.getElementById('walking-time');
+        if (walkingTimeEl) {
+          walkingTimeEl.textContent = `${walkingTime}분`;
+        }
       }
 
       // 팁 생성
       function generateTips() {
         const container = document.getElementById('tips-grid');
+        if (!container) {
+          console.error('tips-grid 컨테이너를 찾을 수 없습니다');
+          return;
+        }
+        
+        if (!scheduleData) {
+          console.warn('generateTips: scheduleData가 없습니다');
+          container.innerHTML = '';
+          return;
+        }
+        
         const tips = getTipsForSchedule(scheduleData);
         
         container.innerHTML = tips.map(tip => `
@@ -388,6 +612,11 @@
 
       // 일정에 따른 팁 가져오기
       function getTipsForSchedule(schedule) {
+        if (!schedule) {
+          console.warn('getTipsForSchedule: schedule이 null입니다');
+          return [];
+        }
+        
         const baseTips = [
           {
             icon: '🎒',
