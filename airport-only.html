@@ -145,7 +145,7 @@
           </div>
 
           <div class="step-actions">
-            <button class="btn btn--primary" onclick="nextToSchedule()" id="preferences-poi-next" disabled>
+            <button class="btn btn--primary" onclick="nextToSchedule()" id="preferences-poi-next">
               일정 만들기
             </button>
           </div>
@@ -215,6 +215,7 @@
     <script type="module" src="scripts/airportPOIService.js"></script>
     <script type="module" src="scripts/cityPOIService.js"></script>
     <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script type="module" src="scripts/toast.js"></script>
     <script src="scripts/sqliteClient.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -306,7 +307,14 @@
         const hasTable = selectedTable !== null;
         const hasSelectedPOIs = selectedPOIs.length > 0;
         
-        nextButton.disabled = !hasTable || !hasSelectedPOIs;
+        // disabled 대신 CSS 클래스로만 스타일 변경
+        if (!hasTable || !hasSelectedPOIs) {
+          nextButton.style.opacity = '0.5';
+          nextButton.style.cursor = 'not-allowed';
+        } else {
+          nextButton.style.opacity = '1';
+          nextButton.style.cursor = 'pointer';
+        }
       }
 
       // POI 선택 섹션 표시/숨김
@@ -574,7 +582,7 @@
         
         // 중복 선택 확인
         if (selectedPOIs.includes(poiId)) {
-          alert('⚠️ 이미 선택한 장소입니다.');
+          showToast({ message: '이미 선택한 장소입니다.', type: 'warning' });
           return;
         }
         
@@ -789,13 +797,13 @@
       function nextToSchedule() {
         // 1. 카테고리 선택 검증
         if (!selectedTable) {
-          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          showToast({ message: '관심 카테고리를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         
         // 2. 장소 선택 검증
         if (selectedPOIs.length === 0) {
-          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          showToast({ message: '방문할 장소를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         

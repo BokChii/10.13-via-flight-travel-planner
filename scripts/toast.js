@@ -47,6 +47,9 @@ export function showToast({ message, timeout = 5000, type = "info" }) {
   toast.addEventListener("click", hide);
 }
 
+// 전역으로 노출 (airport-only.html, airport-external.html에서 사용 가능하도록)
+window.showToast = showToast;
+
 function toastIcon(type) {
   switch (type) {
     case "success":

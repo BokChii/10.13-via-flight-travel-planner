@@ -150,7 +150,7 @@
           </div>
 
           <div class="step-actions">
-            <button class="btn btn--primary" onclick="nextToCityPreferences()" id="preferences-poi-next" disabled>
+            <button class="btn btn--primary" onclick="nextToCityPreferences()" id="preferences-poi-next">
               도시 탐방으로
             </button>
           </div>
@@ -391,6 +391,7 @@
     <script type="module" src="scripts/airportPOIService.js"></script>
     <script type="module" src="scripts/cityPOIService.js"></script>
     <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script type="module" src="scripts/toast.js"></script>
     <script src="scripts/sqliteClient.js"></script>
     <script>
       // 전역 상태
@@ -476,7 +477,15 @@
         const nextButton = document.getElementById('preferences-poi-next');
         const hasTable = selectedTable !== null;
         const hasSelectedPOIs = selectedPOIs.length > 0;
-        nextButton.disabled = !hasTable || !hasSelectedPOIs;
+        
+        // disabled 대신 CSS 클래스로만 스타일 변경
+        if (!hasTable || !hasSelectedPOIs) {
+          nextButton.style.opacity = '0.5';
+          nextButton.style.cursor = 'not-allowed';
+        } else {
+          nextButton.style.opacity = '1';
+          nextButton.style.cursor = 'pointer';
+        }
       }
 
       function togglePOISelectionSection() {
@@ -735,7 +744,7 @@
         
         // 중복 선택 확인
         if (selectedPOIs.includes(poiId)) {
-          alert('⚠️ 이미 선택한 장소입니다.');
+          showToast({ message: '이미 선택한 장소입니다.', type: 'warning' });
           return;
         }
         
@@ -1058,13 +1067,13 @@
       function nextToCityPreferences() {
         // 검증: 카테고리 선택 확인
         if (!selectedTable) {
-          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          showToast({ message: '관심 카테고리를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         
         // 검증: 장소 선택 확인
         if (selectedPOIs.length === 0) {
-          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          showToast({ message: '방문할 장소를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         
@@ -1215,7 +1224,7 @@
       async function nextToCityPOISelection() {
         // 검증: 도시 카테고리 선택 확인
         if (selectedCityPreferences.length === 0) {
-          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          showToast({ message: '관심 카테고리를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         
@@ -1436,7 +1445,7 @@
         } else {
           // 중복 선택 확인 (이미 선택된 경우)
           if (selectedCityPOIs.includes(poiId)) {
-            alert('⚠️ 이미 선택한 장소입니다.');
+            showToast({ message: '이미 선택한 장소입니다.', type: 'warning' });
             return;
           }
           
@@ -1501,7 +1510,7 @@
       function nextToSchedule() {
         // 검증: 도시 장소 선택 확인
         if (selectedCityPOIs.length === 0) {
-          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          showToast({ message: '방문할 장소를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         

@@ -119,10 +119,9 @@
 
 /* Form Section */
 .transfer-form-section {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 60px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
 }
 
 .form-container {
@@ -373,8 +372,8 @@
 }
 
 .tips-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
@@ -419,8 +418,11 @@
   }
 
   .transfer-form-section {
+    gap: 30px;
+  }
+
+  .tips-grid {
     grid-template-columns: 1fr;
-    gap: 40px;
   }
 
   .form-container {
