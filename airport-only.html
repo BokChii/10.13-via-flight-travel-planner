@@ -787,7 +787,17 @@
 
       // 일정 단계로 이동 (통합된 페이지에서)
       function nextToSchedule() {
-        if (selectedPOIs.length === 0) return;
+        // 1. 카테고리 선택 검증
+        if (!selectedTable) {
+          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          return;
+        }
+        
+        // 2. 장소 선택 검증
+        if (selectedPOIs.length === 0) {
+          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          return;
+        }
         
         currentStep = 'schedule';
         document.getElementById('preferences-poi-step').style.display = 'none';
