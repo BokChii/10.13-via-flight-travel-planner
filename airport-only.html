@@ -225,6 +225,7 @@
       let selectedTypes = []; // 선택된 타입들
       let selectedPOIs = [];
       let allPOIs = []; // 모든 POI 데이터 저장
+      let allPOIsMap = new Map(); // 모든 카테고리의 POI를 누적 저장
       let currentStep = 'preferences';
       let expandedGroups = new Set(); // 펼쳐진 그룹들의 인덱스
       let currentExpandedGroup = null; // 현재 펼쳐진 그룹
@@ -564,15 +565,22 @@
 
       // POI 단일 항목 선택
       function selectPOISingle(poiId) {
-        const poi = allPOIs.find(p => p.id === poiId);
+        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+        let poi = allPOIsMap.get(poiId);
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
+        }
         if (!poi) return;
         
-        // 선택된 POI 목록에 추가
-        if (!selectedPOIs.includes(poiId)) {
-          selectedPOIs.push(poiId);
-          updateSelectedPOIsList();
-          updatePOINextButton();
+        // 중복 선택 확인
+        if (selectedPOIs.includes(poiId)) {
+          alert('⚠️ 이미 선택한 장소입니다.');
+          return;
         }
+        
+        selectedPOIs.push(poiId);
+        updateSelectedPOIsList();
+        updatePOINextButton();
       }
 
       // POI 시간 업데이트 (단일 항목용)
@@ -678,7 +686,12 @@
         }
 
         container.innerHTML = selectedPOIs.map(poiId => {
-          const poi = allPOIs.find(p => p.id === poiId);
+          // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+          let poi = allPOIsMap.get(poiId);
+          if (!poi) {
+            poi = allPOIs.find(p => p.id === poiId);
+          }
+          
           if (!poi) {
             console.warn(`POI를 찾을 수 없습니다: ${poiId}`);
             return '';
@@ -691,7 +704,7 @@
               </div>
               <div class="poi-time">
                 <span class="time-label">소요시간:</span>
-                <span class="time-value">${poi.estimatedTime}분</span>
+                <span class="time-value">${poi.estimatedTime || 10}분</span>
               </div>
               <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}')">제거</button>
             </div>
@@ -745,7 +758,14 @@
             return;
           }
 
-          // allPOIs 업데이트
+          // 새로 로드된 POI를 기존 Map에 추가
+          pois.forEach(poi => {
+            if (!allPOIsMap.has(poi.id)) {
+              allPOIsMap.set(poi.id, poi);
+            }
+          });
+          
+          // allPOIs 업데이트 (현재 필터에 해당하는 POI만 포함)
           allPOIs = pois;
 
           // 중복 데이터 그룹화
@@ -786,7 +806,12 @@
         let currentTime = new Date(arrivalTime);
         
         selectedPOIs.forEach((poiId, index) => {
-          const poi = allPOIs.find(p => p.id === poiId);
+          // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+          let poi = allPOIsMap.get(poiId);
+          if (!poi) {
+            poi = allPOIs.find(p => p.id === poiId);
+          }
+          
           if (!poi) {
             console.warn(`POI를 찾을 수 없습니다: ${poiId}`);
             return;

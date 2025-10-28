@@ -399,6 +399,7 @@
       let selectedTypes = [];
       let selectedPOIs = [];
       let allPOIs = [];
+      let allPOIsMap = new Map(); // 모든 카테고리의 POI를 누적 저장
       let currentStep = 'preferences';
       let expandedGroups = new Set();
       let currentExpandedGroup = null;
@@ -560,6 +561,14 @@
           await window.sqliteClient.initialize();
           const pois = await window.sqliteClient.getTablePOIs(selectedTable, categoryFilter);
           
+          // 새로 로드된 POI를 기존 Map에 추가
+          pois.forEach(poi => {
+            if (!allPOIsMap.has(poi.id)) {
+              allPOIsMap.set(poi.id, poi);
+            }
+          });
+          
+          // allPOIs 업데이트 (현재 필터에 해당하는 POI만 포함)
           allPOIs = pois;
           const groupedPOIs = groupDuplicatePOIs(pois);
           
@@ -717,13 +726,22 @@
       }
 
       function selectPOISingle(poiId) {
-        const poi = allPOIs.find(p => p.id === poiId);
-        if (!poi) return;
-        if (!selectedPOIs.includes(poiId)) {
-          selectedPOIs.push(poiId);
-          updateSelectedPOIsList();
-          updatePOINextButton();
+        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+        let poi = allPOIsMap.get(poiId);
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
         }
+        if (!poi) return;
+        
+        // 중복 선택 확인
+        if (selectedPOIs.includes(poiId)) {
+          alert('⚠️ 이미 선택한 장소입니다.');
+          return;
+        }
+        
+        selectedPOIs.push(poiId);
+        updateSelectedPOIsList();
+        updatePOINextButton();
       }
 
       function updatePOITimeForItem(poiId, time) {
@@ -756,7 +774,12 @@
         }
         
         container.innerHTML = selectedPOIs.map(poiId => {
-          const poi = allPOIs.find(p => p.id === poiId);
+          // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+          let poi = allPOIsMap.get(poiId);
+          if (!poi) {
+            poi = allPOIs.find(p => p.id === poiId);
+          }
+          
           if (!poi) return '';
           
           return `
@@ -766,7 +789,7 @@
               </div>
               <div class="poi-time">
                 <span class="time-label">소요시간:</span>
-                <span class="time-value">${poi.estimatedTime}분</span>
+                <span class="time-value">${poi.estimatedTime || 10}분</span>
               </div>
               <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}')">제거</button>
             </div>
@@ -1033,7 +1056,17 @@
 
       // 도시 선호도 단계로 이동
       function nextToCityPreferences() {
-        if (selectedPOIs.length === 0) return;
+        // 검증: 카테고리 선택 확인
+        if (!selectedTable) {
+          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          return;
+        }
+        
+        // 검증: 장소 선택 확인
+        if (selectedPOIs.length === 0) {
+          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          return;
+        }
         
         // 공항 내부 일정 페이지로 이동
         currentStep = 'airport-schedule';
@@ -1063,7 +1096,6 @@
       function generateSchedule() {
         console.log('📝 공항 내부 일정 생성 시작');
         console.log('selectedPOIs:', selectedPOIs);
-        console.log('allPOIs:', allPOIs);
         
         const container = document.getElementById('timeline');
         container.innerHTML = '';
@@ -1072,7 +1104,12 @@
         let currentTime = new Date(arrivalTime);
         
         selectedPOIs.forEach((poiId, index) => {
-          const poi = allPOIs.find(p => p.id === poiId);
+          // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+          let poi = allPOIsMap.get(poiId);
+          if (!poi) {
+            poi = allPOIs.find(p => p.id === poiId);
+          }
+          
           console.log(`POI ${index + 1} 조회:`, poiId, poi);
           if (!poi) return;
           
@@ -1176,7 +1213,11 @@
 
       // 도시 POI 선택 단계로 이동
       async function nextToCityPOISelection() {
-        if (selectedCityPreferences.length === 0) return;
+        // 검증: 도시 카테고리 선택 확인
+        if (selectedCityPreferences.length === 0) {
+          alert('⚠️ 관심 카테고리를 먼저 선택해주세요.');
+          return;
+        }
         
         // 로딩 표시
         alert('일정을 생성하고 있습니다. 잠시만 기다려주세요...');
@@ -1382,13 +1423,23 @@
       // 도시 POI 토글
       function toggleCityPOI(poiId) {
         const card = document.querySelector(`#city-poi-grid [data-poi-id="${poiId}"]`);
-        const button = card.querySelector('button');
+        if (!card) return;
         
+        const button = card.querySelector('button');
+        if (!button) return;
+        
+        // 이미 선택된 경우 제거
         if (selectedCityPOIs.includes(poiId)) {
           selectedCityPOIs = selectedCityPOIs.filter(id => id !== poiId);
           card.classList.remove('selected');
           button.textContent = '선택';
         } else {
+          // 중복 선택 확인 (이미 선택된 경우)
+          if (selectedCityPOIs.includes(poiId)) {
+            alert('⚠️ 이미 선택한 장소입니다.');
+            return;
+          }
+          
           selectedCityPOIs.push(poiId);
           card.classList.add('selected');
           button.textContent = '선택됨';
@@ -1448,7 +1499,11 @@
 
       // 일정 단계로 이동
       function nextToSchedule() {
-        if (selectedCityPOIs.length === 0) return;
+        // 검증: 도시 장소 선택 확인
+        if (selectedCityPOIs.length === 0) {
+          alert('⚠️ 방문할 장소를 먼저 선택해주세요.');
+          return;
+        }
         
         currentStep = 'schedule';
         document.getElementById('city-poi-step').style.display = 'none';
@@ -1564,6 +1619,7 @@
       function startNavigation() {
         // 도시 일정 가져오기
         const cityPlanStr = sessionStorage.getItem('cityPlan');
+        const airportPOIDataStr = sessionStorage.getItem('airportPOIData');
         
         if (!cityPlanStr) {
           alert('도시 탐방 일정이 생성되지 않았습니다. 다시 시도해주세요.');
@@ -1582,6 +1638,11 @@
         
         // sessionStorage에 저장
         sessionStorage.setItem('plannerResult', JSON.stringify(plan));
+        
+        // airport POI 데이터도 함께 저장
+        if (airportPOIDataStr) {
+          sessionStorage.setItem('airportPOIData', airportPOIDataStr);
+        }
         
         // navigation.html로 이동
         window.location.href = 'navigation.html';

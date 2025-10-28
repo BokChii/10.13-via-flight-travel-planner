@@ -181,18 +181,12 @@
 
        // 일정 데이터 로드
        function loadScheduleData() {
-         console.log('🚀 trip-summary.html 초기화 시작');
-         
-         // sessionStorage에서 최종 일정 데이터 가져오기
          const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
-         console.log('📦 sessionStorage에서 finalTripPlan 가져옴:', finalTripPlanStr ? '있음' : '없음');
          
          if (finalTripPlanStr) {
            try {
              const finalTripPlan = JSON.parse(finalTripPlanStr);
              const plannerResult = finalTripPlan.plannerResult;
-             console.log('📋 plannerResult:', plannerResult);
-             console.log('📦 finalTripPlan 전체:', finalTripPlan);
              
             if (plannerResult) {
               // airport-external 타입인 경우 공항 내부 POI 데이터를 sessionStorage에서 가져옴
@@ -257,10 +251,7 @@
               };
               
               if (finalTripPlan.actualTimeline) {
-                console.log('✅ 실제 계산된 타임라인 로드 완료:', finalTripPlan.actualTimeline.length, '개 세그먼트');
-                console.log('📋 actualTimeline 내용:', finalTripPlan.actualTimeline);
-              } else {
-                console.log('⚠️ actualTimeline 데이터 없음');
+                console.log('✅ 실제 계산된 타임라인 로드 완료');
               }
               transferInfo = scheduleData.transferInfo;
             } else {
@@ -414,19 +405,39 @@
           return '<p class="empty-timeline">실제 계산된 일정 정보가 없습니다.</p>';
         }
 
-        const arrivalTime = new Date(transferInfo.arrival);
+        // arrivalTime을 안전하게 처리
+        let arrivalTime;
+        if (transferInfo && transferInfo.arrival) {
+          arrivalTime = new Date(transferInfo.arrival);
+        } else {
+          // 기본값 사용 (현재 시간 + 2시간)
+          arrivalTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
+        }
+        
         let currentTime = new Date(arrivalTime);
         
         // 공항 내부 일정 후 도시 일정 시작
         currentTime.setHours(currentTime.getHours() + 2);
 
         return actualTimeline.map((segment, index) => {
+          
           const poi = pois[index];
           const poiName = poi?.name || segment.toLabel || 'Unknown';
           const poiCategory = poi?.category || '기타';
           
           // 이동 시간 계산 (세그먼트의 duration을 분으로 변환)
-          const travelTime = Math.round(segment.duration / 60); // 초 -> 분
+          let travelTime = 0;
+          if (segment.duration) {
+            travelTime = Math.round(segment.duration / 60);
+          } else if (segment.durationText) {
+            // durationText 파싱 예: "1시간 23분"
+            const match = segment.durationText.match(/(?:(\d+)시간)?\s*(?:(\d+)분)?/);
+            if (match) {
+              const hours = parseInt(match[1] || '0', 10);
+              const minutes = parseInt(match[2] || '0', 10);
+              travelTime = hours * 60 + minutes;
+            }
+          }
           
           // 이동 중 아이템
           const travelStartTime = new Date(currentTime);
@@ -480,10 +491,9 @@
 
         // 실제 계산된 타임라인이 있으면 사용
         if (scheduleData.actualTimeline && type === 'city') {
-          console.log('📅 실제 계산된 타임라인으로 생성 시작');
           return generateActualTimeline(pois, scheduleData.actualTimeline);
-        } else {
-          console.log('⚠️ 실제 타임라인 없음, 추정값 사용');
+        } else if (type === 'airport') {
+          // 공항 일정은 항상 추정값 사용 (실제 계산된 경로 없음)
         }
 
         const arrivalTime = new Date(transferInfo.arrival);
