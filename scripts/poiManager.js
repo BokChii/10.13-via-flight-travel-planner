@@ -201,10 +201,7 @@ export function getCategoryInfo(categoryKey) {
  * @returns {Promise<Object>} POI 정보
  */
 async function fetchPOIFromAPI(placeId) {
-  console.log('🌐 [DEBUG] fetchPOIFromAPI 호출됨, placeId:', placeId);
-  
   if (!window.google?.maps?.places) {
-    console.log('❌ [DEBUG] Google Maps Places API가 로드되지 않음');
     return null;
   }
 
@@ -357,15 +354,6 @@ export async function createTravelTimeFromTripMeta(tripMeta, waypoints, waypoint
     // 도착 시간을 Date 객체로 변환 (UTC 기준) - 원본 시간 우선 사용
     const arrivalTime = new Date(arrivalTimeStr);
     
-    console.log('🕐 createTravelTimeFromTripMeta: 도착 시간 사용', {
-      originalArrival: tripMeta.originalArrival,
-      bufferedArrival: tripMeta.arrival,
-      using: arrivalTimeStr,
-      arrivalTime: arrivalTime.toISOString(),
-      waypointIndex,
-      durationMinutes
-    });
-    
     // 유효한 날짜인지 확인
     if (isNaN(arrivalTime.getTime())) {
       throw new Error(`Invalid arrival time: ${arrivalTimeStr}`);
@@ -374,21 +362,19 @@ export async function createTravelTimeFromTripMeta(tripMeta, waypoints, waypoint
     // 경유지 방문 시간 계산 (실제 이동 시간 사용)
     const visitTime = await calculateWaypointVisitTime(arrivalTime, waypoints, waypointIndex, googleMaps);
     
-    // 시간대 설정 (tripMeta에서 추출하거나 기본값 사용)
-    const timeZone = tripMeta.timeZone || 'Asia/Seoul';
+    // 시간대 설정 (도시에 따라 결정)
+    let timeZone = tripMeta.timeZone;
+    if (!timeZone) {
+      // cityText나 다른 정보로 도시 판단
+      const cityText = tripMeta.cityText || '';
+      if (cityText.toLowerCase().includes('singapore') || cityText.toLowerCase().includes('싱가포르')) {
+        timeZone = 'Asia/Singapore';
+      } else {
+        timeZone = 'Asia/Seoul'; // 기본값
+      }
+    }
     
     const travelTime = createTravelTimeInfo(visitTime, durationMinutes, timeZone);
-    
-    // endDate 계산 (start + durationMinutes)
-    const endDate = travelTime.start ? new Date(travelTime.start.getTime() + travelTime.durationMinutes * 60000) : null;
-    
-    console.log('✅ createTravelTimeFromTripMeta: travelTime 생성 완료', {
-      start: travelTime.start?.toISOString(),
-      end: endDate?.toISOString(),
-      durationMinutes: travelTime.durationMinutes,
-      timeZone: travelTime.timeZone,
-      visitTime: visitTime?.toISOString()
-    });
     
     return travelTime;
   } catch (error) {

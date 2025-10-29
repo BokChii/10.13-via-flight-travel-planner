@@ -22,17 +22,21 @@ export async function calculateRealTimeReturnInfo(state, progress) {
   }
 
   const tripMeta = state.tripMeta;
-  if (!tripMeta?.departure) return null;
+  if (!tripMeta) return null;
 
-  const departureTime = new Date(tripMeta.departure);
+  // 원본 출발 시간 우선 사용
+  const departureTimeStr = tripMeta.originalDeparture || tripMeta.departure;
+  if (!departureTimeStr) return null;
+  
+  const departureTime = new Date(departureTimeStr);
   const currentTime = new Date();
   const remainingMinutes = (departureTime - currentTime) / (1000 * 60);
 
   // 실시간 공항까지 소요시간 계산
   const airportTravelTime = await calculateRealTimeToAirport(state, progress);
   
-  // 출국 버퍼 시간
-  const returnBufferMinutes = tripMeta.returnBufferMinutes || DEFAULT_BUFFER_TIMES.RETURN_BUFFER_MINUTES;
+  // 출국 버퍼 시간을 0분으로 하드코딩
+  const returnBufferMinutes = 0;
   
   // 실제 여유 시간 계산
   const actualSlackMinutes = remainingMinutes - airportTravelTime - returnBufferMinutes;

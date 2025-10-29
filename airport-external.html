@@ -393,6 +393,15 @@
     <script type="module" src="scripts/poiServiceManager.js"></script>
     <script type="module" src="scripts/toast.js"></script>
     <script src="scripts/sqliteClient.js"></script>
+    <script type="module">
+      // 필요한 함수들을 import
+      import { getPOIInfo } from './scripts/poiManager.js';
+      import { getBusinessStatus } from './scripts/businessHours.js';
+      
+      // 전역에서 사용 가능하도록 window에 노출
+      window.getPOIInfo = getPOIInfo;
+      window.getBusinessStatus = getBusinessStatus;
+    </script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -1287,6 +1296,8 @@
       
       // 도시 일정 생성
       async function generateCityPlan() {
+        console.log('🏙️ [generateCityPlan] 도시 일정 생성 시작');
+        
         // transferInfo에서 도착/출발 시간 가져오기
         const arrivalTime = new Date(transferInfo.arrival);
         const departureTime = new Date(transferInfo.departure);
@@ -1303,10 +1314,11 @@
         const endWindow = new Date(departureTime.getTime() - returnBufferMinutes * 60000);
         const availableMinutes = Math.max((endWindow.getTime() - startWindow.getTime()) / 60000, 0);
         
-        console.log('도시 탐방 시간:', {
+        console.log('⏰ [generateCityPlan] 도시 탐방 시간:', {
           start: startWindow.toISOString(),
           end: endWindow.toISOString(),
-          available: availableMinutes
+          available: availableMinutes,
+          selectedCategories: selectedCityPreferences
         });
         
         // 도시 POI 검색 (POI Service Manager 사용)
@@ -1317,18 +1329,178 @@
         // 싱가포르 도시 중심 좌표
         const cityCenter = { lat: 1.3521, lng: 103.8198 }; // Singapore city center
         
-        // 각 카테고리별 POI 검색
-        const cityPOIs = [];
+        // 1단계: 각 카테고리별로 POI 검색 (균형 있는 선택을 위해 충분히 가져오기)
+        const categoryPOIsMap = new Map(); // 카테고리별 POI 그룹
+        const targetCount = 3; // 최종적으로 선택할 POI 개수
+        
+        console.log('🔍 [generateCityPlan] 카테고리별 POI 검색 시작');
+        
         for (const category of selectedCityPreferences) {
           const pois = await window.poiServiceManager.searchCityPOIs(cityCenter, [category], 10000); // 10km 반경
-          cityPOIs.push(...pois);
           
-          // 최대 3개까지만 선택
-          if (cityPOIs.length >= 3) break;
+          if (pois.length > 0) {
+            // 각 카테고리별로 최소 5-10개 정도는 가져와서 운영 시간 필터링 후 선택
+            categoryPOIsMap.set(category, pois.slice(0, 10)); // 상위 10개만 사용
+          }
         }
         
+        console.log('📊 [generateCityPlan] 카테고리별 POI 검색 완료:', {
+          totalCategories: categoryPOIsMap.size,
+          poisPerCategory: Array.from(categoryPOIsMap.entries()).map(([cat, pois]) => ({ category: cat, count: pois.length }))
+        });
+        
+        // 2단계: 각 POI의 상세 정보(운영 시간 포함) 가져오기 및 운영 시간 필터링
+        const allPOIsWithDetails = [];
+        const exploreWindow = {
+          start: startWindow,
+          end: endWindow,
+          durationMinutes: defaultStayMinutes,
+          timeZone: 'Asia/Singapore' // 싱가포르 시간대
+        };
+        
+        for (const [category, pois] of categoryPOIsMap.entries()) {
+          for (let i = 0; i < pois.length; i++) {
+            const poi = pois[i];
+            if (!poi.id) {
+              console.warn(`  ⚠️ [generateCityPlan] POI "${poi.name}"에 place_id가 없습니다.`);
+              continue;
+            }
+            
+            try {
+              // POI 상세 정보 가져오기 (opening_hours 포함)
+              const poiDetails = await window.getPOIInfo(poi.id);
+              
+              if (!poiDetails) {
+                console.warn(`  ⚠️ [generateCityPlan] POI "${poi.name}" 상세 정보를 가져올 수 없습니다.`);
+                continue;
+              }
+              
+              // 운영 시간 확인을 위한 travelTime 생성 (exploreWindow 중간 시점을 방문 시간으로 가정)
+              const visitStartTime = new Date(startWindow.getTime() + (i * (availableMinutes / categoryPOIsMap.size / 2) * 60000));
+              const travelTime = {
+                start: visitStartTime,
+                durationMinutes: defaultStayMinutes,
+                timeZone: 'Asia/Singapore'
+              };
+              
+              // 운영 상태 확인
+              const businessStatus = window.getBusinessStatus(poiDetails, travelTime);
+              
+              console.log(`  🔍 [generateCityPlan] POI "${poi.name}" 영업 상태 확인:`, {
+                name: poi.name,
+                businessStatus,
+                hasOpeningHours: !!poiDetails.opening_hours,
+                visitStartTime: visitStartTime.toISOString(),
+                visitEndTime: new Date(visitStartTime.getTime() + defaultStayMinutes * 60000).toISOString(),
+                timeZone: travelTime.timeZone
+              });
+              
+              // OPEN 상태인 POI만 추가 (UNKNOWN과 CLOSED는 제외)
+              if (businessStatus === 'OPEN') {
+                allPOIsWithDetails.push({
+                  ...poi,
+                  ...poiDetails,
+                  category,
+                  businessStatus,
+                  visitStartTime
+                });
+                
+                console.log(`  ✅ [generateCityPlan] "${poi.name}" 추가됨 (${businessStatus})`);
+                
+                // 충분한 POI를 모으면 중단 (성능 최적화)
+                if (allPOIsWithDetails.length >= targetCount * 2) {
+                  console.log(`  📊 [generateCityPlan] 충분한 POI를 수집했습니다 (${allPOIsWithDetails.length}개). 조회 중단.`);
+                  break;
+                }
+              } else {
+                console.log(`  ❌ [generateCityPlan] "${poi.name}" 제외됨 (영업 상태: ${businessStatus})`);
+              }
+            } catch (error) {
+              console.error(`  ❌ [generateCityPlan] POI "${poi.name}" 상세 정보 조회 실패:`, error);
+              // 에러가 발생해도 다음 POI 계속 검색
+              continue;
+            }
+          }
+        }
+        
+        console.log('📊 [generateCityPlan] 운영 시간 필터링 완료:', {
+          totalOpen: allPOIsWithDetails.length,
+          categories: Array.from(new Set(allPOIsWithDetails.map(p => p.category)))
+        });
+        
+        // 3단계: 카테고리별 균형 있는 선택
+        console.log('⚖️ [generateCityPlan] 카테고리별 균형 있는 선택 시작');
+        const selectedPOIs = [];
+        const categoryCount = selectedCityPreferences.length;
+        const poisPerCategory = Math.ceil(targetCount / categoryCount); // 카테고리당 최소 개수
+        
+        // 카테고리별로 분류
+        const poisByCategory = new Map();
+        for (const poi of allPOIsWithDetails) {
+          if (!poisByCategory.has(poi.category)) {
+            poisByCategory.set(poi.category, []);
+          }
+          poisByCategory.get(poi.category).push(poi);
+        }
+        
+        
+        // 카테고리별로 균형 있게 선택 (라운드 로빈 방식)
+        const categoryIndices = new Map(); // 각 카테고리의 현재 인덱스
+        selectedCityPreferences.forEach(cat => categoryIndices.set(cat, 0));
+        
+        while (selectedPOIs.length < targetCount && allPOIsWithDetails.length > 0) {
+          let found = false;
+          
+          // 각 카테고리를 순회하면서 하나씩 선택
+          for (const category of selectedCityPreferences) {
+            if (selectedPOIs.length >= targetCount) break;
+            
+            const categoryPOIs = poisByCategory.get(category) || [];
+            const currentIndex = categoryIndices.get(category) || 0;
+            
+            if (currentIndex < categoryPOIs.length) {
+              const poi = categoryPOIs[currentIndex];
+              
+              // 중복 체크 (이미 선택된 POI 제외)
+              if (!selectedPOIs.some(sp => sp.id === poi.id)) {
+                selectedPOIs.push(poi);
+                categoryIndices.set(category, currentIndex + 1);
+                found = true;
+              } else {
+                categoryIndices.set(category, currentIndex + 1);
+              }
+            }
+          }
+          
+          // 더 이상 선택할 수 없으면 종료
+          if (!found) {
+            break;
+          }
+        }
+        
+        // 선택된 POI가 부족한 경우, 나머지는 평점/리뷰 기준으로 추가
+        if (selectedPOIs.length < targetCount) {
+          const remainingPOIs = allPOIsWithDetails
+            .filter(poi => !selectedPOIs.some(sp => sp.id === poi.id))
+            .sort((a, b) => {
+              // 평점 우선, 그 다음 리뷰 수
+              if (b.rating !== a.rating) return b.rating - a.rating;
+              return (b.userRatingsTotal || 0) - (a.userRatingsTotal || 0);
+            });
+          
+          while (selectedPOIs.length < targetCount && remainingPOIs.length > 0) {
+            selectedPOIs.push(remainingPOIs.shift());
+          }
+        }
+        
+        console.log('✅ [generateCityPlan] 카테고리별 균형 선택 완료:', {
+          selectedCount: selectedPOIs.length,
+          categories: Array.from(new Set(selectedPOIs.map(p => p.category))),
+          selectedPOIs: selectedPOIs.map(p => ({ name: p.name, category: p.category, rating: p.rating }))
+        });
+        
         // 검색된 POI를 waypoint 형태로 변환 (Google Maps API 실제 데이터 포함)
-        const waypoints = cityPOIs.slice(0, 3).map((poi, index) => ({
+        const waypoints = selectedPOIs.map((poi, index) => ({
           label: poi.name,
           address: poi.address || poi.location,
           location: poi.location,
@@ -1369,22 +1541,32 @@
               availableMinutes: Math.round(availableMinutes)
             },
             categoriesUsed: selectedCityPreferences,
-            cityText: 'Singapore'
+            cityText: 'Singapore',
+            timeZone: 'Asia/Singapore' // 싱가포르 시간대 명시적으로 저장
           }
         };
         
         // 생성된 일정 저장
         sessionStorage.setItem('cityPlan', JSON.stringify(plan));
         
-        console.log('✅ 도시 일정 생성 완료:', {
-          plan,
+        console.log('✅ [generateCityPlan] 도시 일정 생성 완료:', {
+          selectedCategories: selectedCityPreferences,
+          selectedPOIs: selectedPOIs.map(p => ({
+            name: p.name,
+            category: p.category,
+            rating: p.rating,
+            businessStatus: p.businessStatus
+          })),
+          waypointsCount: waypoints.length,
           originalArrival: arrivalTime.toISOString(),
           originalDeparture: departureTime.toISOString(),
           bufferedArrival: startWindow.toISOString(),
           bufferedDeparture: endWindow.toISOString(),
           entryBuffer: entryBufferMinutes,
-          returnBuffer: returnBufferMinutes
+          returnBuffer: returnBufferMinutes,
+          availableMinutes: Math.round(availableMinutes)
         });
+        
         return plan;
       }
 
@@ -1551,18 +1733,28 @@
       }
 
       // 일정 단계로 이동
-      function nextToSchedule() {
+      async function nextToSchedule() {
         // 검증: 도시 장소 선택 확인
         if (selectedCityPOIs.length === 0) {
           showToast({ message: '방문할 장소를 먼저 선택해주세요.', type: 'warning' });
           return;
         }
         
-        currentStep = 'schedule';
-        document.getElementById('city-poi-step').style.display = 'none';
-        document.getElementById('schedule-step').style.display = 'block';
-        
-        generateSchedule();
+        try {
+          // 도시 일정 생성
+          await generateCityPlan();
+          
+          // 전체 일정 페이지로 이동
+          currentStep = 'full-schedule';
+          document.getElementById('city-poi-step').style.display = 'none';
+          document.getElementById('full-schedule-step').style.display = 'block';
+          
+          // 전체 일정 생성
+          generateFullSchedule();
+        } catch (error) {
+          console.error('도시 일정 생성 실패:', error);
+          showToast({ message: '일정 생성에 실패했습니다. 다시 시도해주세요.', type: 'error' });
+        }
       }
 
       // 일정 생성
@@ -1738,7 +1930,7 @@
 
       function backToCityPOISelection() {
         currentStep = 'city-poi-selection';
-        document.getElementById('schedule-step').style.display = 'none';
+        document.getElementById('full-schedule-step').style.display = 'none';
         document.getElementById('city-poi-step').style.display = 'block';
       }
 

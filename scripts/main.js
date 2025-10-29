@@ -434,7 +434,7 @@ async function syncUi({
   // PC용 네비게이션 종료 버튼 관리
   updateNavigationExitButton(latestState.navigation.active);
 
-  await renderNavigationStatus(navigationStatus, latestState.navigation, latestState.routePlan, progress);
+  await renderNavigationStatus(navigationStatus, latestState.navigation, latestState.routePlan, progress, latestState.tripMeta);
   renderSummary(summaryOutput, latestState.routePlan, progress?.closestSegmentIndex ?? null, latestState.tripMeta);
 }
 

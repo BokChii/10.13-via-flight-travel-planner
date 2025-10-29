@@ -4,13 +4,9 @@
  */
 
 /**
- * 시간대별 날짜 정보 추출 - 디버깅 버전
+ * 시간대별 날짜 정보 추출
  */
 function getLocalParts(date, timeZone) {
-  console.log('🔍 [DEBUG] getLocalParts 호출됨');
-  console.log('📅 [DEBUG] date:', date);
-  console.log('🌍 [DEBUG] timeZone:', timeZone);
-  
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -25,10 +21,7 @@ function getLocalParts(date, timeZone) {
   const parts = fmt.formatToParts(date).reduce((a, p) => (a[p.type] = p.value, a), {});
   const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday);
   
-  console.log('📊 [DEBUG] parts:', parts);
-  console.log('📊 [DEBUG] wd:', wd);
-  
-  const result = {
+  return {
     Y: Number(parts.year),
     M: Number(parts.month),
     D: Number(parts.day),
@@ -36,9 +29,6 @@ function getLocalParts(date, timeZone) {
     m: Number(parts.minute),
     wd
   };
-  
-  console.log('✅ [DEBUG] getLocalParts 결과:', result);
-  return result;
 }
 
 /**
@@ -231,24 +221,17 @@ function buildOpeningIntervals(opening) {
 }
 
 /**
- * 로컬 시간 분 단위로 변환 (UTC offset 보정) - 수정된 버전
+ * 로컬 시간 분 단위로 변환 (UTC offset 보정)
  */
 function resolveLocalMinutes(date, timeZone, offsetMinutes) {
-  console.log('🔍 [DEBUG] resolveLocalMinutes 호출됨');
-  console.log('📅 [DEBUG] date:', date);
-  console.log('🌍 [DEBUG] timeZone:', timeZone);
-  console.log('📊 [DEBUG] offsetMinutes:', offsetMinutes);
-  
   // 항상 getLocalParts를 사용하도록 수정
   const parts = getLocalParts(date, timeZone);
-  const result = { day: parts.wd, minutes: parts.h * 60 + parts.m };
-  
-  console.log('✅ [DEBUG] resolveLocalMinutes 결과:', result);
-  return result;
+  return { day: parts.wd, minutes: parts.h * 60 + parts.m };
 }
 
 /**
  * 간격 내 포함 여부 확인 (주간 순환 고려)
+ * 방문 시간과 영업 시간이 부분적으로라도 겹치면 영업 중으로 간주
  */
 function isWithinIntervals(intervals, startMin, endMin) {
   const WEEK = 7 * 1440;
@@ -262,7 +245,12 @@ function isWithinIntervals(intervals, startMin, endMin) {
     for (const offset of offsets) {
       const s = start + offset;
       const e = end + offset;
-      if (startMin >= s && endMin <= e) {
+      
+      // 방문 시간과 영업 시간이 겹치는지 확인 (부분 겹침도 허용)
+      // 두 구간이 겹치는 조건: startMin < e && endMin > s
+      // 이는 방문 시간의 시작이 영업 시간의 끝보다 이전이고,
+      // 방문 시간의 끝이 영업 시간의 시작보다 이후일 때 두 구간이 겹침
+      if (startMin < e && endMin > s) {
         return true;
       }
     }
@@ -434,42 +422,37 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
  * 영업 상태 판정 (통합 함수)
  */
 export function getBusinessStatus(poi, travelTime = null) {
-  console.log('🔍 getBusinessStatus 호출:', {
-    hasPoi: !!poi,
+  console.log('🔍 [getBusinessStatus] 호출:', {
     poiName: poi?.name || poi?.label,
     hasOpeningHours: !!poi?.opening_hours,
-    openingHoursType: typeof poi?.opening_hours,
-    openingHours: poi?.opening_hours,
+    business_status: poi?.business_status,
     hasTravelTime: !!travelTime,
     travelTimeStart: travelTime?.start?.toISOString(),
     travelTimeDurationMinutes: travelTime?.durationMinutes,
-    travelTimeTimeZone: travelTime?.timeZone,
-    business_status: poi?.business_status
+    travelTimeTimeZone: travelTime?.timeZone
   });
   
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
-    console.warn('⚠️ getBusinessStatus: opening_hours 없음 → UNKNOWN');
+    console.warn('⚠️ [getBusinessStatus] opening_hours 없음 → UNKNOWN', {
+      poiName: poi?.name || poi?.label
+    });
     return 'UNKNOWN';
   }
   
   // Google Places API의 business_status가 명시적으로 폐업/휴업인 경우
   if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
-    console.log('❌ getBusinessStatus: 폐업/휴업 상태 → CLOSED');
+    console.log('❌ [getBusinessStatus] 폐업/휴업 상태 → CLOSED', {
+      poiName: poi?.name || poi?.label,
+      business_status
+    });
     return 'CLOSED';
   }
   
   // 여행 시간이 주어진 경우 영업 시간 비교
   if (travelTime && travelTime.start && travelTime.durationMinutes) {
-    console.log('🕐 getBusinessStatus: 영업 시간 평가 시작', {
-      start: travelTime.start?.toISOString(),
-      durationMinutes: travelTime.durationMinutes,
-      timeZone: travelTime.timeZone || 'Asia/Seoul',
-      utcOffset: poi.utc_offset_minutes || 0
-    });
-    
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
@@ -479,15 +462,18 @@ export function getBusinessStatus(poi, travelTime = null) {
     );
     
     const result = isOpen ? 'OPEN' : 'CLOSED';
-    console.log(`✅ getBusinessStatus: 영업 시간 평가 완료 → ${result}`, {
+    console.log(`✅ [getBusinessStatus] 영업 시간 평가 완료 → ${result}`, {
+      poiName: poi?.name || poi?.label,
       isOpen,
-      start: travelTime.start?.toISOString(),
-      durationMinutes: travelTime.durationMinutes
+      visitStartTime: travelTime.start?.toISOString(),
+      durationMinutes: travelTime.durationMinutes,
+      timeZone: travelTime.timeZone
     });
     return result;
   }
   
-  console.warn('⚠️ getBusinessStatus: travelTime 조건 불만족 → UNKNOWN', {
+  console.warn('⚠️ [getBusinessStatus] travelTime 조건 불만족 → UNKNOWN', {
+    poiName: poi?.name || poi?.label,
     hasTravelTime: !!travelTime,
     hasStart: !!travelTime?.start,
     hasDurationMinutes: !!travelTime?.durationMinutes

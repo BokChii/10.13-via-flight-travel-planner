@@ -16,7 +16,7 @@ import { EMERGENCY_THRESHOLDS, DEFAULT_BUFFER_TIMES, getAirportPosition } from '
  */
 export function detectEmergencySituation(state, progress) {
   const tripMeta = state.tripMeta;
-  if (!tripMeta || !tripMeta.departure) return null;
+  if (!tripMeta) return null;
 
   // 네비게이션이 활성화되지 않았으면 긴급 모드 비활성화
   if (!state.navigation.active) {
@@ -36,15 +36,19 @@ export function detectEmergencySituation(state, progress) {
     return null;
   }
 
-  const departureTime = new Date(tripMeta.departure);
+  // 원본 출발 시간 우선 사용
+  const departureTimeStr = tripMeta.originalDeparture || tripMeta.departure;
+  if (!departureTimeStr) return null;
+  
+  const departureTime = new Date(departureTimeStr);
   const currentTime = new Date();
   const remainingMinutes = (departureTime - currentTime) / (1000 * 60);
 
   // 공항까지의 예상 이동 시간 계산
   const estimatedTravelTime = estimateTravelTimeToAirport(state, progress);
   
-  // 복귀 버퍼 시간 (기본 30분)
-  const returnBufferMinutes = tripMeta.returnBufferMinutes || DEFAULT_BUFFER_TIMES.RETURN_BUFFER_MINUTES;
+  // 복귀 버퍼 시간을 0분으로 하드코딩
+  const returnBufferMinutes = 0;
   
   // 실제 여유 시간 계산
   const actualSlackMinutes = remainingMinutes - estimatedTravelTime - returnBufferMinutes;

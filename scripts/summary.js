@@ -23,7 +23,7 @@ function createHeroCard(routePlan, tripMeta = null) {
   card.className = "summary-card";
 
   // 복귀 시간 계산
-  const returnTimeInfo = calculateReturnTimeInfo(routePlan);
+  const returnTimeInfo = calculateReturnTimeInfo(routePlan, tripMeta);
   
   // 여행 정보 섹션 생성
   const tripInfoSection = tripMeta ? createTripInfoSection(tripMeta) : '';
@@ -130,10 +130,28 @@ function createSegmentEntry(segment, index, isActive) {
 function createTripInfoSection(tripMeta) {
   if (!tripMeta) return '';
 
-  const arrival = new Date(tripMeta.arrival);
-  const departure = new Date(tripMeta.departure);
+  // 원본 도착/출발 시간 사용 (transfer-info에서 입력한 값)
+  const arrivalTimeStr = tripMeta.originalArrival || tripMeta.arrival;
+  const departureTimeStr = tripMeta.originalDeparture || tripMeta.departure;
   
-  // 전체 환승 시간 계산 (출발 - 도착)
+  if (!arrivalTimeStr || !departureTimeStr) {
+    console.warn('⚠️ createTripInfoSection: arrival 또는 departure 시간이 없습니다.', tripMeta);
+    return '';
+  }
+  
+  const arrival = new Date(arrivalTimeStr);
+  const departure = new Date(departureTimeStr);
+  
+  // 유효한 날짜인지 확인
+  if (isNaN(arrival.getTime()) || isNaN(departure.getTime())) {
+    console.warn('⚠️ createTripInfoSection: 유효하지 않은 날짜입니다.', {
+      arrival: arrivalTimeStr,
+      departure: departureTimeStr
+    });
+    return '';
+  }
+  
+  // 전체 환승 시간 계산 (원본 출발 - 원본 도착)
   const totalLayoverMinutes = Math.round((departure.getTime() - arrival.getTime()) / (1000 * 60));
   const totalLayoverHours = Math.floor(totalLayoverMinutes / 60);
   const remainingMinutes = totalLayoverMinutes % 60;
@@ -141,14 +159,18 @@ function createTripInfoSection(tripMeta) {
     ? `${totalLayoverHours}시간 ${remainingMinutes}분`
     : `${remainingMinutes}분`;
 
+  // 입국/출국 버퍼를 0분으로 하드코딩 (요청사항)
+  const entryBufferMinutes = 0;
+  const returnBufferMinutes = 0;
+
   return `
     <div class="trip-info-section">
       <h4>✈️ 여행 정보</h4>
       <p><strong>🛫 도착:</strong> ${formatDateTime(arrival)}</p>
       <p><strong>🛬 출발:</strong> ${formatDateTime(departure)}</p>
       <p><strong>⏱️ 전체 환승 시간:</strong> ${layoverTimeText}</p>
-      <p><strong>🕐 입국 버퍼:</strong> ${tripMeta.entryBufferMinutes || 0}분</p>
-      <p><strong>🕐 출국 버퍼:</strong> ${tripMeta.returnBufferMinutes || 0}분</p>
+      <p><strong>🕐 입국 버퍼:</strong> ${entryBufferMinutes}분</p>
+      <p><strong>🕐 출국 버퍼:</strong> ${returnBufferMinutes}분</p>
     </div>
   `;
 }

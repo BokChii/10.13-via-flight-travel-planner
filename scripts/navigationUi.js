@@ -29,7 +29,7 @@ import { calculateRealTimeReturnInfo, convertToLegacyFormat } from './airportRet
 
 
 
-export async function renderNavigationStatus(container, navigation, routePlan, progress) {
+export async function renderNavigationStatus(container, navigation, routePlan, progress, tripMeta = null) {
   container.innerHTML = "";
 
   if (!routePlan) {
@@ -43,7 +43,7 @@ export async function renderNavigationStatus(container, navigation, routePlan, p
   }
 
   // 새로운 실시간 복귀 시간 정보 추가 (기존 시스템과 호환)
-  const returnTimeInfo = await calculateEnhancedReturnTimeInfo(routePlan, navigation, progress);
+  const returnTimeInfo = await calculateEnhancedReturnTimeInfo(routePlan, navigation, progress, tripMeta);
   if (returnTimeInfo) {
     const returnBanner = createReturnTimeBanner(returnTimeInfo);
     container.append(returnBanner);
@@ -144,13 +144,14 @@ function formatDistance(meters) {
  * @param {Object} routePlan - 경로 계획
  * @param {Object} navigation - 네비게이션 상태
  * @param {Object} progress - 진행률
+ * @param {Object} tripMeta - 여행 메타데이터 (선택사항)
  * @returns {Promise<Object|null>} 복귀 시간 정보
  */
-export async function calculateEnhancedReturnTimeInfo(routePlan, navigation, progress) {
+export async function calculateEnhancedReturnTimeInfo(routePlan, navigation, progress, tripMeta = null) {
   // 새로운 실시간 시스템 사용 시도
   if (navigation?.active && progress) {
     try {
-      const state = { navigation, tripMeta: routePlan };
+      const state = { navigation, tripMeta: tripMeta || routePlan };
       const realTimeInfo = await calculateRealTimeReturnInfo(state, progress);
       if (realTimeInfo) {
         return convertToLegacyFormat(realTimeInfo);
@@ -161,28 +162,38 @@ export async function calculateEnhancedReturnTimeInfo(routePlan, navigation, pro
   }
   
   // Fallback: 기존 시스템 사용
-  return calculateReturnTimeInfo(routePlan);
+  return calculateReturnTimeInfo(routePlan, tripMeta);
 }
 
 /**
  * 기존 calculateReturnTimeInfo 함수 (호환성 유지)
  * @param {Object} routePlan - 경로 계획
+ * @param {Object} tripMeta - 여행 메타데이터 (선택사항)
  * @returns {Object|null} 복귀 시간 정보
  */
-export function calculateReturnTimeInfo(routePlan) {
-  if (!routePlan?.departureTime || !routePlan?.totalDurationSeconds) {
+export function calculateReturnTimeInfo(routePlan, tripMeta = null) {
+  if (!routePlan?.totalDurationSeconds) {
+    return null;
+  }
+
+  // 원본 출발 시간 우선 사용, 없으면 routePlan의 departureTime 사용
+  let departureTime;
+  if (tripMeta?.originalDeparture) {
+    departureTime = new Date(tripMeta.originalDeparture);
+  } else if (routePlan?.departureTime) {
+    departureTime = new Date(routePlan.departureTime);
+  } else {
     return null;
   }
 
   const now = new Date();
-  const departureTime = new Date(routePlan.departureTime);
   const totalDurationMs = routePlan.totalDurationSeconds * 1000;
   
   // 남은 이동 시간 (초)
   const remainingTravelTimeSeconds = routePlan.totalDurationSeconds;
   
-  // 복귀 버퍼 시간 (기본 90분, 사용자 설정값이 있다면 사용)
-  const returnBufferMinutes = routePlan.returnBufferMinutes || 90;
+  // 복귀 버퍼 시간을 0분으로 하드코딩 (요약 섹션과 일관성 유지)
+  const returnBufferMinutes = 0;
   const returnBufferSeconds = returnBufferMinutes * 60;
   
   // 복귀 준비 시작 시간
