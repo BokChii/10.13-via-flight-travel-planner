@@ -434,20 +434,42 @@ export function evaluateOperatingStatus(openingHours, startDate, stayMinutes, ti
  * 영업 상태 판정 (통합 함수)
  */
 export function getBusinessStatus(poi, travelTime = null) {
+  console.log('🔍 getBusinessStatus 호출:', {
+    hasPoi: !!poi,
+    poiName: poi?.name || poi?.label,
+    hasOpeningHours: !!poi?.opening_hours,
+    openingHoursType: typeof poi?.opening_hours,
+    openingHours: poi?.opening_hours,
+    hasTravelTime: !!travelTime,
+    travelTimeStart: travelTime?.start?.toISOString(),
+    travelTimeDurationMinutes: travelTime?.durationMinutes,
+    travelTimeTimeZone: travelTime?.timeZone,
+    business_status: poi?.business_status
+  });
+  
   const { business_status, opening_hours } = poi;
   
   // opening_hours가 없으면 상태 불명
   if (!opening_hours) {
+    console.warn('⚠️ getBusinessStatus: opening_hours 없음 → UNKNOWN');
     return 'UNKNOWN';
   }
   
   // Google Places API의 business_status가 명시적으로 폐업/휴업인 경우
   if (business_status === 'CLOSED_TEMPORARILY' || business_status === 'CLOSED_PERMANENTLY') {
+    console.log('❌ getBusinessStatus: 폐업/휴업 상태 → CLOSED');
     return 'CLOSED';
   }
   
   // 여행 시간이 주어진 경우 영업 시간 비교
   if (travelTime && travelTime.start && travelTime.durationMinutes) {
+    console.log('🕐 getBusinessStatus: 영업 시간 평가 시작', {
+      start: travelTime.start?.toISOString(),
+      durationMinutes: travelTime.durationMinutes,
+      timeZone: travelTime.timeZone || 'Asia/Seoul',
+      utcOffset: poi.utc_offset_minutes || 0
+    });
+    
     const isOpen = evaluateOperatingStatus(
       opening_hours,
       travelTime.start,
@@ -455,9 +477,21 @@ export function getBusinessStatus(poi, travelTime = null) {
       travelTime.timeZone || 'Asia/Seoul',
       poi.utc_offset_minutes || 0
     );
-    return isOpen ? 'OPEN' : 'CLOSED';
+    
+    const result = isOpen ? 'OPEN' : 'CLOSED';
+    console.log(`✅ getBusinessStatus: 영업 시간 평가 완료 → ${result}`, {
+      isOpen,
+      start: travelTime.start?.toISOString(),
+      durationMinutes: travelTime.durationMinutes
+    });
+    return result;
   }
   
+  console.warn('⚠️ getBusinessStatus: travelTime 조건 불만족 → UNKNOWN', {
+    hasTravelTime: !!travelTime,
+    hasStart: !!travelTime?.start,
+    hasDurationMinutes: !!travelTime?.durationMinutes
+  });
   return 'UNKNOWN';
 }
 

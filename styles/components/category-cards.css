@@ -4,6 +4,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 24px;
+  margin-bottom: 40px;
 }
 
 @media (min-width: 768px) {

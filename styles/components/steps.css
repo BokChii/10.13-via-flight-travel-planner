@@ -321,3 +321,166 @@
     font-size: 1.1rem !important;
   }
 }
+
+/* ========================================== */
+/* Progress Steps (진행 단계 표시기) - 공통 스타일 */
+/* ========================================== */
+
+.progress-container {
+  margin-bottom: 60px;
+}
+
+.progress-steps {
+  display: flex;
+  flex-direction: row; /* 명시적 가로 배치 */
+  justify-content: center;
+  align-items: center;
+  gap: 60px; /* 간격 충분히 띄우기 */
+  margin-bottom: 20px;
+  flex-wrap: nowrap; /* 줄바꿈 방지 */
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+  flex-shrink: 0; /* 공간 부족 시에도 크기 유지 */
+  min-width: 100px; /* 최소 너비 설정 */
+}
+
+.step.active {
+  opacity: 1;
+}
+
+.step.completed {
+  opacity: 1;
+}
+
+.step-number {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+  background: var(--color-primary);
+  color: white; /* 활성 단계 숫자 색상 명시적 지정 */
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.step.completed .step-number {
+  background: var(--color-success);
+  color: white; /* 완료 단계 숫자 색상 명시적 지정 */
+}
+
+.step-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 - 레이블 합쳐짐 방지 */
+  text-align: center;
+  margin-top: 8px; /* 아이콘과 레이블 사이 간격 */
+}
+
+.step.active .step-label,
+.step.completed .step-label {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* 단계 사이 연결선 - gap에 맞춰 조정 */
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 25px; /* step-number 중앙 (50px / 2 = 25px) */
+  left: 100%;
+  width: 60px; /* gap(60px)과 동일하게 설정 */
+  height: 2px;
+  background: #e0e0e0;
+  transform: translateY(-1px); /* 수직 중앙 정렬 미세 조정 (선 두께의 절반) */
+}
+
+.step.active:not(:last-child)::after,
+.step.completed:not(:last-child)::after {
+  background: var(--color-primary);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .progress-steps {
+    gap: 40px; /* 모바일에서 간격 축소 (여전히 충분한 간격 유지) */
+  }
+  
+  .step {
+    min-width: 90px; /* 모바일에서 최소 너비 조정 */
+  }
+  
+  .step:not(:last-child)::after {
+    width: 40px; /* 모바일 gap(40px)에 맞춤 */
+    top: 20px; /* 모바일 step-number 중앙 (40px / 2 = 20px) */
+    transform: translateY(-1px);
+  }
+  
+  .step-number {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  
+  .step-label {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .progress-steps {
+    gap: 24px; /* 작은 화면에서 더 축소 */
+  }
+  
+  .step {
+    min-width: 80px;
+  }
+  
+  .step:not(:last-child)::after {
+    width: 24px; /* 작은 화면 gap(24px)에 맞춤 */
+    top: 18px; /* 작은 화면 step-number 중앙 (36px / 2 = 18px) */
+    transform: translateY(-1px);
+  }
+  
+  .step-number {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+  
+  .step-label {
+    font-size: 0.8rem;
+  }
+}

@@ -15,8 +15,13 @@ let resolveCallback;
 
 export function initPlaceModal() {
   modalEl = document.getElementById("place-modal");
-  if (!modalEl) return;
+  if (!modalEl) {
+    console.error('❌ initPlaceModal: place-modal 요소를 찾을 수 없습니다. navigation.html에 모달이 있는지 확인하세요.');
+    return;
+  }
 
+  console.log('✅ place-modal 요소 찾음:', modalEl);
+  
   closeBtn = modalEl.querySelector("[data-modal-close]");
   cancelBtn = modalEl.querySelector("[data-modal-cancel]");
   confirmBtn = modalEl.querySelector("[data-modal-confirm]");
@@ -24,6 +29,26 @@ export function initPlaceModal() {
   photoEl = modalEl.querySelector("[data-modal-photo]");
   reviewsEl = modalEl.querySelector("[data-modal-reviews]");
   const backdrop = modalEl.querySelector(".modal__backdrop");
+
+  // 필수 요소 확인
+  const titleEl = modalEl.querySelector("[data-modal-title]");
+  
+  // 디버깅: 찾은 요소들 확인
+  console.log('✅ 모달 요소 초기화:', {
+    titleEl: !!titleEl,
+    closeBtn: !!closeBtn,
+    cancelBtn: !!cancelBtn,
+    confirmBtn: !!confirmBtn,
+    stayInput: !!stayInput,
+    photoEl: !!photoEl,
+    reviewsEl: !!reviewsEl,
+    backdrop: !!backdrop
+  });
+
+  // 필수 요소 확인
+  if (!titleEl) {
+    console.error('❌ [data-modal-title] 요소를 찾을 수 없습니다.');
+  }
 
   const handleCancel = () => {
     const callback = resolveCallback;
@@ -57,16 +82,26 @@ export function initPlaceModal() {
   });
 }
 
-export function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = null, waypoints = [], waypointIndex = 0 }) {
+export async function openPlaceModal({ details, defaultStayMinutes = 60, tripMeta = null, waypoints = [], waypointIndex = 0 }) {
   if (!modalEl) {
     initPlaceModal();
   }
   
   if (!modalEl) {
+    console.error('❌ place-modal 요소를 찾을 수 없습니다. navigation.html에 모달이 있는지 확인하세요.');
     return Promise.resolve({ confirmed: false });
   }
 
-  fillModalContent(details, defaultStayMinutes, tripMeta, waypoints, waypointIndex);
+  // 모달 요소들이 있는지 확인
+  const titleEl = modalEl.querySelector("[data-modal-title]");
+  if (!titleEl) {
+    console.error('❌ 모달 요소 [data-modal-title]를 찾을 수 없습니다. navigation.html의 모달 구조를 확인하세요.');
+    console.log('현재 modalEl:', modalEl);
+    console.log('modalEl.innerHTML (일부):', modalEl.innerHTML?.substring(0, 200));
+    return Promise.resolve({ confirmed: false });
+  }
+
+  await fillModalContent(details, defaultStayMinutes, tripMeta, waypoints, waypointIndex);
   
   modalEl.hidden = false;
   document.body.style.overflow = "hidden";
@@ -87,7 +122,12 @@ function closeModal() {
   stayInput?.classList.remove("modal__input--invalid");
 }
 
-function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, waypoints = [], waypointIndex = 0) {
+async function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, waypoints = [], waypointIndex = 0) {
+  if (!modalEl) {
+    console.error('❌ fillModalContent: modalEl이 없습니다.');
+    return;
+  }
+
   const {
     name,
     formatted_address,
@@ -100,53 +140,84 @@ function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, way
     reviews,
   } = details;
 
-  modalEl.querySelector("[data-modal-title]").textContent = name ?? "장소 정보";
-  modalEl.querySelector("[data-modal-address]").textContent = formatted_address ?? "주소 정보가 없습니다.";
+  // 모달 요소들이 있는지 확인하며 설정
+  const titleEl = modalEl.querySelector("[data-modal-title]");
+  if (titleEl) {
+    titleEl.textContent = name ?? "장소 정보";
+  } else {
+    console.error('❌ [data-modal-title] 요소를 찾을 수 없습니다.');
+  }
+
+  const addressEl = modalEl.querySelector("[data-modal-address]");
+  if (addressEl) {
+    addressEl.textContent = formatted_address ?? "주소 정보가 없습니다.";
+  } else {
+    console.error('❌ [data-modal-address] 요소를 찾을 수 없습니다.');
+  }
 
   const websiteLink = modalEl.querySelector("[data-modal-website]");
-  const websiteRow = websiteLink.parentElement;
-  if (website) {
-    websiteLink.href = website;
-    websiteLink.textContent = website;
-    websiteRow.hidden = false;
+  if (websiteLink) {
+    const websiteRow = websiteLink.parentElement;
+    if (website) {
+      websiteLink.href = website;
+      websiteLink.textContent = website;
+      websiteRow.hidden = false;
+    } else {
+      websiteLink.href = "#";
+      websiteLink.textContent = "";
+      websiteRow.hidden = true;
+    }
   } else {
-    websiteLink.href = "#";
-    websiteLink.textContent = "";
-    websiteRow.hidden = true;
+    console.warn('⚠️ [data-modal-website] 요소를 찾을 수 없습니다.');
   }
 
   const phoneSpan = modalEl.querySelector("[data-modal-phone]");
-  const phoneRow = phoneSpan.parentElement;
-  if (formatted_phone_number) {
-    phoneSpan.textContent = formatted_phone_number;
-    phoneRow.hidden = false;
+  if (phoneSpan) {
+    const phoneRow = phoneSpan.parentElement;
+    if (formatted_phone_number) {
+      phoneSpan.textContent = formatted_phone_number;
+      phoneRow.hidden = false;
+    } else {
+      phoneSpan.textContent = "";
+      phoneRow.hidden = true;
+    }
   } else {
-    phoneSpan.textContent = "";
-    phoneRow.hidden = true;
+    console.warn('⚠️ [data-modal-phone] 요소를 찾을 수 없습니다.');
   }
 
   const hoursList = modalEl.querySelector("[data-modal-hours]");
-  const hoursSection = hoursList.parentElement;
-  hoursList.innerHTML = "";
-  if (opening_hours?.weekday_text?.length) {
-    opening_hours.weekday_text.forEach((entry) => {
-      const li = document.createElement("li");
-      li.textContent = entry;
-      hoursList.append(li);
-    });
-    hoursSection.hidden = false;
+  if (hoursList) {
+    const hoursSection = hoursList.parentElement;
+    hoursList.innerHTML = "";
+    if (opening_hours?.weekday_text?.length) {
+      opening_hours.weekday_text.forEach((entry) => {
+        const li = document.createElement("li");
+        li.textContent = entry;
+        hoursList.append(li);
+      });
+      hoursSection.hidden = false;
+    } else {
+      hoursSection.hidden = true;
+    }
   } else {
-    hoursSection.hidden = true;
+    console.warn('⚠️ [data-modal-hours] 요소를 찾을 수 없습니다.');
   }
 
-  stayInput.value = defaultStayMinutes;
+  if (stayInput) {
+    stayInput.value = defaultStayMinutes;
+  } else {
+    console.error('❌ [data-stay-input] 요소를 찾을 수 없습니다.');
+  }
 
   // 영업 상태 표시 추가
   const businessStatusElement = modalEl.querySelector("[data-modal-business-status]");
+  if (!businessStatusElement) {
+    console.error('❌ [data-modal-business-status] 요소를 찾을 수 없습니다.');
+  }
   if (businessStatusElement) {
     // 실제 여행 시간 기반으로 계산 (tripMeta가 있으면 사용, 없으면 현재 시간 사용)
     const travelTime = tripMeta 
-      ? createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
+      ? await createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, defaultStayMinutes)
       : createCurrentTravelTimeInfo(defaultStayMinutes);
     
     const businessStatus = checkBusinessStatus(details, travelTime);
@@ -212,13 +283,17 @@ function fillModalContent(details = {}, defaultStayMinutes, tripMeta = null, way
   }
 
   const ratingSpan = modalEl.querySelector("[data-modal-rating]");
-  const ratingRow = ratingSpan.parentElement;
-  if (rating) {
-    ratingSpan.textContent = `${rating.toFixed(1)}점 (${user_ratings_total ?? 0}명)`;
-    ratingRow.hidden = false;
+  if (ratingSpan) {
+    const ratingRow = ratingSpan.parentElement;
+    if (rating) {
+      ratingSpan.textContent = `${rating.toFixed(1)}점 (${user_ratings_total ?? 0}명)`;
+      ratingRow.hidden = false;
+    } else {
+      ratingSpan.textContent = "";
+      ratingRow.hidden = true;
+    }
   } else {
-    ratingSpan.textContent = "";
-    ratingRow.hidden = true;
+    console.warn('⚠️ [data-modal-rating] 요소를 찾을 수 없습니다.');
   }
 
   if (reviewsEl) {

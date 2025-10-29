@@ -44,6 +44,28 @@
 
       <!-- Transfer Info Form -->
       <section class="transfer-form-section">
+        <!-- Quick Tips -->
+        <div class="tips-section">
+          <h3 class="tips-title">💡 환승 시간 팁</h3>
+          <div class="tips-grid">
+            <div class="tip-card">
+              <div class="tip-icon">⏰</div>
+              <h4>최소 환승 시간</h4>
+              <p>국제선 환승은 최소 2시간, 국내선은 1시간을 권장합니다</p>
+            </div>
+            <div class="tip-card">
+              <div class="tip-icon">🛂</div>
+              <h4>입국 심사</h4>
+              <p>도시 관광을 원한다면 입국 심사 시간을 고려하세요</p>
+            </div>
+            <div class="tip-card">
+              <div class="tip-icon">🎒</div>
+              <h4>짐 보관</h4>
+              <p>공항 짐 보관소를 이용하면 가벼운 도시 관광이 가능합니다</p>
+            </div>
+          </div>
+        </div>
+
         <div class="form-container">
           <h2 class="form-title">환승 정보를 알려주세요</h2>
           <p class="form-description">
@@ -117,38 +139,17 @@
               <button type="button" class="btn btn--ghost" onclick="goBack()">
                 이전
               </button>
-              <button type="submit" class="btn btn--primary" id="next-button" disabled>
+              <button type="submit" class="btn btn--primary" id="next-button">
                 다음 단계로
               </button>
             </div>
           </form>
         </div>
-
-        <!-- Quick Tips -->
-        <div class="tips-section">
-          <h3 class="tips-title">💡 환승 시간 팁</h3>
-          <div class="tips-grid">
-            <div class="tip-card">
-              <div class="tip-icon">⏰</div>
-              <h4>최소 환승 시간</h4>
-              <p>국제선 환승은 최소 2시간, 국내선은 1시간을 권장합니다</p>
-            </div>
-            <div class="tip-card">
-              <div class="tip-icon">🛂</div>
-              <h4>입국 심사</h4>
-              <p>도시 관광을 원한다면 입국 심사 시간을 고려하세요</p>
-            </div>
-            <div class="tip-card">
-              <div class="tip-icon">🎒</div>
-              <h4>짐 보관</h4>
-              <p>공항 짐 보관소를 이용하면 가벼운 도시 관광이 가능합니다</p>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/toast.js"></script>
     <script>
       // 전역 상태 관리
       const transferState = {
@@ -202,7 +203,8 @@
                 <span class="duration-text" style="color: #e74c3c; font-weight: 600;">⚠️ 출발 시간은 도착 시간 이후여야 합니다</span>
               </div>
             `;
-            nextButton.disabled = true;
+            nextButton.style.opacity = '0.5';
+            nextButton.style.cursor = 'not-allowed';
             return;
           }
           
@@ -236,7 +238,8 @@
               <span class="duration-text">시간을 입력하면 자동으로 계산됩니다</span>
             </div>
           `;
-          nextButton.disabled = true;
+          nextButton.style.opacity = '0.5';
+          nextButton.style.cursor = 'not-allowed';
         }
       }
 
@@ -264,14 +267,13 @@
                        departureInput.value && 
                        transferState.duration > 0;
         
-        nextButton.disabled = !isValid;
-        
+        // disabled 대신 CSS 스타일만 변경
         if (isValid) {
-          nextButton.classList.add('btn--primary');
-          nextButton.classList.remove('btn--disabled');
+          nextButton.style.opacity = '1';
+          nextButton.style.cursor = 'pointer';
         } else {
-          nextButton.classList.remove('btn--primary');
-          nextButton.classList.add('btn--disabled');
+          nextButton.style.opacity = '0.5';
+          nextButton.style.cursor = 'not-allowed';
         }
       }
 
@@ -279,7 +281,23 @@
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        if (nextButton.disabled) return;
+        // 시간 검증 추가
+        const arrival = new Date(arrivalInput.value);
+        const departure = new Date(departureInput.value);
+        
+        // 출발 시간이 도착 시간보다 앞서거나 같으면 경고
+        if (arrival && departure && departure <= arrival) {
+          showToast({ message: '출발 시간은 도착 시간 이후여야 합니다.', type: 'warning' });
+          return;
+        }
+        
+        // 유효성 검증 확인
+        const isValid = transferState.city && 
+                       arrivalInput.value && 
+                       departureInput.value && 
+                       transferState.duration > 0;
+        
+        if (!isValid) return;
         
         // 라우터를 통해 다음 페이지로 이동
         window.navigateTo('/airport-main', { transferInfo: transferState });

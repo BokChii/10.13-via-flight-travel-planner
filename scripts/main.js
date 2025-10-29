@@ -87,6 +87,9 @@ async function applyPlannerPlan(plan) {
     draft.tripMeta = plan.meta
       ? {
           ...plan.meta,
+          // 원본 도착/출발 시간 포함 (transfer-info에서 입력한 값)
+          originalArrival: plan.meta.originalArrival || plan.meta.arrival,
+          originalDeparture: plan.meta.originalDeparture || plan.meta.departure,
           airportPosition: plan.destination?.location || null,  // 복귀 공항 위치 정보 추가
           returnAirport: plan.destination || null,              // 복귀 공항 전체 정보 추가
           exploreWindow: plan.meta?.exploreWindow ? { ...plan.meta.exploreWindow } : null,
@@ -97,7 +100,14 @@ async function applyPlannerPlan(plan) {
     draft.routePlan = null;
     resetNavigationDraft(draft);
     
-    console.log('applyPlannerPlan: 저장된 tripMeta:', draft.tripMeta);
+    console.log('✅ applyPlannerPlan: 저장된 tripMeta:', {
+      tripMeta: draft.tripMeta,
+      originalArrival: draft.tripMeta?.originalArrival,
+      originalDeparture: draft.tripMeta?.originalDeparture,
+      bufferedArrival: draft.tripMeta?.arrival,
+      bufferedDeparture: draft.tripMeta?.departure,
+      exploreWindow: draft.tripMeta?.exploreWindow
+    });
   });
 
   if (elements.origin) {
@@ -954,14 +964,14 @@ async function handleWaypointDetails(waypoint, poiInfo) {
     if (result?.confirmed) {
       let updatedWaypoint = null;
       updateState((draft) => {
-        const target = draft.waypoints[index];
+        const target = draft.waypoints[waypointIndex];
         if (!target) return;
 
         const fallback = { ...target, name: target.label ?? target.address ?? "" };
         const enriched = buildWaypointFromDetails(details, result.stayMinutes, fallback);
         updatedWaypoint = enriched;
 
-        draft.waypoints[index] = {
+        draft.waypoints[waypointIndex] = {
           ...target,
           ...enriched,
           stayMinutes: enriched.stayMinutes,

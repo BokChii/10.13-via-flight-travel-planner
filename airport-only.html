@@ -589,6 +589,9 @@
         selectedPOIs.push(poiId);
         updateSelectedPOIsList();
         updatePOINextButton();
+        
+        // 성공 메시지 추가
+        showToast({ message: `${poi.name}이(가) 리스트에 추가되었습니다.`, type: 'success' });
       }
 
       // POI 시간 업데이트 (단일 항목용)
@@ -672,11 +675,21 @@
 
       // POI 토글
       function togglePOI(poiId) {
+        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+        let poi = allPOIsMap.get(poiId);
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
+        }
+        if (!poi) return;
+        
         // 선택된 POI 목록에서 제거
         if (selectedPOIs.includes(poiId)) {
           selectedPOIs = selectedPOIs.filter(id => id !== poiId);
           updateSelectedPOIsList();
           updatePOINextButton();
+          
+          // 제거 메시지 추가
+          showToast({ message: `${poi.name}이(가) 리스트에서 제거되었습니다.`, type: 'info' });
         }
       }
 
@@ -841,6 +854,9 @@
           const startTime = new Date(currentTime);
           const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
           
+          const imageHtml = poi.imageUrl ? 
+            `<div class="timeline-image"><img src="${poi.imageUrl}" alt="${poi.name}" onerror="this.style.display='none'"></div>` : '';
+          
           timelineItem.innerHTML = `
             <div class="timeline-time">
               <span class="start-time">${formatTime(startTime)}</span>
@@ -848,9 +864,11 @@
             </div>
             <div class="timeline-content">
               <h4>${poi.name}</h4>
-              <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category}</span>
-              <p>${poi.estimatedTime}분 체류</p>
+              <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category || ''}</span>
+              ${poi.location ? `<p class="timeline-location">📍 ${poi.location}</p>` : ''}
+              <p>${poi.estimatedTime || 10}분 체류</p>
             </div>
+            ${imageHtml}
           `;
           
           container.appendChild(timelineItem);

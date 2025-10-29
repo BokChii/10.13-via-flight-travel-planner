@@ -118,13 +118,42 @@
 
     <!-- Place Modal -->
     <div id="place-modal" class="modal" hidden>
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="modal-title">장소 정보</h3>
-          <button id="modal-close" class="modal-close">&times;</button>
+      <div class="modal__backdrop"></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="place-modal-title">
+        <button type="button" class="modal__close" data-modal-close>&times;</button>
+        <div class="modal__body" data-modal-body>
+          <div class="modal__header">
+            <h3 id="place-modal-title" data-modal-title>장소 정보</h3>
+            <p class="modal__address" data-modal-address></p>
+          </div>
+          <div class="modal__photo" hidden>
+            <img data-modal-photo alt="장소 이미지" />
+          </div>
+          <div class="modal__section modal__stay">
+            <label>체류 예정 시간 (분)
+              <input type="number" min="10" max="600" step="5" value="60" data-stay-input />
+            </label>
+          </div>
+          <div class="modal__section">
+            <p class="modal__line"><strong>영업 상태:</strong> <span data-modal-business-status>영업 상태 확인 불가</span></p>
+          </div>
+          <div class="modal__meta">
+            <p class="modal__line" hidden><strong>웹사이트:</strong> <a data-modal-website target="_blank" rel="noopener noreferrer"></a></p>
+            <p class="modal__line" hidden><strong>전화:</strong> <span data-modal-phone></span></p>
+            <p class="modal__line" hidden><strong>평점:</strong> <span data-modal-rating></span></p>
+          </div>
+          <div class="modal__section" hidden>
+            <h4>운영 시간</h4>
+            <ul data-modal-hours></ul>
+          </div>
+          <div class="modal__section" hidden>
+            <h4>리뷰</h4>
+            <div data-modal-reviews></div>
+          </div>
         </div>
-        <div class="modal-body" id="modal-body">
-          <!-- 동적으로 생성됨 -->
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-modal-cancel>취소</button>
+          <button type="button" class="btn btn--accent" data-modal-confirm>일정에 추가</button>
         </div>
       </div>
     </div>

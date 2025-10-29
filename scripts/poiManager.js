@@ -106,29 +106,37 @@ export async function searchPOIByName(placeName) {
   try {
     const service = new window.google.maps.places.PlacesService(document.createElement('div'));
     
-    return new Promise((resolve) => {
+    // 1단계: textSearch로 place_id 찾기
+    const placeId = await new Promise((resolve) => {
       service.textSearch({
         query: placeName,
-        fields: ['place_id', 'name', 'types', 'formatted_address', 'photos']
+        fields: ['place_id'] // place_id만 필요
       }, (results, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.[0]) {
-          const place = results[0];
-          const poiInfo = {
-            placeId: place.place_id,
-            name: place.name,
-            address: place.formatted_address,
-            types: place.types || [],
-            photos: place.photos || [],
-            category: determineCategory(place.types),
-            business_status: 'UNKNOWN', // 수정: businessStatus → business_status
-            opening_hours: null // 추가: opening_hours 필드
-          };
-          resolve(poiInfo);
+          resolve(results[0].place_id);
         } else {
           resolve(null);
         }
       });
     });
+
+    // place_id를 찾지 못하면 null 반환
+    if (!placeId) {
+      console.warn('POI 검색 실패: place_id를 찾을 수 없음', placeName);
+      return null;
+    }
+
+    // 2단계: getPOIInfo로 상세 정보 가져오기 (opening_hours 포함)
+    // getPOIInfo는 캐시를 확인하고, 없으면 fetchPOIFromAPI를 호출하여 
+    // opening_hours를 포함한 완전한 정보를 가져옵니다.
+    const poiInfo = await getPOIInfo(placeId);
+    
+    if (!poiInfo) {
+      console.warn('POI 상세 정보 가져오기 실패:', placeId);
+      return null;
+    }
+    
+    return poiInfo;
   } catch (error) {
     console.warn('POI 검색 실패:', error);
     return null;
@@ -333,17 +341,34 @@ export function createCurrentTravelTimeInfo(durationMinutes = 60, timeZone = 'As
  * @returns {Promise<Object>} 여행 시간 정보
  */
 export async function createTravelTimeFromTripMeta(tripMeta, waypoints, waypointIndex, durationMinutes = 60, googleMaps = null) {
-  if (!tripMeta || !tripMeta.arrival) {
+  // 원본 도착 시간 우선 사용, 없으면 버퍼 적용된 시간 사용
+  const arrivalTimeStr = tripMeta?.originalArrival || tripMeta?.arrival;
+  
+  if (!tripMeta || !arrivalTimeStr) {
+    console.warn('⚠️ createTravelTimeFromTripMeta: tripMeta나 arrival이 없어 현재 시간 사용', {
+      hasTripMeta: !!tripMeta,
+      originalArrival: tripMeta?.originalArrival,
+      arrival: tripMeta?.arrival
+    });
     return createCurrentTravelTimeInfo(durationMinutes);
   }
 
   try {
-    // 도착 시간을 Date 객체로 변환 (UTC 기준)
-    const arrivalTime = new Date(tripMeta.arrival);
+    // 도착 시간을 Date 객체로 변환 (UTC 기준) - 원본 시간 우선 사용
+    const arrivalTime = new Date(arrivalTimeStr);
+    
+    console.log('🕐 createTravelTimeFromTripMeta: 도착 시간 사용', {
+      originalArrival: tripMeta.originalArrival,
+      bufferedArrival: tripMeta.arrival,
+      using: arrivalTimeStr,
+      arrivalTime: arrivalTime.toISOString(),
+      waypointIndex,
+      durationMinutes
+    });
     
     // 유효한 날짜인지 확인
     if (isNaN(arrivalTime.getTime())) {
-      throw new Error('Invalid arrival time');
+      throw new Error(`Invalid arrival time: ${arrivalTimeStr}`);
     }
     
     // 경유지 방문 시간 계산 (실제 이동 시간 사용)
@@ -352,9 +377,22 @@ export async function createTravelTimeFromTripMeta(tripMeta, waypoints, waypoint
     // 시간대 설정 (tripMeta에서 추출하거나 기본값 사용)
     const timeZone = tripMeta.timeZone || 'Asia/Seoul';
     
-    return createTravelTimeInfo(visitTime, durationMinutes, timeZone);
+    const travelTime = createTravelTimeInfo(visitTime, durationMinutes, timeZone);
+    
+    // endDate 계산 (start + durationMinutes)
+    const endDate = travelTime.start ? new Date(travelTime.start.getTime() + travelTime.durationMinutes * 60000) : null;
+    
+    console.log('✅ createTravelTimeFromTripMeta: travelTime 생성 완료', {
+      start: travelTime.start?.toISOString(),
+      end: endDate?.toISOString(),
+      durationMinutes: travelTime.durationMinutes,
+      timeZone: travelTime.timeZone,
+      visitTime: visitTime?.toISOString()
+    });
+    
+    return travelTime;
   } catch (error) {
-    console.warn('여행 시간 계산 실패:', error);
+    console.warn('⚠️ createTravelTimeFromTripMeta: 여행 시간 계산 실패', error);
     return createCurrentTravelTimeInfo(durationMinutes);
   }
 }

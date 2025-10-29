@@ -102,9 +102,34 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
     // 영업 상태 계산을 위한 travelTime 정보도 미리 계산
     let travelTime = null;
     if (poiInfo) {
+      console.log('📊 renderWaypoints: 영업 상태 계산 시작', {
+        waypointLabel: waypoint.label || waypoint.address,
+        waypointIndex: index,
+        hasPoiInfo: !!poiInfo,
+        hasTripMeta: !!tripMeta,
+        tripMetaOriginalArrival: tripMeta?.originalArrival,
+        tripMetaOriginalDeparture: tripMeta?.originalDeparture,
+        tripMetaArrival: tripMeta?.arrival,
+        tripMetaDeparture: tripMeta?.departure
+      });
+      
       travelTime = tripMeta 
         ? await createTravelTimeFromTripMeta(tripMeta, waypoints, index, waypoint?.stayMinutes || 60)
         : createCurrentTravelTimeInfo(waypoint?.stayMinutes || 60);
+      
+      // endDate 계산 (start + durationMinutes)
+      const endDate = travelTime?.start ? new Date(travelTime.start.getTime() + travelTime.durationMinutes * 60000) : null;
+      
+      console.log('📊 renderWaypoints: travelTime 계산 완료', {
+        waypointLabel: waypoint.label || waypoint.address,
+        waypointIndex: index,
+        travelTime: travelTime ? {
+          start: travelTime.start?.toISOString(),
+          end: endDate?.toISOString(),
+          durationMinutes: travelTime.durationMinutes,
+          timeZone: travelTime.timeZone
+        } : null
+      });
     }
     
     return { waypoint, poiInfo, travelTime, index };
@@ -145,7 +170,28 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
 
     // 영업 상태 표시 추가
     if (poiInfo && travelTime) {
+      console.log('🔍 영업 상태 확인 시작:', {
+        waypointLabel: waypoint.label || waypoint.address,
+        waypointIndex: index,
+        hasOpeningHours: !!poiInfo.opening_hours,
+        openingHours: poiInfo.opening_hours,
+        travelTime: {
+          start: travelTime.start?.toISOString(),
+          durationMinutes: travelTime.durationMinutes,
+          timeZone: travelTime.timeZone
+        },
+        business_status: poiInfo.business_status
+      });
+      
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
+      
+      console.log('✅ 영업 상태 확인 완료:', {
+        waypointLabel: waypoint.label || waypoint.address,
+        waypointIndex: index,
+        status: businessStatus.status,
+        icon: businessStatus.icon,
+        label: businessStatus.label
+      });
       
       const statusElement = document.createElement("span");
       statusElement.className = "waypoint-item__status";
@@ -164,6 +210,24 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       }
       
       info.append(statusElement);
+    } else {
+      // 디버깅을 위한 로그
+      if (!poiInfo) {
+        console.warn('⚠️ 영업 상태 표시 실패: poiInfo 없음', {
+          waypoint: waypoint.label || waypoint.address,
+          waypointIndex: index,
+          hasPlaceId: !!waypoint.placeId,
+          hasLabel: !!waypoint.label
+        });
+      }
+      if (!travelTime) {
+        console.warn('⚠️ 영업 상태 표시 실패: travelTime 없음', {
+          waypoint: waypoint.label || waypoint.address,
+          waypointIndex: index,
+          hasPoiInfo: !!poiInfo,
+          hasTripMeta: !!tripMeta
+        });
+      }
     }
 
     // 체류 시간 수정 기능 추가 (컴팩트하게)

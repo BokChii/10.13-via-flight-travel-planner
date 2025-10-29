@@ -32,96 +32,17 @@
 }
 
 /* Progress Indicator */
-.progress-container {
-  margin-bottom: 60px;
-}
-
-.progress-steps {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  opacity: 0.5;
-  transition: all 0.3s ease;
-}
-
-.step.active {
-  opacity: 1;
-}
-
-.step-number {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1.2rem;
-  margin-bottom: 8px;
-  transition: all 0.3s ease;
-}
-
-.step.active .step-number {
-  background: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.step-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.step.active .step-label {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.step:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 25px;
-  left: 100%;
-  width: 100px;
-  height: 2px;
-  background: #e0e0e0;
-  transform: translateX(-50px);
-}
-
-.step.active:not(:last-child)::after {
-  background: var(--color-primary);
-}
-
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: #e0e0e0;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
-  border-radius: 2px;
-  transition: width 0.5s ease;
-}
+/* 스타일은 components/steps.css에서 통일 관리 */
 
 /* Form Section */
 .transfer-form-section {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 30px;
+}
+
+.tips-section {
+  margin-bottom: 10px;
 }
 
 .form-container {

@@ -217,7 +217,7 @@
             <button class="btn btn--ghost" onclick="backToAirportPOISelection()">
               이전
             </button>
-            <button class="btn btn--primary" onclick="nextToCityPOISelection()" id="city-preferences-next" disabled>
+            <button class="btn btn--primary" onclick="nextToCityPOISelection()" id="city-preferences-next">
               다음 단계로
             </button>
           </div>
@@ -751,6 +751,9 @@
         selectedPOIs.push(poiId);
         updateSelectedPOIsList();
         updatePOINextButton();
+        
+        // 성공 메시지 추가
+        showToast({ message: `${poi.name}이(가) 리스트에 추가되었습니다.`, type: 'success' });
       }
 
       function updatePOITimeForItem(poiId, time) {
@@ -768,9 +771,19 @@
       }
 
       function togglePOI(poiId) {
+        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+        let poi = allPOIsMap.get(poiId);
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
+        }
+        if (!poi) return;
+        
         selectedPOIs = selectedPOIs.filter(id => id !== poiId);
         updateSelectedPOIsList();
         updatePOINextButton();
+        
+        // 제거 메시지 추가
+        showToast({ message: `${poi.name}이(가) 리스트에서 제거되었습니다.`, type: 'info' });
       }
 
       function updateSelectedPOIsList() {
@@ -807,10 +820,8 @@
       }
 
       function updatePOINextButton() {
-        const nextButton = document.getElementById('preferences-poi-next');
-        if (nextButton) {
-          nextButton.disabled = selectedPOIs.length === 0;
-        }
+        // updatePreferencesPOINextButton으로 통합됨 (동일한 버튼 제어)
+        updatePreferencesPOINextButton(); // 실제로 호출하도록 수정
       }
 
       function filterPOIs(type) {
@@ -1060,7 +1071,16 @@
       // 도시 선호도 다음 버튼 업데이트
       function updateCityPreferencesNextButton() {
         const nextButton = document.getElementById('city-preferences-next');
-        nextButton.disabled = selectedCityPreferences.length === 0;
+        const hasSelected = selectedCityPreferences.length > 0;
+        
+        // disabled 대신 CSS로 시각적 비활성화 (클릭은 가능하게 하여 toast 표시)
+        if (!hasSelected) {
+          nextButton.style.opacity = '0.5';
+          nextButton.style.cursor = 'not-allowed';
+        } else {
+          nextButton.style.opacity = '1';
+          nextButton.style.cursor = 'pointer';
+        }
       }
 
       // 도시 선호도 단계로 이동
@@ -1128,6 +1148,10 @@
           const startTime = new Date(currentTime);
           const endTime = new Date(currentTime.getTime() + (poi.estimatedTime || 10) * 60000);
           
+          // 이미지 HTML 추가 (airport-only.html과 동일)
+          const imageHtml = poi.imageUrl ? 
+            `<div class="timeline-image"><img src="${poi.imageUrl}" alt="${poi.name}" onerror="this.style.display='none'"></div>` : '';
+          
           timelineItem.innerHTML = `
             <div class="timeline-time">
               <span class="start-time">${formatTime(startTime)}</span>
@@ -1135,8 +1159,11 @@
             </div>
             <div class="timeline-content">
               <h4>${poi.name}</h4>
-              <p>${poi.location || ''}</p>
+              <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category || ''}</span>
+              ${poi.location ? `<p class="timeline-location">📍 ${poi.location}</p>` : ''}
+              <p>${poi.estimatedTime || 10}분 체류</p>
             </div>
+            ${imageHtml}
           `;
           
           container.appendChild(timelineItem);
@@ -1300,13 +1327,18 @@
           if (cityPOIs.length >= 3) break;
         }
         
-        // 검색된 POI를 waypoint 형태로 변환
+        // 검색된 POI를 waypoint 형태로 변환 (Google Maps API 실제 데이터 포함)
         const waypoints = cityPOIs.slice(0, 3).map((poi, index) => ({
           label: poi.name,
           address: poi.address || poi.location,
           location: poi.location,
           categoryKey: poi.category,
-          stayMinutes: defaultStayMinutes
+          category: poi.category, // 카테고리 라벨
+          categoryIcon: poi.categoryIcon, // 하드코딩된 이모지
+          stayMinutes: defaultStayMinutes,
+          rating: poi.rating || 0, // Google Maps API에서 가져온 실제 평점
+          userRatingsTotal: poi.userRatingsTotal || 0, // Google Maps API에서 가져온 실제 리뷰 수
+          photos: poi.photos || [] // Google Maps Photo 객체
         }));
         
         // 공항 앵커 생성
@@ -1323,6 +1355,10 @@
           destination: arriveAnchor,
           waypoints,
           meta: {
+            // 원본 도착/출발 시간 (transfer-info에서 입력한 값)
+            originalArrival: arrivalTime.toISOString(),
+            originalDeparture: departureTime.toISOString(),
+            // 버퍼 적용된 도착/출발 시간
             arrival: startWindow.toISOString(),
             departure: endWindow.toISOString(),
             entryBufferMinutes,
@@ -1340,7 +1376,15 @@
         // 생성된 일정 저장
         sessionStorage.setItem('cityPlan', JSON.stringify(plan));
         
-        console.log('도시 일정 생성 완료:', plan);
+        console.log('✅ 도시 일정 생성 완료:', {
+          plan,
+          originalArrival: arrivalTime.toISOString(),
+          originalDeparture: departureTime.toISOString(),
+          bufferedArrival: startWindow.toISOString(),
+          bufferedDeparture: endWindow.toISOString(),
+          entryBuffer: entryBufferMinutes,
+          returnBuffer: returnBufferMinutes
+        });
         return plan;
       }
 
@@ -1588,15 +1632,30 @@
           const poiCard = document.createElement('div');
           poiCard.className = 'city-poi-card';
           
-          // 이미지, 평점, 리뷰 수 정보 표시
-          const imageUrl = waypoint.photos?.[0]?.getUrl() || 'https://via.placeholder.com/300x200?text=No+Image';
-          const rating = waypoint.rating || 4.0;
-          const reviewCount = waypoint.userRatingsTotal || 0;
-          const categoryIcon = waypoint.categoryIcon || '📍';
+          // 이미지, 평점, 리뷰 수 정보 표시 (Google Maps API 실제 데이터 사용)
+          // photos는 Google Maps Photo 객체이거나 직렬화된 경우를 대비
+          let imageUrl = null;
+          if (waypoint.photos && waypoint.photos.length > 0) {
+            const photo = waypoint.photos[0];
+            if (typeof photo.getUrl === 'function') {
+              // Google Maps Photo 객체인 경우
+              try {
+                imageUrl = photo.getUrl({ maxWidth: 300, maxHeight: 200 });
+              } catch (e) {
+                console.warn('Photo getUrl() 실패:', e);
+              }
+            } else if (photo.url) {
+              // 직렬화된 경우 URL이 있을 수 있음
+              imageUrl = photo.url;
+            }
+          }
+          const rating = waypoint.rating || 0; // 실제 Google Maps API 평점 (폴백 제거)
+          const reviewCount = waypoint.userRatingsTotal || 0; // 실제 Google Maps API 리뷰 수 (폴백 제거)
+          const categoryIcon = waypoint.categoryIcon || '📍'; // 하드코딩된 이모지 (유지)
           
           poiCard.innerHTML = `
             <div class="poi-card-content">
-              ${waypoint.photos ? `<img src="${imageUrl}" alt="${waypoint.label}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'" />` : ''}
+              ${imageUrl ? `<img src="${imageUrl}" alt="${waypoint.label}" onerror="this.style.display='none'" />` : ''}
               <div class="poi-card-details">
                 <h4>${waypoint.label}</h4>
                 <p class="poi-address">${waypoint.address || '주소 정보 없음'}</p>
@@ -1665,9 +1724,10 @@
       }
 
       function backToAirportPOISelection() {
-        currentStep = 'airport-poi-selection';
+        // 공항 내부 일정 페이지로 돌아가기 (도시 선호도 페이지에서 온 경우)
+        currentStep = 'airport-schedule';
         document.getElementById('city-preferences-step').style.display = 'none';
-        document.getElementById('airport-poi-step').style.display = 'block';
+        document.getElementById('airport-schedule-step').style.display = 'block';
       }
 
       function backToCityPreferences() {
