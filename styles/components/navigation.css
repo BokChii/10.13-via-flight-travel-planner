@@ -488,6 +488,95 @@ body.app.navigation-active .app-header .tagline {
   text-align: center;
 }
 
+/* Waypoint list 3-row layout (navigation left panel) */
+.waypoint-item {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.waypoint-item__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.waypoint-item__row + .waypoint-item__row { margin-top: 6px; }
+
+.waypoint-item__row--top { gap: 12px; }
+
+.waypoint-item__category { font-size: 1.2rem; line-height: 1; }
+
+.waypoint-item__label {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.waypoint-item__row--middle { color: var(--color-text-secondary); font-size: 0.9rem; }
+
+.waypoint-item__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waypoint-item__row--bottom {
+  display: grid;
+  grid-template-columns: minmax(120px,auto) minmax(160px,auto);
+  gap: 10px;
+  align-items: center;
+}
+
+.waypoint-item__row--actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.waypoint-item__status { font-weight: 600; }
+
+.waypoint-item__stay { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+.waypoint-item__stay-input {
+  width: 72px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.waypoint-item__actions { display: inline-flex; justify-content: flex-end; gap: 6px; }
+
+@media (max-width: 480px) {
+  .waypoint-item__row--bottom { grid-template-columns: 1fr; align-items: start; }
+  .waypoint-item__row--actions { justify-content: flex-start; }
+  .waypoint-item__actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+
+/* Ensure controls panel and its contents never exceed the left column width */
+.layout[data-view="planning"] .panel--controls {
+  width: 100%;
+  max-width: 350px; /* match grid left column */
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.panel--controls form,
+.panel--controls fieldset,
+.panel--controls .waypoint-controls,
+.panel--controls .waypoint-list {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.panel--controls .waypoint-item {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 1200px) {
   .layout[data-view="planning"] {

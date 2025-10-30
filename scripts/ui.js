@@ -116,22 +116,22 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
     const item = document.createElement("li");
     item.className = "waypoint-item";
 
-    const info = document.createElement("div");
-    info.className = "waypoint-item__info";
-
-    // 카테고리 아이콘과 라벨 추가
+    // 1) 상단: 아이콘 + 장소명
+    const rowTop = document.createElement("div");
+    rowTop.className = "waypoint-item__row waypoint-item__row--top";
     const categoryInfo = poiInfo?.category || getCategoryInfo('default');
     const categoryIcon = document.createElement("span");
     categoryIcon.className = "waypoint-item__category";
     categoryIcon.textContent = categoryInfo.icon;
     categoryIcon.title = categoryInfo.label;
-
     const name = document.createElement("span");
     name.className = "waypoint-item__label";
     name.textContent = waypoint.label ?? waypoint.address ?? `경유지 ${index + 1}`;
-    
-    info.append(categoryIcon, name);
+    rowTop.append(categoryIcon, name);
 
+    // 2) 중간: 체류시간 · 주소
+    const rowMid = document.createElement("div");
+    rowMid.className = "waypoint-item__row waypoint-item__row--middle";
     if (waypoint?.stayMinutes || poiInfo?.address || waypoint?.address) {
       const meta = document.createElement("span");
       meta.className = "waypoint-item__meta";
@@ -140,19 +140,20 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       if (poiInfo?.address) parts.push(poiInfo.address);
       else if (waypoint?.address) parts.push(waypoint.address);
       meta.textContent = parts.join(" · ");
-      info.append(meta);
+      rowMid.append(meta);
     }
 
-    // 영업 상태 표시 추가
+    // 3) 하단: 영업 상태 + 체류 입력
+    const rowBottom = document.createElement("div");
+    rowBottom.className = "waypoint-item__row waypoint-item__row--bottom";
+
+    // 영업 상태
+    const statusElement = document.createElement("span");
+    statusElement.className = "waypoint-item__status";
     if (poiInfo && travelTime) {
       const businessStatus = checkBusinessStatus(poiInfo, travelTime);
-      
-      const statusElement = document.createElement("span");
-      statusElement.className = "waypoint-item__status";
       statusElement.innerHTML = `${businessStatus.icon} ${businessStatus.label}`;
       statusElement.title = `영업 상태: ${businessStatus.label}`;
-      
-      // 상태에 따른 스타일 적용
       if (businessStatus.status === 'OPEN') {
         statusElement.style.color = '#4caf50';
         statusElement.style.fontWeight = '600';
@@ -162,10 +163,9 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       } else {
         statusElement.style.color = '#9e9e9e';
       }
-      
-      info.append(statusElement);
     } else {
-      // 디버깅을 위한 로그
+      statusElement.textContent = '영업 상태 확인 불가';
+      // 디버깅 로그 유지
       if (!poiInfo) {
         console.warn('⚠️ 영업 상태 표시 실패: poiInfo 없음', {
           waypoint: waypoint.label || waypoint.address,
@@ -184,10 +184,11 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
       }
     }
 
-    // 체류 시간 수정 기능 추가 (컴팩트하게)
-    const stayTimeContainer = document.createElement("div");
-    stayTimeContainer.className = "waypoint-item__stay-time";
-    
+    // 체류 입력
+    const stayWrap = document.createElement("div");
+    stayWrap.className = "waypoint-item__stay";
+    const stayLabel = document.createElement("label");
+    stayLabel.textContent = "체류";
     const stayTimeInput = document.createElement("input");
     stayTimeInput.type = "number";
     stayTimeInput.className = "waypoint-item__stay-input";
@@ -206,42 +207,44 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
         showToast({ message: "체류 시간은 10분에서 600분 사이로 설정해주세요.", type: "warning" });
       }
     });
-    
-    stayTimeContainer.append(stayTimeInput);
-    info.append(stayTimeContainer);
+    const stayUnit = document.createElement("span");
+    stayUnit.textContent = "분";
+    stayWrap.append(stayLabel, stayTimeInput, stayUnit);
 
-    // 버튼들을 아래에 가로로 배치
+    // 4) 액션 버튼들 (별도 줄)
+    const rowActions = document.createElement("div");
+    rowActions.className = "waypoint-item__row waypoint-item__row--actions";
     const actions = document.createElement("div");
     actions.className = "waypoint-item__actions";
-
     const detailsButton = document.createElement("button");
     detailsButton.type = "button";
     detailsButton.className = "btn btn--ghost btn--small";
     detailsButton.textContent = "상세";
     detailsButton.addEventListener("click", () => onShowDetails?.(waypoint, poiInfo));
-
     const upButton = document.createElement("button");
     upButton.type = "button";
     upButton.className = "btn btn--ghost btn--small";
     upButton.textContent = "▲";
     upButton.disabled = index === 0;
     upButton.addEventListener("click", () => onMoveUp(index));
-
     const downButton = document.createElement("button");
     downButton.type = "button";
     downButton.className = "btn btn--ghost btn--small";
     downButton.textContent = "▼";
     downButton.disabled = index === waypoints.length - 1;
     downButton.addEventListener("click", () => onMoveDown(index));
-
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "btn btn--ghost btn--small";
     removeButton.textContent = "삭제";
     removeButton.addEventListener("click", () => onRemove(index));
-
     actions.append(detailsButton, upButton, downButton, removeButton);
-    item.append(info, actions);
+
+    rowBottom.append(statusElement, stayWrap);
+    rowActions.append(actions);
+
+    // 조립
+    item.append(rowTop, rowMid, rowBottom, rowActions);
     listElement.append(item);
   });
 }
