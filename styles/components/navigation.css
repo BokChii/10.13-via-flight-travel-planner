@@ -714,6 +714,14 @@ body.app.navigation-active .app-header .tagline {
     right: 8px;
     gap: 6px;
   }
+
+  /* 모바일에서 종료 버튼은 한 줄 꽉 차게 */
+  #exit-navigation {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin-top: 10px;
+  }
 }
 
 @media (max-width: 480px) {

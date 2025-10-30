@@ -112,6 +112,13 @@
             <button class="btn btn--primary" onclick="shareSummary()">📤 일정 공유</button>
           </div>
 
+          <!-- 이메일 전송: 최소 UI -->
+          <div class="cta-gap"></div>
+          <div class="email-share" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+            <input id="share-email-to" type="email" placeholder="받는 이메일" class="field__input" style="flex:1; min-width:220px; max-width:360px;">
+            <button class="btn btn--primary" onclick="sendSummaryByEmail()">📧 이메일로 보내기</button>
+          </div>
+
           <!-- 아래 간격 -->
           <div class="cta-gap"></div>
 
@@ -848,6 +855,77 @@
         } catch (e) {
           console.error('일정 공유 실패:', e);
           alert('❌ 일정 공유에 실패했습니다.');
+        }
+      }
+
+      // 이메일 전송(서비스 계정 From 고정, Reply-To 생략): 최소 구현
+      async function sendSummaryByEmail() {
+        try {
+          const to = (document.getElementById('share-email-to')?.value || '').trim();
+          const emailRx = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+          if (!emailRx.test(to)) { alert('받는 이메일이 유효하지 않습니다.'); return; }
+
+          const target = document.querySelector('.trip-summary-main');
+          if (!target) { alert('전송할 콘텐츠를 찾을 수 없습니다.'); return; }
+
+          const canvas = await html2canvas(target, { useCORS: true, scale: 2, backgroundColor: '#ffffff' });
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+          const imgWidth = 210;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          const imgData = canvas.toDataURL('image/png');
+          let heightLeft = imgHeight, position = 0;
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= 297;
+          while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= 297; }
+          const base64 = pdf.output('datauristring').split(',')[1];
+
+          const res = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to,
+              subject: 'Via Flight - 전체 여행 일정 PDF',
+              text: '안녕하세요! 요청하신 여행 일정 PDF를 첨부드립니다.',
+              attachment: {
+                filename: `viaflight_itinerary_${new Date().toISOString().slice(0,10)}.pdf`,
+                contentType: 'application/pdf',
+                base64
+              }
+            })
+          });
+          if (res.ok) { alert('✅ 이메일로 전송되었습니다!'); return; }
+
+          // Fallback: 브라우저에서 직접 Resend API 호출(로컬/정적 테스트용)
+          if (window.RESEND_API_KEY) {
+            const fromAddr = window.EMAIL_FROM || 'onboarding@resend.dev';
+            const apiRes = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.RESEND_API_KEY}`,
+              },
+              body: JSON.stringify({
+                from: fromAddr,
+                to,
+                subject: 'Via Flight - 전체 여행 일정 PDF',
+                text: '안녕하세요! 요청하신 여행 일정 PDF를 첨부드립니다.',
+                attachments: [{
+                  filename: `viaflight_itinerary_${new Date().toISOString().slice(0,10)}.pdf`,
+                  content: base64,
+                  contentType: 'application/pdf'
+                }]
+              })
+            });
+            if (!apiRes.ok) throw new Error('Resend direct API failed');
+            alert('✅ 이메일로 전송되었습니다!');
+            return;
+          }
+
+          throw new Error('메일 전송 실패');
+        } catch (e) {
+          console.error(e);
+          alert('❌ 이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
       }
     </script>

@@ -30,15 +30,20 @@ import { calculateRealTimeReturnInfo, convertToLegacyFormat } from './airportRet
 
 
 export async function renderNavigationStatus(container, navigation, routePlan, progress, tripMeta = null) {
+  // 모바일 종료 버튼(#exit-navigation)이 container 안에 있을 수 있으므로 보존 후 재부착
+  const exitButtonEl = document.getElementById("exit-navigation");
+  const shouldReattachExit = !!exitButtonEl && container.contains(exitButtonEl);
   container.innerHTML = "";
 
   if (!routePlan) {
     container.append(createPlaceholder("내비게이션을 시작하면 현재 위치와 진행 상황이 표시됩니다."));
+    if (shouldReattachExit && exitButtonEl) container.append(exitButtonEl);
     return;
   }
 
   if (!navigation?.active) {
     container.append(createPlaceholder("계산된 경로로 내비게이션을 시작할 수 있습니다."));
+    if (shouldReattachExit && exitButtonEl) container.append(exitButtonEl);
     return;
   }
 
@@ -121,6 +126,11 @@ export async function renderNavigationStatus(container, navigation, routePlan, p
         container.append(legInfo);
       }
     }
+  }
+
+  // 렌더링 마지막에 모바일 종료 버튼 재부착 (있을 경우)
+  if (shouldReattachExit && exitButtonEl) {
+    container.append(exitButtonEl);
   }
 }
 
