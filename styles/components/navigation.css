@@ -669,3 +669,56 @@ body.app.navigation-active .app-header .tagline {
     font-size: 1.2rem !important;
   }
 }
+
+/* ===============================
+   Mobile-first stacking & map size
+   =============================== */
+@media (max-width: 768px) {
+  /* 세로 스택: controls → map → summary */
+  .layout[data-view="planning"] {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "controls"
+      "map"
+      "summary" !important;
+    gap: 12px;
+  }
+
+  .layout[data-view="planning"] .panel--controls { grid-area: controls !important; }
+  .layout[data-view="planning"] .panel--map {
+    grid-area: map !important;
+    min-height: 60vh !important;
+    height: 60vh;
+    padding: 0;
+  }
+  .layout[data-view="planning"] .panel--summary {
+    grid-area: summary !important;
+    max-height: none !important;
+  }
+
+  .panel--map .map-placeholder {
+    min-height: unset;
+    height: 100%;
+    border-radius: 8px;
+  }
+
+  .panel {
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(15, 28, 46, 0.12);
+  }
+
+  .navigation-overlay {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout[data-view="planning"] .panel--map {
+    min-height: 55vh !important;
+    height: 55vh;
+  }
+}
