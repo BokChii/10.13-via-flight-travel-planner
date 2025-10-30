@@ -115,7 +115,8 @@ function createSegmentEntry(segment, index, isActive, schedule = null) {
       const lines = [];
       if (leg.durationText) lines.push(leg.durationText);
       if (leg.distanceText) lines.push(leg.distanceText);
-      if (leg.details) lines.push(leg.details);
+      const cleanedDetails = sanitizeLegDetails(leg.details);
+      if (cleanedDetails) lines.push(cleanedDetails);
 
       // leg 출발/도착 시각 계산 (가능한 경우)
       let timesSuffix = '';
@@ -273,4 +274,20 @@ function formatTimeLocalHM(date) {
     const m = date.getMinutes().toString().padStart(2, '0');
     return `${h}:${m}`;
   }
+}
+
+// leg.details 내 시간 라벨(오전/오후 HH:MM, HH:MM AM/PM, 출발/도착 문구)을 제거하여 중복 표기 방지
+function sanitizeLegDetails(details) {
+  if (!details || typeof details !== 'string') return '';
+  let t = details;
+  // 한글 시간 + 출발/도착 토큰 제거
+  t = t.replace(/(오전|오후)\s*\d{1,2}:\d{2}\s*(출발|도착)?/g, '').trim();
+  // 영문 AM/PM 시간 제거
+  t = t.replace(/\d{1,2}:\d{2}\s*(AM|PM)/gi, '').trim();
+  // 잔여 구분자 정리
+  t = t.replace(/\s*\/\s*/g, ' / ')
+       .replace(/\s*·\s*/g, ' · ')
+       .replace(/\s{2,}/g, ' ')
+       .replace(/(^[·\/]\s*|\s*[·\/]$)/g, '');
+  return t;
 }
