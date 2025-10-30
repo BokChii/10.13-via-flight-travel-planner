@@ -127,6 +127,20 @@
   text-align: center;
 }
 
+/* 운영 중 안내 배너 */
+.open-only-hint {
+  margin: 8px auto 16px;
+  text-align: center;
+  background: #e9f3ff; /* 부드러운 하늘색 배경 */
+  color: #0b63c5; /* 자연스러운 블루 텍스트 */
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 520px;
+  border: 1px solid #cfe5ff;
+}
+
 .section-title h4 {
   font-size: 1.2rem;
   font-weight: 600;

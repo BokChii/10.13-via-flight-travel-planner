@@ -108,6 +108,7 @@
           <!-- POI 선택 섹션 -->
           <div class="poi-selection-section" id="poi-selection-section" style="display: none;">
             <h3 class="section-title">방문할 장소 선택</h3>
+            <p class="open-only-hint">환승 시간 동안 운영 중인 곳만 표시됩니다!</p>
             
             <!-- 카테고리 필터 -->
             <div class="filters-section">
@@ -228,6 +229,7 @@
       <section class="city-poi-selection-step" id="city-poi-step" style="display: none;">
         <div class="step-container">
           <h2 class="step-title">도시에서 방문할 장소를 선택해주세요</h2>
+          <p class="open-only-hint">환승 시간 동안 운영 중인 곳만 표시됩니다!</p>
           <p class="step-description">
             선택한 카테고리의 추천 장소들을 확인하고<br>
             도시에서 방문하고 싶은 장소를 선택해주세요.
@@ -396,11 +398,12 @@
     <script type="module">
       // 필요한 함수들을 import
       import { getPOIInfo } from './scripts/poiManager.js';
-      import { getBusinessStatus } from './scripts/businessHours.js';
+      import { getBusinessStatus, getStatusFromBusinessHoursString } from './scripts/businessHours.js';
       
       // 전역에서 사용 가능하도록 window에 노출
       window.getPOIInfo = getPOIInfo;
       window.getBusinessStatus = getBusinessStatus;
+      window.getStatusFromBusinessHoursString = getStatusFromBusinessHoursString;
     </script>
     <script>
       // 전역 상태
@@ -586,9 +589,29 @@
             }
           });
           
-          // allPOIs 업데이트 (현재 필터에 해당하는 POI만 포함)
-          allPOIs = pois;
-          const groupedPOIs = groupDuplicatePOIs(pois);
+          // 방문 시간 기준 계산 (공항 내부 탐방 시작 시간 가정)
+          let visitStart = null;
+          try {
+            if (transferInfo?.arrival) {
+              visitStart = new Date(transferInfo.arrival);
+            } else {
+              visitStart = new Date();
+            }
+          } catch (_) {
+            visitStart = new Date();
+          }
+
+          // 운영 상태 필터링: OPEN인 항목만 유지 (UNKNOWN/CLOSED 제외)
+          const filtered = pois.filter(poi => {
+            const stay = Number(poi.estimatedTime || 30);
+            const status = window.getStatusFromBusinessHoursString?.(poi.businessHours, visitStart, stay, 'Asia/Singapore') || 'UNKNOWN';
+            poi.airportBusinessStatus = status;
+            return status === 'OPEN';
+          });
+
+          // allPOIs 업데이트 (현재 필터 + 운영 상태 반영)
+          allPOIs = filtered;
+          const groupedPOIs = groupDuplicatePOIs(filtered);
           
           renderPOIList(groupedPOIs);
           console.log(`SQLite 데이터베이스에서 POI 로드 완료: ${pois.length}개 발견 (${groupedPOIs.length}개 그룹)`);

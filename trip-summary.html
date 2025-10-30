@@ -105,31 +105,27 @@
             <h2>🎉 환승 여행을 완료하셨습니다!</h2>
             <p>소중한 여행의 기록을 공유하고 저장해보세요.</p>
           </div>
-          
-          <div class="share-section">
-            <h3>일정 공유하기</h3>
-            <div class="share-buttons">
-              <button class="btn btn--small btn--ghost" onclick="shareSchedule('link')">
-                링크 공유
-              </button>
-              <button class="btn btn--small btn--ghost" onclick="shareSchedule('image')">
-                이미지 저장
-              </button>
-              <button class="btn btn--small btn--secondary" onclick="shareSchedule('text')">
-                텍스트 복사
-              </button>
-            </div>
+
+          <!-- 나란히 두 버튼: 일정 저장 / 일정 공유 -->
+          <div class="cta-row">
+            <button class="btn btn--secondary" onclick="saveSummaryPDF()">💾 일정 저장</button>
+            <button class="btn btn--primary" onclick="shareSummary()">📤 일정 공유</button>
           </div>
-          
-          <div class="action-buttons">
-            <button class="btn btn--primary" onclick="goToHome()">
-              🏠 홈으로 돌아가기
-            </button>
+
+          <!-- 아래 간격 -->
+          <div class="cta-gap"></div>
+
+          <!-- 더 큰 홈 버튼 -->
+          <div class="cta-home">
+            <button class="btn btn--primary btn--large" onclick="goToHome()">🏠 홈으로 돌아가기</button>
           </div>
         </div>
       </section>
     </main>
 
+    <!-- PDF/Image export libs for 저장 기능 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="module" src="scripts/router.js"></script>
     <script>
       // 전역 상태
@@ -238,8 +234,8 @@
               scheduleData = {
                 transferInfo: {
                   city: plannerResult.meta?.cityText || '싱가포르',
-                  arrival: plannerResult.meta?.arrival,
-                  departure: plannerResult.meta?.departure,
+                  arrival: plannerResult.meta?.originalArrival || plannerResult.meta?.arrival,
+                  departure: plannerResult.meta?.originalDeparture || plannerResult.meta?.departure,
                   duration: plannerResult.meta?.exploreWindow?.availableMinutes * 60000
                 },
                 type: 'airport-external',
@@ -249,6 +245,12 @@
                 actualTimeline: finalTripPlan.actualTimeline, // 실제 계산된 시간표 추가
                 completedAt: finalTripPlan.completedAt
               };
+              console.log('🧭 [trip-summary] transferInfo 설정:', {
+                city: scheduleData.transferInfo.city,
+                arrival: scheduleData.transferInfo.arrival,
+                departure: scheduleData.transferInfo.departure,
+                durationMs: scheduleData.transferInfo.duration
+              });
               
               if (finalTripPlan.actualTimeline) {
                 console.log('✅ 실제 계산된 타임라인 로드 완료');
@@ -564,35 +566,102 @@
         return `${hours}:${minutes}`;
       }
 
-      // 통계 업데이트
+      // durationText("1시간 23분", "23분", "1h 23m" 등) → 초 단위로 파싱
+      function parseDurationTextToSeconds(text) {
+        if (!text || typeof text !== 'string') return 0;
+        const t = text.trim();
+        // 한글 패턴
+        const kr = t.match(/(?:(\d+)\s*시간)?\s*(?:(\d+)\s*분)?/);
+        if (kr && (kr[1] || kr[2])) {
+          const h = parseInt(kr[1] || '0', 10);
+          const m = parseInt(kr[2] || '0', 10);
+          return (h * 60 + m) * 60;
+        }
+        // 영문 패턴
+        const en = t.match(/(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?/i);
+        if (en && (en[1] || en[2])) {
+          const h = parseInt(en[1] || '0', 10);
+          const m = parseInt(en[2] || '0', 10);
+          return (h * 60 + m) * 60;
+        }
+        // 숫자 + 분만
+        const onlyMin = t.match(/^(\d+)\s*분?$/);
+        if (onlyMin) return parseInt(onlyMin[1], 10) * 60;
+        return 0;
+      }
+
+      // 통계 업데이트 (실제 값 반영)
       function updateStats() {
         if (!scheduleData) {
           console.warn('updateStats: scheduleData가 없습니다');
           return;
         }
-        
-        const airportCount = scheduleData.airportPOIs ? scheduleData.airportPOIs.length : 0;
-        const cityCount = scheduleData.cityPOIs ? scheduleData.cityPOIs.length : 0;
+
+        // 방문 장소 수
+        const airportCount = Array.isArray(scheduleData.airportPOIs) ? scheduleData.airportPOIs.length : 0;
+        const cityCount = Array.isArray(scheduleData.cityPOIs) ? scheduleData.cityPOIs.length : 0;
         const totalLocations = airportCount + cityCount;
-        
+
         const totalLocationsEl = document.getElementById('total-locations');
-        if (totalLocationsEl) {
-          totalLocationsEl.textContent = totalLocations;
+        if (totalLocationsEl) totalLocationsEl.textContent = totalLocations;
+
+        // 실제 이동 시간(초): 실제 타임라인이 있으면 합산, 없으면 간이 추정
+        const hasActual = Array.isArray(scheduleData.actualTimeline) && scheduleData.actualTimeline.length > 0;
+        let travelSeconds = 0;
+        if (hasActual) {
+          travelSeconds = scheduleData.actualTimeline.reduce((sum, seg) => {
+            // 1) 초 단위가 있으면 우선 사용
+            const dSec = Number(seg?.duration) || 0;
+            if (dSec > 0) return sum + dSec;
+            // 2) 텍스트 파싱
+            const dTxtSec = parseDurationTextToSeconds(seg?.durationText);
+            if (dTxtSec > 0) return sum + dTxtSec;
+            // 3) 하위 legs durationText 합산
+            if (Array.isArray(seg?.legs) && seg.legs.length > 0) {
+              const legsSec = seg.legs.reduce((acc, leg) => acc + parseDurationTextToSeconds(leg?.durationText), 0);
+              return sum + legsSec;
+            }
+            return sum;
+          }, 0);
+        } else {
+          // 폴백: 경유지 사이 15분으로 추정
+          travelSeconds = Math.max(0, totalLocations - 1) * 15 * 60;
         }
 
-        // 총 소요시간 계산 (임시)
-        const totalTime = totalLocations * 60; // 평균 60분씩
-        const totalTimeEl = document.getElementById('total-time');
-        if (totalTimeEl) {
-          totalTimeEl.textContent = `${totalTime}분`;
-        }
+        // 체류 시간(분): 모든 POI의 estimatedTime/stayMinutes 합산
+        const stayMinutesAirport = (scheduleData.airportPOIs || []).reduce((sum, p) => {
+          const m = Number(p?.estimatedTime ?? p?.stayMinutes ?? 0) || 0;
+          return sum + m;
+        }, 0);
+        const stayMinutesCity = (scheduleData.cityPOIs || []).reduce((sum, p) => {
+          const m = Number(p?.estimatedTime ?? p?.stayMinutes ?? 0) || 0;
+          return sum + m;
+        }, 0);
+        const stayMinutesTotal = stayMinutesAirport + stayMinutesCity;
 
-        // 이동시간 계산 (임시)
-        const walkingTime = Math.max(0, totalLocations - 1) * 15; // 장소 간 이동 15분씩
+        // 출력: 이동시간(분), 총 소요시간(분)
         const walkingTimeEl = document.getElementById('walking-time');
-        if (walkingTimeEl) {
-          walkingTimeEl.textContent = `${walkingTime}분`;
-        }
+        const totalTimeEl = document.getElementById('total-time');
+
+        const travelMinutes = Math.round(travelSeconds / 60);
+        const totalMinutes = Math.max(0, travelMinutes + stayMinutesTotal);
+
+        if (walkingTimeEl) walkingTimeEl.textContent = `${travelMinutes}분`;
+        if (totalTimeEl) totalTimeEl.textContent = `${totalMinutes}분`;
+
+        // 디버깅 로그
+        console.log('📊 [trip-summary] 통계 계산', {
+          airportCount,
+          cityCount,
+          totalLocations,
+          hasActualTimeline: hasActual,
+          travelSeconds,
+          travelMinutes,
+          stayMinutesAirport,
+          stayMinutesCity,
+          stayMinutesTotal,
+          totalMinutes
+        });
       }
 
       // 팁 생성
@@ -680,6 +749,105 @@
         } else if (type === 'image') {
           // 이미지 저장 로직
           alert('이미지 저장 기능은 준비 중입니다.');
+        }
+      }
+
+      // 공통 CTA 기능: 일정 저장(PDF), 일정 공유(텍스트)
+      async function saveSummaryPDF() {
+        try {
+          const target = document.querySelector('.trip-summary-main');
+          if (!target) {
+            alert('저장할 콘텐츠를 찾을 수 없습니다.');
+            return;
+          }
+          const canvas = await html2canvas(target, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: '#ffffff'
+          });
+
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+          const imgWidth = 210;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          const imgData = canvas.toDataURL('image/png');
+
+          let heightLeft = imgHeight;
+          let position = 0;
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= 297;
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= 297;
+          }
+
+          const city = scheduleData?.transferInfo?.city || '여행';
+          const datePart = new Date().toISOString().split('T')[0];
+          pdf.save(`전체일정_${city}_${datePart}.pdf`);
+          alert('✅ PDF가 다운로드되었습니다!');
+        } catch (error) {
+          console.error('PDF 저장 실패:', error);
+          alert('❌ PDF 저장에 실패했습니다.');
+        }
+      }
+
+      function shareSummary() {
+        try {
+          if (!scheduleData) {
+            alert('공유할 일정 데이터가 없습니다.');
+            return;
+          }
+          const t = scheduleData.transferInfo || {};
+          const typeText = scheduleData.type === 'airport-only' ? '공항 내부만' : '공항 + 도시';
+          const arrival = t.arrival ? new Date(t.arrival).toLocaleString() : '-';
+          const departure = t.departure ? new Date(t.departure).toLocaleString() : '-';
+          const durationMin = (t.duration || 0) / 60000;
+
+          let text = '';
+          text += `✈️ Via Flight - 전체 여행 일정\n\n`;
+          text += `도시: ${t.city || '-'}\n`;
+          text += `여행 스타일: ${typeText}\n`;
+          text += `도착: ${arrival}\n`;
+          text += `출발: ${departure}\n`;
+          text += `환승 시간: ${durationMin}분\n\n`;
+
+          if (scheduleData.airportPOIs?.length) {
+            text += `🏢 공항 내부 일정\n`;
+            scheduleData.airportPOIs.forEach((p, i) => {
+              text += `${i + 1}. ${p.name} (${p.category || '기타'}) - ${p.estimatedTime || 10}분`;
+              if (p.address) text += ` | ${p.address}`;
+              text += `\n`;
+            });
+            text += `\n`;
+          }
+          if (scheduleData.cityPOIs?.length) {
+            text += `🏙️ 도시 탐방 일정\n`;
+            scheduleData.cityPOIs.forEach((p, i) => {
+              text += `${i + 1}. ${p.name} (${p.category || '기타'}) - ${p.estimatedTime || p.stayMinutes || 10}분`;
+              if (p.address) text += ` | ${p.address}`;
+              text += `\n`;
+            });
+            text += `\n`;
+          }
+
+          navigator.clipboard.writeText(text).then(() => {
+            alert('✅ 일정이 클립보드에 복사되었습니다!');
+          }).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert('✅ 일정이 클립보드에 복사되었습니다!');
+          });
+        } catch (e) {
+          console.error('일정 공유 실패:', e);
+          alert('❌ 일정 공유에 실패했습니다.');
         }
       }
     </script>

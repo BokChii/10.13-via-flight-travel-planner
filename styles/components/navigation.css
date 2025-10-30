@@ -49,6 +49,32 @@ body.app.navigation-active .app-header .tagline {
   text-decoration: underline;
 }
 
+/* Countdown Banner */
+.countdown-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #e9f3ff;
+  color: #0b63c5;
+  border: 1px solid #cfe5ff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px auto 0;
+  max-width: 1100px;
+  text-align: center;
+  font-weight: 600;
+}
+.countdown-banner.is-warning {
+  background: #fff4e5;
+  color: #b35400;
+  border-color: #ffd8a8;
+}
+.countdown-banner.is-danger {
+  background: #ffe8e8;
+  color: #b00020;
+  border-color: #ffc9c9;
+}
+
 /* Header Actions */
 .header-actions {
   margin-top: 20px;
@@ -224,6 +250,24 @@ body.app.navigation-active .app-header .tagline {
   margin-bottom: 12px;
   background: #f8fbff;
 }
+
+/* Return-time banner minimal styling */
+.return-time-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin: 8px 0 12px;
+  background: #eef6ff;
+  border: 1px solid #cde3ff;
+}
+.return-time-banner.safe { background: #eefdf4; border-color: #c8f0d8; }
+.return-time-banner.warning { background: #fff8e6; border-color: #ffe2ad; }
+.return-time-banner.danger { background: #ffefef; border-color: #ffc9c9; }
+.return-time-banner__icon { font-size: 1.3rem; line-height: 1; }
+.return-time-banner__title { font-weight: 700; color: #0f172a; }
+.return-time-banner__subtitle { font-size: 0.9rem; color: #4b5563; }
 
 .navigation-status__title {
   margin: 0 0 6px;

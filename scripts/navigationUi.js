@@ -208,7 +208,8 @@ export function calculateReturnTimeInfo(routePlan, tripMeta = null) {
   const timeToDepartureMinutes = Math.floor(timeToDeparture / (1000 * 60));
   
   // Slack 계산: 출발까지 남은 시간 - (남은 이동 시간 + 복귀 버퍼)
-  const slackMinutes = timeToDepartureMinutes - (remainingTravelTimeSeconds / 60) - returnBufferMinutes;
+  const slackMinutesRaw = timeToDepartureMinutes - (remainingTravelTimeSeconds / 60) - returnBufferMinutes;
+  const slackMinutes = Math.floor(slackMinutesRaw);
   
   let status, icon, title, subtitle;
   

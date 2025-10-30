@@ -12,8 +12,13 @@ export function renderSummary(container, routePlan, activeSegmentIndex = null, t
   }
 
   container.append(createHeroCard(routePlan, tripMeta));
+
+  // 구간별 실제 시간대 기준 출/도착 시간 계산
+  const segmentSchedule = buildSegmentSchedule(routePlan, tripMeta);
+
   routePlan.segments?.forEach((segment, index) => {
-    container.append(createSegmentEntry(segment, index, index === activeSegmentIndex));
+    const sched = segmentSchedule[index] || null;
+    container.append(createSegmentEntry(segment, index, index === activeSegmentIndex, sched));
   });
 }
 
@@ -63,7 +68,7 @@ function createHeroCard(routePlan, tripMeta = null) {
 
 // calculateReturnTimeInfo 함수는 navigationUi.js로 이동됨
 
-function createSegmentEntry(segment, index, isActive) {
+function createSegmentEntry(segment, index, isActive, schedule = null) {
   const details = document.createElement("details");
   details.className = "summary-card summary-card--segment";
   details.style.borderLeft = `6px solid ${segment.color}`;
@@ -93,16 +98,38 @@ function createSegmentEntry(segment, index, isActive) {
   meta.innerHTML = `<strong>소요 시간:</strong> ${segment.durationText} · <strong>이동 거리:</strong> ${segment.distanceText}`;
   content.append(meta);
 
+  // 출발/도착 시간 표시 (여행자 실제 환승 시간대 기준)
+  if (schedule?.start && schedule?.end) {
+    const timeBlock = document.createElement("p");
+    timeBlock.innerHTML = `<strong>출발:</strong> ${formatDateTime(schedule.start)} · <strong>도착:</strong> ${formatDateTime(schedule.end)}`;
+    content.append(timeBlock);
+  }
+
   if (segment.legs?.length) {
     const list = document.createElement("ul");
     list.className = "summary-card__legs";
+    // segment 시작 시각을 커서로 사용하여 leg별 시간 계산
+    let legCursor = schedule?.start ? new Date(schedule.start) : null;
     segment.legs.forEach((leg) => {
       const item = document.createElement("li");
       const lines = [];
       if (leg.durationText) lines.push(leg.durationText);
       if (leg.distanceText) lines.push(leg.distanceText);
       if (leg.details) lines.push(leg.details);
-      item.innerHTML = `<strong>${leg.modeLabel}</strong>${lines.length ? ` ${lines.join(" · ")}` : ""}`;
+
+      // leg 출발/도착 시각 계산 (가능한 경우)
+      let timesSuffix = '';
+      if (legCursor) {
+        const legDurSec = Number(leg?.duration) || parseDurationTextToSeconds(leg?.durationText) || 0;
+        const legStart = new Date(legCursor);
+        const legEnd = new Date(legStart.getTime() + Math.max(0, legDurSec) * 1000);
+        legCursor = new Date(legEnd);
+        const startText = formatTimeLocalHM(legStart);
+        const endText = formatTimeLocalHM(legEnd);
+        timesSuffix = ` · ${startText} 출발 · ${endText} 도착`;
+      }
+
+      item.innerHTML = `<strong>${leg.modeLabel}</strong>${lines.length ? ` ${lines.join(" · ")}` : ""}${timesSuffix}`;
       list.append(item);
     });
     content.append(list);
@@ -120,6 +147,49 @@ function createSegmentEntry(segment, index, isActive) {
 
   details.append(content);
   return details;
+}
+
+// 구간별 출발/도착 시각을 originalArrival/arrival을 기준으로 생성
+function buildSegmentSchedule(routePlan, tripMeta) {
+  try {
+    const baseISO = tripMeta?.originalArrival || tripMeta?.arrival;
+    if (!baseISO) return [];
+    const base = new Date(baseISO);
+    if (isNaN(base.getTime())) return [];
+    let cursor = new Date(base);
+
+    return (routePlan.segments || []).map((seg) => {
+      const dSec = Number(seg?.duration) || parseDurationTextToSeconds(seg?.durationText) || 0;
+      const start = new Date(cursor);
+      const end = new Date(start.getTime() + Math.max(0, dSec) * 1000);
+      cursor = new Date(end);
+      return { start, end };
+    });
+  } catch (e) {
+    console.warn('buildSegmentSchedule 실패:', e?.message);
+    return [];
+  }
+}
+
+// durationText("1시간 23분"/"1h 23m")를 초로 파싱
+function parseDurationTextToSeconds(text) {
+  if (!text || typeof text !== 'string') return 0;
+  const t = text.trim();
+  const kr = t.match(/(?:(\d+)\s*시간)?\s*(?:(\d+)\s*분)?/);
+  if (kr && (kr[1] || kr[2])) {
+    const h = parseInt(kr[1] || '0', 10);
+    const m = parseInt(kr[2] || '0', 10);
+    return (h * 60 + m) * 60;
+  }
+  const en = t.match(/(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?/i);
+  if (en && (en[1] || en[2])) {
+    const h = parseInt(en[1] || '0', 10);
+    const m = parseInt(en[2] || '0', 10);
+    return (h * 60 + m) * 60;
+  }
+  const onlyMin = t.match(/^(\d+)\s*분?$/);
+  if (onlyMin) return parseInt(onlyMin[1], 10) * 60;
+  return 0;
 }
 
 /**
@@ -190,4 +260,17 @@ function formatDateTime(date) {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   
   return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+// 로컬 시간 HH:MM (오전/오후 포함) 출력
+function formatTimeLocalHM(date) {
+  if (!date || !(date instanceof Date)) return '-';
+  try {
+    // ko-KR 로케일 사용하여 "오전/오후 HH:MM"
+    return date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+  } catch (_) {
+    const h = date.getHours().toString().padStart(2, '0');
+    const m = date.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
 }

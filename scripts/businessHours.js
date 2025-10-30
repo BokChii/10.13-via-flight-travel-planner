@@ -482,6 +482,102 @@ export function getBusinessStatus(poi, travelTime = null) {
 }
 
 /**
+ * business_hours 문자열 기반 운영 상태 판정 (SQLite 공항 POI 전용)
+ * 지원 패턴 예시:
+ * - OPEN 24/7
+ * - 6:00AM - 10:00PM (주석 포함 가능)
+ * - 10:00 - 22:00 (24h 형식)
+ */
+function parseTimeToken(token) {
+  if (!token) return null;
+  const t = token.trim();
+  // 24h like 10:00 or 8:30
+  const m24 = t.match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (m24) {
+    const h = Number(m24[1]);
+    const m = Number(m24[2] || '0');
+    if (h >= 0 && h <= 24 && m >= 0 && m < 60) return h * 60 + m;
+  }
+  // 12h like 10:00AM, 8PM
+  const m12 = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (m12) {
+    let h = Number(m12[1]);
+    const m = Number(m12[2] || '0');
+    const ap = m12[3].toUpperCase();
+    if (ap === 'AM') {
+      if (h === 12) h = 0;
+    } else {
+      if (h !== 12) h += 12;
+    }
+    return h * 60 + m;
+  }
+  return null;
+}
+
+function extractIntervalsFromBusinessHoursString(businessHoursStr) {
+  if (!businessHoursStr || typeof businessHoursStr !== 'string') return [];
+  let s = businessHoursStr.trim();
+  // 한글 오전/오후 → AM/PM
+  s = s.replace(/오전/gi, 'AM').replace(/오후/gi, 'PM');
+  // 다양한 구분자(~, –, —, to, 〜)를 하이픈으로 통일
+  s = s.replace(/\s*(~|–|—|to|〜)\s*/gi, ' - ');
+  // AM/PM 전치 → 후치 (예: 'AM 10:00' → '10:00AM')
+  s = s.replace(/\b(AM|PM)\s*(\d{1,2}(?::\d{2})?)/gi, (_m, ap, time) => `${time}${ap.toUpperCase()}`);
+  // 공백 정리
+  s = s.replace(/\s+/g, ' ').trim();
+  // 24/7 detection
+  if (/24\s*\/\s*7|24\s*hours?|OPEN\s*24\s*\/\s*7/i.test(s)) {
+    return [{ start: 0, end: 1440 }];
+  }
+  // Remove parenthetical notes
+  const withoutNotes = s.replace(/\([^)]*\)/g, '').trim();
+  // Expect a single range "A - B"
+  const parts = withoutNotes.split('-').map(p => p.trim());
+  if (parts.length === 2) {
+    // Try 12h first
+    let startMin = parseTimeToken(parts[0].toUpperCase().replace(/\s+/g, ''));
+    let endMin = parseTimeToken(parts[1].toUpperCase().replace(/\s+/g, ''));
+    if (startMin == null || endMin == null) {
+      // Try forgiving parse (keep spaces)
+      startMin = parseTimeToken(parts[0]);
+      endMin = parseTimeToken(parts[1]);
+    }
+    if (startMin != null && endMin != null) {
+      if (endMin <= startMin) endMin += 1440; // cross midnight
+      return [{ start: startMin, end: endMin }];
+    }
+  }
+  return [];
+}
+
+export function getStatusFromBusinessHoursString(businessHoursStr, visitStartDate, stayMinutes = 30, timeZone = 'Asia/Singapore') {
+  try {
+    // 방문 구간 계산 (로컬 분)
+    const startInfo = resolveLocalMinutes(visitStartDate, timeZone, 0);
+    const startMin = startInfo.day * 1440 + startInfo.minutes;
+    const endMin = startMin + Math.max(1, stayMinutes);
+    const intervals = extractIntervalsFromBusinessHoursString(businessHoursStr);
+    if (intervals.length === 0) return 'UNKNOWN';
+    // 매일 반복되는 영업시간으로 간주하여 방문일 경계에 정렬 후 일 단위 오프셋으로 부분 겹침 검사
+    const DAY = 1440;
+    const baseDay = Math.floor(startMin / DAY) * DAY;
+    const dayOffsets = [-3 * DAY, -2 * DAY, -1 * DAY, 0, 1 * DAY, 2 * DAY, 3 * DAY];
+    for (const { start, end } of intervals) {
+      for (const dOffset of dayOffsets) {
+        const s = baseDay + dOffset + start;
+        let e = baseDay + dOffset + end;
+        if (e <= s) e += DAY; // 자정 교차 처리
+        if (startMin < e && endMin > s) return 'OPEN';
+      }
+    }
+    return 'CLOSED';
+  } catch (e) {
+    console.warn('getStatusFromBusinessHoursString 실패', e);
+    return 'UNKNOWN';
+  }
+}
+
+/**
  * 영업 상태 아이콘 가져오기
  */
 export function getBusinessStatusIcon(status) {

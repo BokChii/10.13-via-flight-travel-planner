@@ -103,6 +103,7 @@
           <!-- POI 선택 섹션 -->
           <div class="poi-selection-section" id="poi-selection-section" style="display: none;">
             <h3 class="section-title">방문할 장소 선택</h3>
+            <p class="open-only-hint">환승 시간 동안 운영 중인 곳만 표시됩니다!</p>
             
             <!-- 카테고리 필터 -->
             <div class="filters-section">
@@ -219,6 +220,10 @@
     <script src="scripts/sqliteClient.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script type="module">
+      import { getStatusFromBusinessHoursString } from './scripts/businessHours.js';
+      window.getStatusFromBusinessHoursString = getStatusFromBusinessHoursString;
+    </script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -768,7 +773,7 @@
           // SQLite 클라이언트 초기화
           await window.sqliteClient.initialize();
           
-          // 선택된 필터로 POI 데이터 조회
+        // 선택된 필터로 POI 데이터 조회
           const categoryFilter = selectedTypes.length > 0 ? selectedTypes[0] : 'all';
           const pois = await window.sqliteClient.getTablePOIs(selectedTable, categoryFilter);
           
@@ -785,12 +790,32 @@
               allPOIsMap.set(poi.id, poi);
             }
           });
-          
-          // allPOIs 업데이트 (현재 필터에 해당하는 POI만 포함)
-          allPOIs = pois;
+
+        // 방문 시작 시각 계산 (도착 시간 기준, 없으면 현재 시각)
+        let visitStart = null;
+        try {
+          const state = window.getAppState?.();
+          const arrival = state?.transferInfo?.arrival;
+          visitStart = arrival ? new Date(arrival) : new Date();
+        } catch (_) {
+          visitStart = new Date();
+        }
+
+        // 운영 상태 필터링 (OPEN만 유지)
+        const filtered = pois.filter(p => {
+          const stay = Number(p.estimatedTime || 30);
+          const status = window.getStatusFromBusinessHoursString
+            ? window.getStatusFromBusinessHoursString(p.businessHours, visitStart, stay, 'Asia/Singapore')
+            : 'UNKNOWN';
+          p.airportBusinessStatus = status;
+          return status === 'OPEN';
+        });
+
+        // allPOIs 업데이트 (현재 필터 + 운영 상태 반영)
+        allPOIs = filtered;
 
           // 중복 데이터 그룹화
-          const groupedPOIs = groupDuplicatePOIs(pois);
+        const groupedPOIs = groupDuplicatePOIs(filtered);
           
           // 리스트 항목 생성
           groupedPOIs.forEach((group, index) => {

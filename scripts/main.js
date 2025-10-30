@@ -201,6 +201,16 @@ async function bootstrap() {
       onWaypointSelect: (place) => handleWaypointSelection(place, refreshedElements.waypointInput),
     });
 
+    // 카운트다운 배너 시작 (tripMeta 변경 시 1회)
+    try {
+      if (!window.__countdownStarted && latestState?.tripMeta) {
+        startDepartureCountdown(latestState.tripMeta);
+        window.__countdownStarted = true;
+      }
+    } catch (e) {
+      console.warn('Countdown start failed:', e?.message);
+    }
+
     // Now check for planner result after Google Maps is initialized
     checkForPlannerResult();
   } catch (error) {
@@ -1129,6 +1139,41 @@ bootstrap();
 
 
 
+function startDepartureCountdown(tripMeta) {
+  const el = document.getElementById('countdown-banner');
+  if (!el) return;
+  const depISO = tripMeta?.originalDeparture || tripMeta?.departure;
+  if (!depISO) { el.textContent = ''; return; }
+
+  const dep = new Date(depISO);
+  if (isNaN(dep.getTime())) {
+    el.textContent = '출발 시간 정보가 없습니다';
+    return;
+  }
+  const tick = () => {
+    const now = new Date();
+    let diff = dep - now;
+    if (diff < 0) diff = 0;
+    const totalMin = Math.floor(diff / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const s = Math.floor((diff % 60000) / 1000);
+
+    el.classList.remove('is-warning', 'is-danger');
+    if (totalMin <= 30) el.classList.add('is-danger');
+    else if (totalMin <= 60) el.classList.add('is-warning');
+
+    el.textContent = diff > 0
+      ? `공항 출발까지 남은 시간: ${h}시간 ${String(m).padStart(2,'0')}분 ${String(s).padStart(2,'0')}초`
+      : '⏰ 출발 임박! 공항으로 이동해주세요';
+  };
+
+  tick();
+  const timer = setInterval(() => {
+    if (!document.body.contains(el)) { clearInterval(timer); return; }
+    tick();
+  }, 1000);
+}
 
 
 async function fetchPlaceDetails(placeId) {

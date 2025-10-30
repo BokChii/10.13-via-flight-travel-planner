@@ -140,6 +140,24 @@
   gap: 16px;
 }
 
+/* Return-time banner (summary page) */
+.return-time-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin: 12px 0 0;
+  background: #eef6ff;
+  border: 1px solid #cde3ff;
+}
+.return-time-banner.safe { background: #eefdf4; border-color: #c8f0d8; }
+.return-time-banner.warning { background: #fff8e6; border-color: #ffe2ad; }
+.return-time-banner.danger { background: #ffefef; border-color: #ffc9c9; }
+.return-time-banner__icon { font-size: 1.3rem; line-height: 1; }
+.return-time-banner__title { font-weight: 700; color: #0f172a; }
+.return-time-banner__subtitle { font-size: 0.9rem; color: #4b5563; }
+
 .empty-timeline {
   text-align: center;
   color: var(--color-text-secondary);
@@ -316,18 +334,31 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
-.action-buttons {
+/* 통일된 CTA 레이아웃 */
+.cta-row {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   justify-content: center;
-  margin-bottom: 40px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.action-buttons .btn {
-  padding: 16px 32px;
-  font-size: 1.1rem;
+.cta-row .btn {
+  padding: 14px 28px;
+  font-size: 1rem;
   font-weight: 600;
-  min-width: 180px;
+  min-width: 160px;
+}
+
+.cta-gap { height: 16px; }
+
+.cta-home { display: flex; justify-content: center; }
+
+.btn.btn--large {
+  padding: 18px 36px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  min-width: 220px;
 }
 
 .share-section {
@@ -387,10 +418,7 @@
     gap: 8px;
   }
 
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
+  .cta-row { flex-direction: column; }
 
   .share-buttons {
     flex-direction: column;
@@ -413,9 +441,9 @@
     gap: 12px;
   }
 
-  .action-buttons .btn {
+  .cta-row .btn, .btn.btn--large {
     width: 100%;
-    max-width: 300px;
+    max-width: 320px;
   }
 
   .share-buttons .btn {
