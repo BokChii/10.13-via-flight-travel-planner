@@ -28,6 +28,8 @@ import { detectEmergencySituation, activateEmergencyMode, calculateAirportReturn
 import { calculateRealTimeReturnInfo, generateAirportReturnMessage } from "./airportReturnSystem.js";
 
 import { attachPlannerServices } from "./planner.js";
+import { isValidPlan, safeParseFromStorage } from "./validation.js";
+import { handleError, ErrorCodes, createError } from "./errorHandler.js";
 
 const config = {
   googleMapsApiKey: getGoogleMapsApiKey(),
@@ -52,23 +54,32 @@ let returnDeadlineMissedNotified = false;
 let returnEtaWarningNotified = false;
 let returnEtaCriticalNotified = false;
 let returnDeadlineTimerId = null;
+let departureCountdownTimer = null; // 카운트다운 타이머 추적용
 let lastWaypointsState = null;
 let lastTripMetaState = null;
 
 
 
-// Check for planner result from sessionStorage and apply it
+/**
+ * sessionStorage에서 planner 결과를 안전하게 로드하고 적용합니다.
+ * 데이터 검증을 통해 손상된 데이터로 인한 오류를 방지합니다.
+ */
 function checkForPlannerResult() {
-  const plannerResult = sessionStorage.getItem('plannerResult');
-  if (plannerResult) {
+  const plan = safeParseFromStorage('plannerResult', isValidPlan);
+  
+  if (plan) {
     try {
-      const plan = JSON.parse(plannerResult);
       applyPlannerPlan(plan);
       // Clear the stored result
       sessionStorage.removeItem('plannerResult');
     } catch (error) {
-      console.error('Failed to parse planner result:', error);
+      console.error('Failed to apply planner plan:', error);
       sessionStorage.removeItem('plannerResult');
+      // 통일된 에러 처리 사용
+      handleError(error, {
+        context: 'Planner 결과 적용',
+        toastMessage: '저장된 일정 데이터에 문제가 있어 불러올 수 없습니다.',
+      });
     }
   }
 }
@@ -214,9 +225,29 @@ async function bootstrap() {
     // Now check for planner result after Google Maps is initialized
     checkForPlannerResult();
   } catch (error) {
-    console.error(error);
-    document.getElementById("map").textContent = "지도를 불러오지 못했습니다. API 키를 확인하세요.";
+    // 통일된 에러 처리
+    handleError(error, {
+      context: 'Google Maps 초기화',
+      toastMessage: '지도를 불러오지 못했습니다. API 키를 확인하세요.',
+    });
+    
+    const mapEl = document.getElementById("map");
+    if (mapEl) {
+      mapEl.textContent = "지도를 불러오지 못했습니다. API 키를 확인하세요.";
+    }
   }
+  
+  // 페이지 언로드 시 모든 타이머 정리
+  window.addEventListener('beforeunload', cleanupAllTimers);
+  
+  // SPA 라우팅 시에도 타이머 정리 (pushState/popState 이벤트)
+  const originalPushState = history.pushState;
+  history.pushState = function() {
+    cleanupAllTimers();
+    return originalPushState.apply(history, arguments);
+  };
+  
+  window.addEventListener('popstate', cleanupAllTimers);
 }
 
 function wireEventHandlers({
@@ -326,10 +357,10 @@ function wireEventHandlers({
         const routeData = await calculateAirportReturnRoute(state);
         showAirportReturnModal(routeData, state);
       } catch (error) {
-        console.error('공항 복귀 경로 계산 실패:', error);
-        showToast({ 
-          message: '공항 복귀 경로를 계산할 수 없습니다. 현재 위치와 여행 정보를 확인해주세요.', 
-          type: 'error' 
+        // 통일된 에러 처리
+        handleError(error, {
+          context: '공항 복귀 경로 계산',
+          toastMessage: '공항 복귀 경로를 계산할 수 없습니다. 현재 위치와 여행 정보를 확인해주세요.',
         });
       }
     });
@@ -641,6 +672,18 @@ function stopReturnDeadlineTimer() {
   if (returnDeadlineTimerId != null) {
     clearInterval(returnDeadlineTimerId);
     returnDeadlineTimerId = null;
+  }
+}
+
+/**
+ * 모든 활성 타이머를 정리합니다.
+ * 페이지 전환 또는 애플리케이션 종료 시 호출됩니다.
+ */
+function cleanupAllTimers() {
+  stopReturnDeadlineTimer();
+  if (departureCountdownTimer) {
+    clearInterval(departureCountdownTimer);
+    departureCountdownTimer = null;
   }
 }
 
@@ -1169,10 +1212,21 @@ function startDepartureCountdown(tripMeta) {
   };
 
   tick();
+  // 기존 타이머가 있으면 먼저 정리
+  if (departureCountdownTimer) {
+    clearInterval(departureCountdownTimer);
+  }
+  
   const timer = setInterval(() => {
-    if (!document.body.contains(el)) { clearInterval(timer); return; }
+    if (!document.body.contains(el)) { 
+      clearInterval(timer); 
+      departureCountdownTimer = null;
+      return; 
+    }
     tick();
   }, 1000);
+  
+  departureCountdownTimer = timer;
 }
 
 

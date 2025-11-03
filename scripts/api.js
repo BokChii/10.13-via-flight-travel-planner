@@ -1,4 +1,5 @@
 ﻿// Lightweight wrapper placeholders for Google Maps related API calls.
+import { handleError, ErrorCodes, getDirectionsErrorMessage, createError } from './errorHandler.js';
 let mapsSdkPromise;
 
 export function loadGoogleMapsSdk({ apiKey, libraries = [] }) {
@@ -19,7 +20,13 @@ export function loadGoogleMapsSdk({ apiKey, libraries = [] }) {
 
     script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
     script.async = true;
-    script.onerror = () => reject(new Error("Google Maps SDK 로딩 실패"));
+    script.onerror = () => {
+      const error = createError(
+        ErrorCodes.MAP_LOAD_FAILED,
+        "Google Maps SDK를 불러오지 못했습니다. 네트워크 연결을 확인해주세요."
+      );
+      reject(error);
+    };
     script.onload = () => resolve(window.google);
 
     document.head.append(script);
@@ -61,7 +68,11 @@ export async function requestDirections({
       if (status === google.maps.DirectionsStatus.OK) {
         resolve(result);
       } else {
-        reject(new Error(`경로 요청 실패: ${status}`));
+        // 사용자 친화적 에러 메시지로 변환
+        const userMessage = getDirectionsErrorMessage(status, google);
+        const error = createError(ErrorCodes.DIRECTIONS_FAILED, userMessage);
+        error.directionsStatus = status;
+        reject(error);
       }
     });
   });
@@ -94,7 +105,13 @@ export async function calculateTravelTime(google, origin, destination, travelMod
     
     return durationInMinutes;
   } catch (error) {
-    console.warn('이동 시간 계산 실패, 기본값 사용:', error.message);
+    // 조용히 처리 (경고 로그만, 사용자 알림 없음)
+    handleError(error, {
+      context: 'calculateTravelTime',
+      silent: true,
+      showToast: false,
+      logToConsole: true,
+    });
     // API 호출 실패 시 기본값 반환 (30분)
     return 30;
   }

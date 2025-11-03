@@ -1,5 +1,6 @@
 // Via Flight Router
 // 페이지 간 라우팅 및 상태 관리 시스템
+import { isValidRouterState, safeParseFromStorage } from "./validation.js";
 
 class ViaFlightRouter {
   constructor() {
@@ -49,14 +50,25 @@ class ViaFlightRouter {
   }
   
   restoreState() {
-    // 세션 스토리지에서 상태 복원
-    const savedState = sessionStorage.getItem('viaFlightState');
+    // 세션 스토리지에서 상태를 안전하게 복원
+    const savedState = safeParseFromStorage('viaFlightState', isValidRouterState);
+    
     if (savedState) {
       try {
-        this.state = { ...this.state, ...JSON.parse(savedState) };
+        // 검증된 상태를 병합
+        this.state = { ...this.state, ...savedState };
         console.log('상태 복원 완료:', this.state);
       } catch (error) {
         console.error('상태 복원 실패:', error);
+        // 에러 발생 시 기본 상태 유지
+        this.state = {
+          transferInfo: null,
+          userChoice: null,
+          preferences: null,
+          selectedPois: [],
+          schedule: null,
+          navigationActive: false
+        };
       }
     }
   }

@@ -4,7 +4,21 @@
  */
 
 /**
- * 시간대별 날짜 정보 추출
+ * 특정 시간대에서의 날짜/시간 정보를 추출합니다.
+ * @param {Date} date - 변환할 날짜 객체
+ * @param {string} timeZone - IANA 시간대 식별자 (예: 'Asia/Seoul', 'America/New_York')
+ * @returns {Object} 시간대별 날짜 정보 객체
+ * @returns {number} returns.Y - 연도
+ * @returns {number} returns.M - 월 (1-12)
+ * @returns {number} returns.D - 일
+ * @returns {number} returns.h - 시 (0-23)
+ * @returns {number} returns.m - 분 (0-59)
+ * @returns {number} returns.wd - 요일 인덱스 (0=일요일, 6=토요일)
+ * 
+ * @example
+ * const date = new Date('2024-01-15T14:30:00Z');
+ * const parts = getLocalParts(date, 'Asia/Seoul');
+ * // { Y: 2024, M: 1, D: 15, h: 23, m: 30, wd: 1 }
  */
 function getLocalParts(date, timeZone) {
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -32,7 +46,13 @@ function getLocalParts(date, timeZone) {
 }
 
 /**
- * 시간 문자열을 24시간 형식으로 변환
+ * 시간 문자열을 24시간 형식(HH:MM)으로 변환합니다.
+ * @param {string|number} timeStr - 변환할 시간 문자열 또는 분 단위 숫자
+ * @returns {string} 24시간 형식 문자열 (예: "14:30")
+ * 
+ * @example
+ * convertTo24h("2:30 PM") // "14:30"
+ * convertTo24h(870) // "14:30" (870분 = 14시간 30분)
  */
 function convertTo24h(timeStr) {
   const minutes = parseTimeString(timeStr);
@@ -53,7 +73,22 @@ const DAY_NAME_MAP = DAY_NAMES.reduce((acc, name, index) => {
 }, {});
 
 /**
- * 시간 문자열 파싱 (AM/PM, 24시간 형식 지원)
+ * 다양한 형식의 시간 문자열을 분 단위 숫자로 파싱합니다.
+ * 지원 형식:
+ * - 24시간 형식: "14:30"
+ * - 12시간 형식: "2:30 PM"
+ * - HHMM 형식: "1430"
+ * - 숫자: 이미 분 단위로 변환된 숫자
+ * 
+ * @param {string|number} timeStr - 파싱할 시간 문자열 또는 숫자
+ * @returns {number|null} 분 단위 시간 (0-1439) 또는 파싱 실패 시 null
+ * 
+ * @example
+ * parseTimeString("14:30") // 870 (14*60 + 30)
+ * parseTimeString("2:30 PM") // 870
+ * parseTimeString("1430") // 870
+ * parseTimeString(870) // 870
+ * parseTimeString("invalid") // null
  */
 function parseTimeString(timeStr) {
   if (timeStr == null) return null;
@@ -230,8 +265,19 @@ function resolveLocalMinutes(date, timeZone, offsetMinutes) {
 }
 
 /**
- * 간격 내 포함 여부 확인 (주간 순환 고려)
- * 방문 시간과 영업 시간이 부분적으로라도 겹치면 영업 중으로 간주
+ * 주어진 시간 구간이 영업 시간 간격 내에 포함되는지 확인합니다.
+ * 주간 순환을 고려하여 자정을 넘어가는 경우도 처리합니다.
+ * 방문 시간과 영업 시간이 부분적으로라도 겹치면 영업 중으로 간주합니다.
+ * 
+ * @param {number} visitStartMin - 방문 시작 시간 (주간 분 단위, 0-10079)
+ * @param {number} visitDurationMin - 체류 시간 (분)
+ * @param {Array<Object>} intervals - 영업 시간 간격 배열 [{start, end}, ...]
+ * @returns {boolean} 영업 중이면 true, 아니면 false
+ * 
+ * @example
+ * const intervals = [{start: 540, end: 1080}]; // 09:00 - 18:00
+ * isWithinIntervals(intervals, 600, 660); // true (10:00-11:00 방문)
+ * isWithinIntervals(intervals, 1200, 1260); // false (20:00-21:00 방문)
  */
 function isWithinIntervals(intervals, startMin, endMin) {
   const WEEK = 7 * 1440;

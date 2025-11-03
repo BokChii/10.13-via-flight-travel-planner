@@ -193,15 +193,48 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/sqliteClient.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
       let selectedChoice = null;
 
+      // 활동 카테고리 매핑
+      const ACTIVITY_CATEGORIES = {
+        'shopping': {
+          tableName: 'shopping_options_db_frame',
+          icon: '🛍️',
+          label: '면세점 쇼핑',
+          displayOrder: 1
+        },
+        'food': {
+          tableName: 'meal_options_db_frame',
+          icon: '🍽️',
+          label: '공항 맛집',
+          displayOrder: 2
+        },
+        'culture': {
+          tableName: 'airport_events_db_frame',
+          icon: '🎨',
+          label: '문화체험',
+          displayOrder: 3
+        },
+        'relax': {
+          tableName: 'rests_db_frame',
+          icon: '💆',
+          label: '스파 & 마사지',
+          displayOrder: 4
+        }
+      };
+
       // 페이지 로드 시 환승 정보 표시
-      document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', async function() {
         loadTransferInfo();
         updateSummary();
+        
+        // 공항 활동 및 추천 코스 로드 (비동기)
+        await loadAirportActivities();
+        renderRecommendationCourses();
         
         // 애니메이션 효과
         setTimeout(() => {

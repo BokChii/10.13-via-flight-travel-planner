@@ -1,3 +1,5 @@
+import { isValidTripSnapshot } from "./validation.js";
+
 function cloneTripMeta(meta) {
   if (!meta) return null;
   return {
@@ -48,6 +50,12 @@ export function parseTripSnapshot(raw) {
   if (!raw) return null;
   try {
     const snapshot = typeof raw === "string" ? JSON.parse(raw) : raw;
+    
+    // 데이터 검증 추가
+    if (!isValidTripSnapshot(snapshot)) {
+      console.warn('Invalid trip snapshot structure');
+      return null;
+    }
     if (!snapshot.origin || !snapshot.destination) return null;
     return {
       version: snapshot.version ?? 1,

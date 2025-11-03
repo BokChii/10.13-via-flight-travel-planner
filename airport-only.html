@@ -497,6 +497,11 @@
         const subContainer = document.getElementById(`subitems-${index}`);
         const arrow = document.querySelector(`[data-group-index="${index}"] .poi-list-item-arrow`);
         
+        if (!subContainer || !arrow) {
+          console.error('toggleGroupExpanded: 요소를 찾을 수 없습니다.', { index, subContainer, arrow });
+          return;
+        }
+        
         if (expandedGroups.has(index)) {
           // 접기
           expandedGroups.delete(index);
@@ -505,7 +510,9 @@
           
           // 상세 정보 패널 초기화
           const panel = document.getElementById('poi-detail-panel');
-          panel.innerHTML = '<div class="poi-detail-placeholder"><p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p></div>';
+          if (panel) {
+            panel.innerHTML = '<div class="poi-detail-placeholder"><p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p></div>';
+          }
           
           currentExpandedGroup = null;
         } else {
@@ -514,10 +521,12 @@
           subContainer.style.display = 'block';
           arrow.textContent = '▲';
           
-          // 하위 항목 생성
+          // 하위 항목 생성 (최신 정보 조회)
           subContainer.innerHTML = '';
           group.items.forEach((item, idx) => {
-            const subItem = createSubItem(group.name, item, idx);
+            // allPOIsMap에서 최신 정보 가져오기
+            const latestItem = allPOIsMap.get(item.id) || item;
+            const subItem = createSubItem(group.name, latestItem, idx);
             subContainer.appendChild(subItem);
           });
         }
@@ -529,6 +538,9 @@
         subItem.className = 'poi-list-subitem';
         subItem.dataset.itemIndex = idx;
         
+        // 클로저 문제 방지: item.id를 변수로 저장
+        const itemId = item.id;
+        
         subItem.innerHTML = `
           <div class="poi-list-subitem-header">
             <h6>📍 ${item.location || '위치 정보 없음'}</h6>
@@ -538,7 +550,15 @@
         
         subItem.addEventListener('click', (e) => {
           e.stopPropagation(); // 부모 이벤트 전파 방지
-          showPOIDetailSingle(item);
+          
+          // itemId를 통해 allPOIsMap에서 최신 POI 정보 조회
+          const actualItem = allPOIsMap.get(itemId) || allPOIs.find(p => p.id === itemId);
+          if (actualItem) {
+            showPOIDetailSingle(actualItem);
+          } else {
+            console.error('createSubItem: POI를 찾을 수 없습니다:', itemId);
+            showToast({ message: '장소 정보를 불러올 수 없습니다.', type: 'error' });
+          }
         });
         
         return subItem;
@@ -546,7 +566,24 @@
 
       // 단일 항목 상세 정보 표시
       function showPOIDetailSingle(poi) {
+        // POI 유효성 검증
+        if (!poi || !poi.id) {
+          console.error('showPOIDetailSingle: Invalid POI object:', poi);
+          const panel = document.getElementById('poi-detail-panel');
+          if (panel) {
+            panel.innerHTML = '<div class="poi-detail-placeholder"><p>장소 정보를 불러올 수 없습니다.</p></div>';
+          }
+          return;
+        }
+        
         const panel = document.getElementById('poi-detail-panel');
+        if (!panel) {
+          console.error('showPOIDetailSingle: poi-detail-panel 요소를 찾을 수 없습니다.');
+          return;
+        }
+        
+        // poi.id를 안전하게 이스케이프
+        const safeId = String(poi.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         
         panel.innerHTML = `
           ${poi.imageUrl ? `<img src="${poi.imageUrl}" alt="${poi.name}" class="poi-detail-image" onerror="this.style.display='none'">` : ''}
@@ -564,39 +601,89 @@
           <div class="poi-detail-actions">
             <div class="time-input-section">
               <label class="time-label">예상 소요시간:</label>
-              <input type="number" class="time-input" value="${poi.estimatedTime || 5}" min="1" max="300" 
-                     onchange="updatePOITimeForItem('${poi.id}', this.value)">
+              <input type="number" class="time-input" data-poi-id="${safeId}" value="${poi.estimatedTime || 5}" min="1" max="300">
               <span class="time-unit">분</span>
             </div>
-            <button class="btn btn--primary" onclick="selectPOISingle('${poi.id}')">
+            <button class="btn btn--primary" data-poi-id="${safeId}">
               선택
             </button>
           </div>
         `;
+        
+        // 이벤트 리스너 추가 (onclick 대신)
+        const selectButton = panel.querySelector('.btn--primary[data-poi-id]');
+        const timeInput = panel.querySelector('.time-input[data-poi-id]');
+        
+        if (selectButton) {
+          // 기존 리스너 제거를 위해 새로 생성
+          const poiId = poi.id; // 클로저로 포착
+          selectButton.addEventListener('click', function selectButtonHandler() {
+            // 리스너 제거 후 실행
+            selectButton.removeEventListener('click', selectButtonHandler);
+            selectPOISingle(poiId);
+          });
+        }
+        
+        if (timeInput) {
+          const poiId = poi.id; // 클로저로 포착
+          timeInput.addEventListener('change', function timeInputHandler(e) {
+            updatePOITimeForItem(poiId, e.target.value);
+          });
+        }
       }
 
 
       // POI 단일 항목 선택
       function selectPOISingle(poiId) {
-        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
-        let poi = allPOIsMap.get(poiId);
-        if (!poi) {
-          poi = allPOIs.find(p => p.id === poiId);
-        }
-        if (!poi) return;
-        
-        // 중복 선택 확인
-        if (selectedPOIs.includes(poiId)) {
-          showToast({ message: '이미 선택한 장소입니다.', type: 'warning' });
+        // poiId 검증
+        if (!poiId) {
+          console.error('selectPOISingle: poiId is missing');
+          showToast({ message: '장소를 선택할 수 없습니다.', type: 'error' });
           return;
         }
         
+        // allPOIsMap에서 먼저 찾기 (모든 카테고리의 POI가 저장되어 있음)
+        let poi = allPOIsMap.get(poiId);
+        
+        // 없으면 allPOIs에서 찾기
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
+        }
+        
+        // 여전히 없으면 에러 처리
+        if (!poi) {
+          console.error('selectPOISingle: POI not found', {
+            poiId,
+            allPOIsMapSize: allPOIsMap.size,
+            allPOIsLength: allPOIs.length,
+            selectedTable,
+            allPOIsIds: Array.from(allPOIsMap.keys()).slice(0, 10) // 처음 10개만 로그
+          });
+          showToast({ message: '선택한 장소 정보를 찾을 수 없습니다.', type: 'error' });
+          return;
+        }
+        
+        // 중복 선택 확인
+        if (selectedPOIs.includes(poiId)) {
+          showToast({ message: `이미 선택한 장소입니다: ${poi.name}`, type: 'warning' });
+          return;
+        }
+        
+        // 선택된 POI에 추가
         selectedPOIs.push(poiId);
         updateSelectedPOIsList();
         updatePOINextButton();
         
-        // 성공 메시지 추가
+        // 성공 메시지
         showToast({ message: `${poi.name}이(가) 리스트에 추가되었습니다.`, type: 'success' });
+        
+        // 디버깅 로그
+        console.log('POI 선택됨:', {
+          poiId,
+          poiName: poi.name,
+          selectedCount: selectedPOIs.length,
+          allSelectedIds: selectedPOIs
+        });
       }
 
       // POI 시간 업데이트 (단일 항목용)
@@ -608,9 +695,18 @@
           return;
         }
         
-        const poi = allPOIs.find(p => p.id === poiId);
+        // allPOIsMap에서 먼저 찾기 (모든 카테고리의 POI가 저장되어 있음)
+        let poi = allPOIsMap.get(poiId);
+        if (!poi) {
+          poi = allPOIs.find(p => p.id === poiId);
+        }
+        
         if (poi) {
           poi.estimatedTime = timeValue;
+          // allPOIsMap에도 업데이트
+          allPOIsMap.set(poiId, poi);
+        } else {
+          console.warn('updatePOITimeForItem: POI를 찾을 수 없습니다:', poiId);
         }
         
         updateSelectedPOIsList();
@@ -680,12 +776,21 @@
 
       // POI 토글
       function togglePOI(poiId) {
-        // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+        // poiId 검증
+        if (!poiId) {
+          console.error('togglePOI: poiId is missing');
+          return;
+        }
+        
+        // allPOIsMap에서 먼저 찾기 (모든 카테고리의 POI가 저장되어 있음)
         let poi = allPOIsMap.get(poiId);
         if (!poi) {
           poi = allPOIs.find(p => p.id === poiId);
         }
-        if (!poi) return;
+        if (!poi) {
+          console.warn('togglePOI: POI를 찾을 수 없습니다:', poiId);
+          return;
+        }
         
         // 선택된 POI 목록에서 제거
         if (selectedPOIs.includes(poiId)) {
@@ -712,19 +817,29 @@
         }
 
         container.innerHTML = selectedPOIs.map(poiId => {
-          // allPOIsMap에서 먼저 찾고, 없으면 allPOIs에서 찾기
+          // allPOIsMap에서 먼저 찾기 (모든 카테고리의 POI가 저장되어 있음)
           let poi = allPOIsMap.get(poiId);
+          
+          // 없으면 allPOIs에서 찾기
           if (!poi) {
             poi = allPOIs.find(p => p.id === poiId);
           }
           
           if (!poi) {
-            console.warn(`POI를 찾을 수 없습니다: ${poiId}`);
+            console.warn(`updateSelectedPOIsList: POI를 찾을 수 없습니다: ${poiId}`, {
+              selectedPOIs,
+              allPOIsMapSize: allPOIsMap.size,
+              allPOIsLength: allPOIs.length,
+              sampleMapKeys: Array.from(allPOIsMap.keys()).slice(0, 5)
+            });
             return '';
           }
           
+          // poiId를 안전하게 이스케이프
+          const safeId = String(poiId).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          
           return `
-            <div class="selected-poi-item">
+            <div class="selected-poi-item" data-selected-poi-id="${safeId}">
               <div class="poi-info">
                 <h5>${poi.name}</h5>
               </div>
@@ -732,10 +847,23 @@
                 <span class="time-label">소요시간:</span>
                 <span class="time-value">${poi.estimatedTime || 10}분</span>
               </div>
-              <button class="btn btn--small btn--ghost" onclick="togglePOI('${poiId}')">제거</button>
+              <button class="btn btn--small btn--ghost" data-remove-poi-id="${safeId}">제거</button>
             </div>
           `;
         }).filter(html => html).join('');
+        
+        // 제거 버튼에 이벤트 리스너 추가 (onclick 대신)
+        container.querySelectorAll('[data-remove-poi-id]').forEach(button => {
+          const poiId = button.getAttribute('data-remove-poi-id');
+          // 기존 리스너 제거를 위해 새로 생성
+          const newButton = button.cloneNode(true);
+          button.parentNode.replaceChild(newButton, button);
+          
+          // 새 버튼에 이벤트 리스너 추가
+          newButton.addEventListener('click', () => {
+            togglePOI(poiId);
+          });
+        });
       }
 
       // POI 다음 버튼 업데이트 (통합된 버튼으로 변경)
@@ -784,11 +912,23 @@
             return;
           }
 
-          // 새로 로드된 POI를 기존 Map에 추가
+          // 새로 로드된 POI를 allPOIsMap에 추가 (기존 항목은 업데이트, 새 항목은 추가)
           pois.forEach(poi => {
-            if (!allPOIsMap.has(poi.id)) {
-              allPOIsMap.set(poi.id, poi);
+            // 선택된 POI는 덮어쓰지 않기 (안전장치)
+            if (selectedPOIs.includes(poi.id) && allPOIsMap.has(poi.id)) {
+              const existingPoi = allPOIsMap.get(poi.id);
+              // 기존 POI 정보 유지 (이름이 다르면 경고 로그)
+              if (existingPoi.name !== poi.name) {
+                console.warn(`⚠️ 선택된 POI 덮어쓰기 방지: ${poi.id}`, {
+                  existing: existingPoi.name,
+                  new: poi.name,
+                  message: '기존 POI 정보가 유지됩니다.'
+                });
+              }
+              return; // 건너뛰기
             }
+            // 같은 ID가 이미 있으면 업데이트, 없으면 추가
+            allPOIsMap.set(poi.id, poi);
           });
 
         // 방문 시작 시각 계산 (도착 시간 기준, 없으면 현재 시각)

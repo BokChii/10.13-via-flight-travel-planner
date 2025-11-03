@@ -2,6 +2,7 @@
 import { loadGoogleMapsSdk } from './api.js';
 import { getGoogleMapsApiKey } from './config.js';
 import { PLANNER_CONFIG, CATEGORY_STAY_TIMES, LOCATIONS } from './config.js';
+import { handleError, ErrorCodes, createError } from './errorHandler.js';
 
 const CATEGORY_CONFIGS = {
   food: {
@@ -139,7 +140,12 @@ export function attachPlannerServices({ googleMaps, placesService, map } = {}) {
       console.log('Planner autocomplete initialized successfully');
     }, 200);
   } catch (error) {
-    console.error('Failed to initialize planner autocomplete:', error);
+    // 조용히 처리 (자동완성 초기화 실패는 치명적이지 않음)
+    handleError(error, {
+      context: 'Planner autocomplete 초기화',
+      silent: true,
+      showToast: false,
+    });
   }
 }
 
@@ -818,12 +824,12 @@ async function handleGeneratePlan() {
     
     plannerHandlers.onPlanGenerated?.(plan);
   } catch (error) {
-    console.error(error);
-    if (error?.message === 'NO_RECOMMENDATIONS') {
-      showToast({ message: '추천할 장소를 찾지 못했습니다. 카테고리를 바꿔 다시 시도해주세요.', type: 'warning' });
-    } else {
-      showToast({ message: '일정 생성 중 오류가 발생했습니다. 다시 시도해주세요.', type: 'warning' });
-    }
+    // 통일된 에러 처리 사용
+    handleError(error, {
+      context: '일정 생성',
+      showToast: true,
+      // NO_RECOMMENDATIONS는 특별 처리 (이미 에러 핸들러에서 처리됨)
+    });
   } finally {
     isGenerating = false;
     setGenerateButtonLoading(false);

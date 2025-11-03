@@ -239,22 +239,59 @@ class SQLiteClient {
       }
       
       // 결과를 표준화된 형태로 변환
-      const pois = results.map((row, index) => ({
-        id: `${row.table_name}_${index}`,
-        name: row.name || 'Unknown',
-        category: row.category,
-        categoryIcon: this.getCategoryIcon(row.category),
-        description: row.description || '',
-        location: row.location || '',
-        businessHours: row.business_hours || '',
-        phoneNumber: tableName === 'airport_events_db_frame' ? '' : (row.phone_number || ''),
-        website: row.website || '',
-        cost: row.cost || '',
-        estimatedTime: this.getEstimatedTime(row.category),
-        imageUrl: row.image_url || '',
-        rating: 4.0 + Math.random(), // 임시 평점
-        userRatingsTotal: Math.floor(Math.random() * 100) + 10 // 임시 리뷰 수
-      }));
+      // 먼저 모든 POI를 생성하고, ID 충돌을 처리
+      const poiMap = new Map(); // ID 충돌 추적용
+      
+      const pois = results.map((row, index) => {
+        // 고유 ID 생성: 테이블명 + 이름 + 위치 + 카테고리 조합을 해시화
+        // 같은 데이터는 항상 같은 ID를 가지도록 보장
+        const name = (row.name || 'Unknown').trim();
+        const location = (row.location || '').trim();
+        const category = (row.category || '').trim();
+        
+        // 해시 함수 (간단한 문자열 해시)
+        const hashString = `${row.table_name}_${name}_${location}_${category}`;
+        let hash = 0;
+        for (let i = 0; i < hashString.length; i++) {
+          const char = hashString.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash; // Convert to 32bit integer
+        }
+        
+        // 기본 ID: 해시만 사용 (같은 데이터는 항상 같은 ID)
+        let baseId = `${row.table_name}_${Math.abs(hash)}`;
+        
+        // ID 충돌 처리: 같은 해시를 가진 다른 POI가 있으면 인덱스 추가
+        if (poiMap.has(baseId)) {
+          // 충돌 발생: 인덱스를 추가하여 고유성 보장
+          let collisionIndex = 1;
+          let finalId = `${baseId}_${collisionIndex}`;
+          while (poiMap.has(finalId)) {
+            collisionIndex++;
+            finalId = `${baseId}_${collisionIndex}`;
+          }
+          baseId = finalId;
+        }
+        
+        poiMap.set(baseId, true);
+        
+        return {
+          id: baseId,
+          name: name,
+          category: category,
+          categoryIcon: this.getCategoryIcon(row.category),
+          description: row.description || '',
+          location: location,
+          businessHours: row.business_hours || '',
+          phoneNumber: tableName === 'airport_events_db_frame' ? '' : (row.phone_number || ''),
+          website: row.website || '',
+          cost: row.cost || '',
+          estimatedTime: this.getEstimatedTime(row.category),
+          imageUrl: row.image_url || '',
+          rating: 4.0 + Math.random(), // 임시 평점
+          userRatingsTotal: Math.floor(Math.random() * 100) + 10 // 임시 리뷰 수
+        };
+      });
       
       console.log(`✨ [${tableName}] POI 변환 완료: ${pois.length}개`);
       
