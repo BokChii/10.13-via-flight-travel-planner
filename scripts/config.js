@@ -1,8 +1,18 @@
 ﻿// Reads configuration values exposed through DOM metadata.
 const META_GOOGLE_MAPS_KEY = "google-maps-api-key";
+const META_OPENAI_KEY = "openai-api-key";
 
 export function getGoogleMapsApiKey() {
   const metaTag = document.querySelector(`meta[name="${META_GOOGLE_MAPS_KEY}"]`);
+  const value = metaTag?.content?.trim();
+  return value || "";
+}
+
+/**
+ * OpenAI API 키 가져오기
+ */
+export function getOpenAIApiKey() {
+  const metaTag = document.querySelector(`meta[name="${META_OPENAI_KEY}"]`);
   const value = metaTag?.content?.trim();
   return value || "";
 }

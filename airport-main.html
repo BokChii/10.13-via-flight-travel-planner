@@ -193,7 +193,7 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
-    <script type="module" src="scripts/sqliteClient.js"></script>
+    <script src="scripts/sqliteClient.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -340,6 +340,208 @@
       // 뒤로가기
       function goBack() {
         window.goBack();
+      }
+
+      // 공항 활동 통계 로드
+      async function loadAirportActivities() {
+        const container = document.querySelector('.recommendation-items');
+        if (!container) return;
+
+        // 로딩 상태 표시
+        const originalHTML = container.innerHTML;
+        container.innerHTML = '<div class="loading-activities">로딩 중...</div>';
+
+        try {
+          // SQLite 클라이언트 확인 (sqliteClient.js에서 전역 인스턴스 생성)
+          if (!window.sqliteClient) {
+            console.warn('SQLite 클라이언트를 사용할 수 없습니다. 스크립트가 로드되지 않았습니다.');
+            return; // 원래 HTML 유지
+          }
+
+          await window.sqliteClient.initialize();
+
+          // 모든 카테고리 통계 병렬 조회
+          const activityPromises = Object.entries(ACTIVITY_CATEGORIES).map(
+            async ([key, category]) => {
+              try {
+                const pois = await window.sqliteClient.getTablePOIs(category.tableName);
+                return {
+                  key,
+                  ...category,
+                  count: pois.length,
+                  available: pois.length > 0
+                };
+              } catch (error) {
+                console.error(`${category.label} 조회 실패:`, error);
+                return {
+                  key,
+                  ...category,
+                  count: 0,
+                  available: false
+                };
+              }
+            }
+          );
+
+          const activities = await Promise.all(activityPromises);
+          
+          // 사용 가능한 활동만 필터링 및 정렬
+          const availableActivities = activities
+            .filter(a => a.available)
+            .sort((a, b) => a.displayOrder - b.displayOrder);
+
+          if (availableActivities.length === 0) {
+            // 데이터가 없으면 원래 HTML 유지
+            container.innerHTML = originalHTML;
+            return;
+          }
+
+          renderAirportActivities(availableActivities);
+
+        } catch (error) {
+          console.error('공항 활동 로드 실패:', error);
+          // 에러 발생 시 원래 HTML 유지
+          container.innerHTML = originalHTML;
+        }
+      }
+
+      // 공항 활동 렌더링
+      function renderAirportActivities(activities) {
+        const container = document.querySelector('.recommendation-items');
+        if (!container) return;
+
+        container.innerHTML = activities.map(activity => `
+          <div class="recommendation-item clickable" 
+               data-table="${activity.tableName}" 
+               data-category-key="${activity.key}"
+               role="button"
+               tabindex="0"
+               aria-label="${activity.label} - ${activity.count}개 장소">
+            <span class="item-icon">${activity.icon}</span>
+            <span class="item-label">${activity.label}</span>
+            <span class="item-count">${activity.count}개</span>
+          </div>
+        `).join('');
+
+        // 클릭 이벤트 추가
+        attachActivityClickHandlers(container);
+      }
+
+      // 활동 클릭 핸들러 연결
+      function attachActivityClickHandlers(container) {
+        container.querySelectorAll('.recommendation-item.clickable').forEach(item => {
+          // 클릭 이벤트
+          item.addEventListener('click', function() {
+            handleActivityClick(this);
+          });
+
+          // 키보드 접근성 (Enter, Space)
+          item.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleActivityClick(this);
+            }
+          });
+        });
+      }
+
+      // 활동 클릭 처리
+      function handleActivityClick(element) {
+        const tableName = element.dataset.table;
+        const categoryKey = element.dataset.categoryKey;
+
+        // 클릭 효과
+        element.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          element.style.transform = '';
+        }, 150);
+
+        // sessionStorage에 선택된 카테고리 정보 저장
+        sessionStorage.setItem('preSelectedTable', tableName);
+        sessionStorage.setItem('preSelectedCategory', categoryKey);
+
+        // airport-only 페이지로 이동
+        if (window.navigateTo) {
+          window.navigateTo('/airport-only', { 
+            userChoice: 'airport-only',
+            preSelectedTable: tableName,
+            preSelectedCategory: categoryKey
+          });
+        } else {
+          // 폴백: 직접 URL 이동
+          window.location.href = `airport-only.html`;
+        }
+      }
+
+      // 환승 시간별 추천 코스 생성
+      function generateRecommendationCourses() {
+        if (!transferInfo || !transferInfo.duration) {
+          return getDefaultCourses();
+        }
+
+        const durationHours = transferInfo.duration / (1000 * 60 * 60);
+        
+        let courses = [];
+        
+        if (durationHours < 2) {
+          // 2시간 미만: 빠른 활동만
+          courses = [
+            { time: '1-2시간', title: '빠른 쇼핑 & 간식', description: '면세점 + 카페', recommended: true }
+          ];
+        } else if (durationHours < 4) {
+          // 2-4시간: 공항 내부 탐험
+          courses = [
+            { time: '2-3시간', title: '공항 내부 탐험', description: '면세점 + 식당 + 라운지', recommended: true }
+          ];
+        } else if (durationHours < 6) {
+          // 4-6시간: 도시 나들이 가능
+          courses = [
+            { time: '2-3시간', title: '공항 내부 탐험', description: '면세점 + 식당 + 라운지' },
+            { time: '4-6시간', title: '도시 나들이', description: '명소 + 맛집 + 쇼핑', recommended: true }
+          ];
+        } else {
+          // 6시간 이상: 통합 여행
+          courses = [
+            { time: '2-3시간', title: '공항 내부 탐험', description: '면세점 + 식당 + 라운지' },
+            { time: '4-6시간', title: '도시 나들이', description: '명소 + 맛집 + 쇼핑' },
+            { time: '6시간+', title: '통합 여행', description: '공항 + 도시 + 문화체험', recommended: true }
+          ];
+        }
+
+        return courses;
+      }
+
+      // 기본 코스 (환승 정보가 없을 때)
+      function getDefaultCourses() {
+        return [
+          { time: '2-3시간', title: '공항 내부 탐험', description: '면세점 + 식당 + 라운지' },
+          { time: '4-6시간', title: '도시 나들이', description: '명소 + 맛집 + 쇼핑' },
+          { time: '6시간+', title: '통합 여행', description: '공항 + 도시 + 문화체험' }
+        ];
+      }
+
+      // 추천 코스 렌더링
+      function renderRecommendationCourses() {
+        const container = document.querySelector('.course-list');
+        if (!container) return;
+
+        const courses = generateRecommendationCourses();
+        
+        container.innerHTML = courses.map(course => {
+          const recommendedBadge = course.recommended 
+            ? '<span class="recommended-badge">추천</span>' 
+            : '';
+          
+          return `
+            <div class="course-item ${course.recommended ? 'recommended' : ''}">
+              <div class="course-time">${course.time}</div>
+              <div class="course-content">
+                <strong>${course.title} ${recommendedBadge}</strong>
+                <p>${course.description}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
       }
     </script>
   </body>

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="openai-api-key" content="YOUR_OPENAI_API_KEY" />
     <title>공항 내부+외부 여행 일정 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/airport-external.css" />
@@ -277,8 +278,13 @@
 
           <!-- 공항 팁 섹션 (상단) -->
           <div class="tips-section">
-            <h3>💡 공항 팁</h3>
-            <div class="tips-grid">
+            <div class="tips-header">
+              <h3>💡 공항 팁</h3>
+              <button class="btn btn--ai-tips" id="generate-ai-tips-btn" onclick="generateAITips()">
+                🤖 AI 맞춤 팁 받기
+              </button>
+            </div>
+            <div class="tips-grid" id="tips-grid">
               <div class="tip-card">
                 <div class="tip-icon">🎒</div>
                 <h4>짐 보관소</h4>
@@ -293,6 +299,14 @@
                 <div class="tip-icon">🛂</div>
                 <h4>보안 검색</h4>
                 <p>출발 2시간 전에는 보안 검색대가 혼잡할 수 있으니 미리 준비하세요.</p>
+              </div>
+            </div>
+            
+            <!-- AI 생성 팁 컨테이너 -->
+            <div class="ai-tips-container" id="ai-tips-container" style="display: none;">
+              <h4 class="ai-tips-title">🤖 AI 맞춤 팁</h4>
+              <div class="ai-tips-grid" id="ai-tips-grid">
+                <!-- 동적으로 생성됨 -->
               </div>
             </div>
           </div>
@@ -395,10 +409,13 @@
     <script type="module" src="scripts/poiServiceManager.js"></script>
     <script type="module" src="scripts/toast.js"></script>
     <script src="scripts/sqliteClient.js"></script>
+    <script src="scripts/aiTipsService.js"></script>
     <script type="module">
       // 필요한 함수들을 import
       import { getPOIInfo } from './scripts/poiManager.js';
       import { getBusinessStatus, getStatusFromBusinessHoursString } from './scripts/businessHours.js';
+      import { getOpenAIApiKey } from './scripts/config.js';
+      window.getOpenAIApiKey = getOpenAIApiKey;
       
       // 전역에서 사용 가능하도록 window에 노출
       window.getPOIInfo = getPOIInfo;
@@ -1336,16 +1353,38 @@
           const imageHtml = poi.imageUrl ? 
             `<div class="timeline-image"><img src="${poi.imageUrl}" alt="${poi.name}" onerror="this.style.display='none'"></div>` : '';
           
+          // poi.id를 안전하게 이스케이프
+          const safePoiId = String(poiId).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          const safeVisitTime = startTime.toISOString();
+          
           timelineItem.innerHTML = `
             <div class="timeline-time">
               <span class="start-time">${formatTime(startTime)}</span>
               <span class="end-time">${formatTime(endTime)}</span>
             </div>
             <div class="timeline-content">
-              <h4>${poi.name}</h4>
-              <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category || ''}</span>
+              <div class="timeline-content-header">
+                <div>
+                  <h4>${poi.name}</h4>
+                  <span class="timeline-category">${poi.categoryIcon || '📍'} ${poi.category || ''}</span>
+                </div>
+                <button class="btn btn--poi-ai-tip" 
+                        data-poi-id="${safePoiId}"
+                        data-visit-time="${safeVisitTime}"
+                        onclick="generatePOITip('${safePoiId}', '${safeVisitTime}')"
+                        aria-label="${poi.name} AI 이용 팁 받기">
+                  🤖 AI 팁
+                </button>
+              </div>
               ${poi.location ? `<p class="timeline-location">📍 ${poi.location}</p>` : ''}
               <p>${poi.estimatedTime || 10}분 체류</p>
+              
+              <!-- AI 팁 표시 영역 -->
+              <div class="poi-ai-tip-container" id="poi-tip-${safePoiId}" style="display: none;">
+                <div class="poi-ai-tip-content" id="poi-tip-content-${safePoiId}">
+                  <!-- 동적으로 생성됨 -->
+                </div>
+              </div>
             </div>
             ${imageHtml}
           `;
@@ -1361,6 +1400,227 @@
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
+      }
+
+      // 전체 일정 AI 팁 생성
+      async function generateAITips() {
+        const button = document.getElementById('generate-ai-tips-btn');
+        const container = document.getElementById('ai-tips-container');
+        const grid = document.getElementById('ai-tips-grid');
+        
+        if (!button || !container || !grid) {
+          console.error('AI 팁 UI 요소를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 버튼 비활성화 및 로딩 상태
+        button.disabled = true;
+        button.innerHTML = '⏳ AI가 팁을 생성 중...';
+        
+        container.style.display = 'block';
+        grid.innerHTML = '<div class="loading-ai-tips">AI가 맞춤 팁을 생성하고 있습니다...</div>';
+
+        try {
+          // API 키 확인
+          const apiKey = window.getOpenAIApiKey ? window.getOpenAIApiKey() : '';
+          
+          if (!apiKey) {
+            throw new Error('OpenAI API 키가 설정되지 않았습니다. 페이지의 meta 태그에 openai-api-key를 추가해주세요.');
+          }
+
+          window.aiTipsService.setApiKey(apiKey);
+
+          // 선택된 POI 정보 수집
+          const selectedPOIDetails = selectedPOIs.map(poiId => {
+            return allPOIsMap.get(poiId);
+          }).filter(poi => poi !== undefined);
+
+          if (selectedPOIDetails.length === 0) {
+            throw new Error('선택된 장소가 없습니다.');
+          }
+
+          // AI 팁 생성
+          const tips = await window.aiTipsService.generateAirportScheduleTips(
+            selectedPOIs,
+            transferInfo,
+            allPOIsMap
+          );
+
+          // 팁 렌더링
+          renderAITips(tips);
+          
+          // 버튼 상태 복원
+          button.disabled = false;
+          button.innerHTML = '🤖 AI 맞춤 팁 받기';
+
+        } catch (error) {
+          console.error('AI 팁 생성 실패:', error);
+          
+          // 에러 메시지 표시
+          grid.innerHTML = `
+            <div class="ai-tips-error">
+              <p>⚠️ AI 팁을 불러오는데 실패했습니다.</p>
+              <p class="error-detail">${error.message}</p>
+            </div>
+          `;
+          
+          button.disabled = false;
+          button.innerHTML = '🤖 AI 맞춤 팁 받기';
+        }
+      }
+
+      // AI 팁 렌더링
+      function renderAITips(tips) {
+        const grid = document.getElementById('ai-tips-grid');
+        if (!grid) return;
+
+        if (!tips || tips.length === 0) {
+          grid.innerHTML = '<p>생성된 팁이 없습니다.</p>';
+          return;
+        }
+
+        grid.innerHTML = tips.map(tip => `
+          <div class="tip-card ai-tip-card">
+            <div class="tip-icon">${tip.icon || '💡'}</div>
+            <h4>${tip.title || '팁'}</h4>
+            <p>${tip.description || ''}</p>
+            <span class="ai-badge">🤖 AI 생성</span>
+          </div>
+        `).join('');
+      }
+
+      // POI별 AI 팁 생성
+      async function generatePOITip(poiId, visitTime) {
+        const button = document.querySelector(`[data-poi-id="${poiId}"].btn--poi-ai-tip`);
+        const container = document.getElementById(`poi-tip-${poiId}`);
+        const content = document.getElementById(`poi-tip-content-${poiId}`);
+        
+        if (!button || !container || !content) {
+          console.error('POI 팁 UI 요소를 찾을 수 없습니다:', poiId);
+          return;
+        }
+
+        // 이미 열려있으면 닫기
+        if (container.style.display !== 'none') {
+          container.style.display = 'none';
+          button.innerHTML = '🤖 AI 팁';
+          return;
+        }
+
+        // 버튼 비활성화 및 로딩
+        button.disabled = true;
+        button.innerHTML = '⏳ 생성 중...';
+        
+        container.style.display = 'block';
+        content.innerHTML = '<div class="loading-poi-tip">AI가 이용 팁을 생성하고 있습니다...</div>';
+
+        try {
+          // API 키 확인
+          const apiKey = window.getOpenAIApiKey ? window.getOpenAIApiKey() : '';
+          
+          if (!apiKey) {
+            throw new Error('OpenAI API 키가 설정되지 않았습니다.');
+          }
+
+          window.aiTipsService.setApiKey(apiKey);
+
+          // POI 정보 가져오기
+          const poi = allPOIsMap.get(poiId) || allPOIs.find(p => p.id === poiId);
+          if (!poi) {
+            throw new Error('장소 정보를 찾을 수 없습니다.');
+          }
+
+          // AI 팁 생성
+          const tipData = await window.aiTipsService.generatePOITip(
+            poi,
+            transferInfo,
+            new Date(visitTime)
+          );
+
+          // 팁 렌더링
+          renderPOITip(tipData, content);
+          
+          // 버튼 상태 복원
+          button.disabled = false;
+          button.innerHTML = '🤖 AI 팁';
+
+        } catch (error) {
+          console.error('POI AI 팁 생성 실패:', error);
+          
+          content.innerHTML = `
+            <div class="poi-tip-error">
+              <p>⚠️ 팁을 불러오는데 실패했습니다.</p>
+              <p class="error-detail">${error.message}</p>
+            </div>
+          `;
+          
+          button.disabled = false;
+          button.innerHTML = '🤖 AI 팁';
+        }
+      }
+
+      // POI 팁 렌더링
+      function renderPOITip(tipData, container) {
+        if (!tipData || !tipData.tips || tipData.tips.length === 0) {
+          container.innerHTML = '<p>생성된 팁이 없습니다.</p>';
+          return;
+        }
+
+        // 출처 링크 HTML 생성
+        let sourcesHtml = '';
+        if (tipData.sources && Array.isArray(tipData.sources) && tipData.sources.length > 0) {
+          // 유효한 URL만 필터링
+          const validSources = tipData.sources.filter(source => {
+            if (!source.url) return false;
+            try {
+              new URL(source.url);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          });
+          
+          if (validSources.length > 0) {
+            sourcesHtml = `
+              <div class="poi-tip-sources">
+                ${validSources.map(source => `
+                  <a href="${source.url}" target="_blank" rel="noopener noreferrer" class="poi-tip-source-link">
+                    ${source.label || '출처'}
+                  </a>
+                `).join('')}
+              </div>
+            `;
+          } else if (tipData.sourceNote) {
+            sourcesHtml = `
+              <div class="poi-tip-source-note">
+                ${tipData.sourceNote}
+              </div>
+            `;
+          }
+        } else if (tipData.sourceNote) {
+          sourcesHtml = `
+            <div class="poi-tip-source-note">
+              ${tipData.sourceNote}
+            </div>
+          `;
+        } else {
+          sourcesHtml = `
+            <div class="poi-tip-source-note">
+              ※ 위 정보는 일반적인 정보를 바탕으로 작성되었습니다.
+            </div>
+          `;
+        }
+
+        container.innerHTML = `
+          <div class="poi-tip-header">
+            <h5>${tipData.title || '💡 이용 팁'}</h5>
+            <span class="ai-badge-small">🤖 AI 생성</span>
+          </div>
+          <ul class="poi-tip-list">
+            ${tipData.tips.map(tip => `<li>${tip}</li>`).join('')}
+          </ul>
+          ${sourcesHtml}
+        `;
       }
 
       // 일정 저장 (PDF 다운로드)
