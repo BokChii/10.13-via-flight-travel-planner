@@ -1,0 +1,366 @@
+/* Review Detail Page Styles */
+/* ========================================== */
+
+.review-detail-page {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+.review-detail-page .app-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--color-text);
+}
+
+.review-detail-page .app-header h1 {
+  color: var(--color-primary);
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.review-detail-page .app-header .tagline {
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+}
+
+.review-detail-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* 로딩 및 에러 상태 */
+.review-loading,
+.review-error {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.review-loading p,
+.review-error p {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+}
+
+/* 리뷰 헤더 섹션 */
+.review-header-section {
+  margin-bottom: 30px;
+}
+
+.review-header-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.review-header-rating {
+  margin-bottom: 24px;
+}
+
+.review-rating-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.rating-stars {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.rating-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.review-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.review-date {
+  font-weight: 500;
+}
+
+.review-city {
+  padding: 4px 12px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.review-trip-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trip-type-badge,
+.trip-duration-badge,
+.trip-visit-badge {
+  padding: 6px 14px;
+  background: #f0f4f8;
+  color: var(--color-text);
+  border-radius: 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.trip-type-badge {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* 리뷰 내용 섹션 */
+.review-content-section {
+  margin-bottom: 30px;
+}
+
+.review-content-card {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-count {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.review-summary-text {
+  font-size: 1.2rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  margin: 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid var(--color-primary);
+}
+
+.review-detail-text {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* 여행 정보 섹션 */
+.review-trip-info-section {
+  margin-bottom: 30px;
+}
+
+.review-info-card {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.trip-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.trip-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.trip-info-label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.trip-info-value {
+  font-size: 1.1rem;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* 방문한 장소 리뷰 섹션 */
+.review-places-section {
+  margin-bottom: 30px;
+}
+
+.review-places-card {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.place-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.place-review-item {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  border-left: 4px solid var(--color-primary);
+  transition: all 0.3s ease;
+}
+
+.place-review-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.place-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.place-review-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.place-icon {
+  font-size: 1.2rem;
+}
+
+.place-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.place-category {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  background: white;
+  border-radius: 8px;
+}
+
+.place-review-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-stars {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.place-rating-number {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.place-location {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin: 8px 0;
+}
+
+.place-comment {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  margin: 12px 0 0;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .review-detail-main {
+    padding: 20px 16px;
+  }
+
+  .review-header-card {
+    padding: 24px 20px;
+  }
+
+  .rating-stars {
+    font-size: 2rem;
+  }
+
+  .rating-number {
+    font-size: 1.5rem;
+  }
+
+  .review-content-card,
+  .review-info-card,
+  .review-places-card {
+    padding: 20px;
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+  }
+
+  .review-summary-text {
+    font-size: 1.1rem;
+    padding: 16px;
+  }
+
+  .trip-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .place-review-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .place-review-name {
+    min-width: auto;
+    width: 100%;
+  }
+}
+

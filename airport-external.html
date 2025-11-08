@@ -1245,15 +1245,11 @@
 
       // 도시 선호도 토글
       function toggleCityPreference(category) {
-        console.log('toggleCityPreference 호출됨:', category);
-        console.log('현재 selectedCityPreferences:', selectedCityPreferences);
-        
         const card = document.querySelector(`#city-preferences-step [data-category="${category}"]`);
         
         if (selectedCityPreferences.includes(category)) {
           selectedCityPreferences = selectedCityPreferences.filter(p => p !== category);
           card.classList.remove('selected');
-          console.log('도시 선택 해제:', category);
         } else {
           // 최대 3개까지만 선택 가능
           if (selectedCityPreferences.length >= 3) {
@@ -1262,10 +1258,8 @@
           }
           selectedCityPreferences.push(category);
           card.classList.add('selected');
-          console.log('도시 선택 추가:', category);
         }
         
-        console.log('업데이트된 selectedCityPreferences:', selectedCityPreferences);
         updateCityPreferencesNextButton();
       }
 
@@ -1729,8 +1723,10 @@
           document.getElementById('city-preferences-step').style.display = 'none';
           document.getElementById('full-schedule-step').style.display = 'block';
           
-          // 전체 일정 생성
-          generateFullSchedule();
+          // DOM이 완전히 렌더링된 후 전체 일정 생성
+          setTimeout(() => {
+            generateFullSchedule();
+          }, 50);
         } catch (error) {
           console.error('도시 일정 생성 실패:', error);
           alert('일정 생성에 실패했습니다. 다시 시도해주세요.');
@@ -1829,15 +1825,6 @@
               // 운영 상태 확인
               const businessStatus = window.getBusinessStatus(poiDetails, travelTime);
               
-              console.log(`  🔍 [generateCityPlan] POI "${poi.name}" 영업 상태 확인:`, {
-                name: poi.name,
-                businessStatus,
-                hasOpeningHours: !!poiDetails.opening_hours,
-                visitStartTime: visitStartTime.toISOString(),
-                visitEndTime: new Date(visitStartTime.getTime() + defaultStayMinutes * 60000).toISOString(),
-                timeZone: travelTime.timeZone
-              });
-              
               // OPEN 상태인 POI만 추가 (UNKNOWN과 CLOSED는 제외)
               if (businessStatus === 'OPEN') {
                 allPOIsWithDetails.push({
@@ -1848,15 +1835,10 @@
                   visitStartTime
                 });
                 
-                console.log(`  ✅ [generateCityPlan] "${poi.name}" 추가됨 (${businessStatus})`);
-                
                 // 충분한 POI를 모으면 중단 (성능 최적화)
                 if (allPOIsWithDetails.length >= targetCount * 2) {
-                  console.log(`  📊 [generateCityPlan] 충분한 POI를 수집했습니다 (${allPOIsWithDetails.length}개). 조회 중단.`);
                   break;
                 }
-              } else {
-                console.log(`  ❌ [generateCityPlan] "${poi.name}" 제외됨 (영업 상태: ${businessStatus})`);
               }
             } catch (error) {
               console.error(`  ❌ [generateCityPlan] POI "${poi.name}" 상세 정보 조회 실패:`, error);
@@ -2192,8 +2174,10 @@
           document.getElementById('city-poi-step').style.display = 'none';
           document.getElementById('full-schedule-step').style.display = 'block';
           
-          // 전체 일정 생성
-          generateFullSchedule();
+          // DOM이 완전히 렌더링된 후 전체 일정 생성
+          setTimeout(() => {
+            generateFullSchedule();
+          }, 50);
         } catch (error) {
           console.error('도시 일정 생성 실패:', error);
           showToast({ message: '일정 생성에 실패했습니다. 다시 시도해주세요.', type: 'error' });
@@ -2210,21 +2194,62 @@
       // 공항 내부 타임라인 생성 (전체 일정 페이지용)
       function generateAirportTimeline() {
         const container = document.getElementById('airport-timeline');
-        if (!container) return;
+        
+        if (!container) {
+          console.error('❌ [generateAirportTimeline] airport-timeline 컨테이너를 찾을 수 없습니다!');
+          // DOM이 준비되지 않았을 수 있으므로 잠시 후 재시도
+          setTimeout(() => {
+            generateAirportTimeline();
+          }, 100);
+          return;
+        }
+        
         container.innerHTML = '';
+        
+        // sessionStorage에서 공항 POI 데이터 로드 (trip-summary.html과 동일한 방식)
+        const airportPOIDataStr = sessionStorage.getItem('airportPOIData');
+        let airportPOIs = [];
+        
+        if (airportPOIDataStr) {
+          try {
+            const airportPOIData = JSON.parse(airportPOIDataStr);
+            
+            // 선택된 POI ID 목록과 전체 POI 목록을 매칭하여 airportPOIs 생성 (trip-summary.html과 동일)
+            airportPOIs = airportPOIData.selectedPOIs
+              .map(poiId => airportPOIData.allPOIs.find(p => p.id === poiId))
+              .filter(poi => poi != null);
+            
+          } catch (error) {
+            console.error('❌ [generateAirportTimeline] airportPOIData 파싱 실패:', error);
+          }
+        }
+        
+        // sessionStorage에서 데이터를 못 찾은 경우 전역 변수 사용 (폴백)
+        if (airportPOIs.length === 0) {
+          airportPOIs = selectedPOIs.map(poiId => {
+            let poi = allPOIsMap.get(poiId);
+            if (!poi) {
+              poi = allPOIs.find(p => p.id === poiId);
+            }
+            return poi;
+          }).filter(poi => poi != null);
+        }
+        
+        if (airportPOIs.length === 0) {
+          console.warn('⚠️ [generateAirportTimeline] 선택된 POI가 없습니다.');
+          container.innerHTML = '<p class="empty-timeline">선택된 장소가 없습니다.</p>';
+          return;
+        }
         
         const arrivalTime = new Date(transferInfo.arrival);
         let currentTime = new Date(arrivalTime);
         
-        selectedPOIs.forEach((poiId, index) => {
-          const poi = allPOIs.find(p => p.id === poiId);
-          if (!poi) return;
-          
+        airportPOIs.forEach((poi, index) => {
           const timelineItem = document.createElement('div');
           timelineItem.className = 'timeline-item';
           
           const startTime = new Date(currentTime);
-          const endTime = new Date(currentTime.getTime() + poi.estimatedTime * 60000);
+          const endTime = new Date(currentTime.getTime() + (poi.estimatedTime || 10) * 60000);
           
           timelineItem.innerHTML = `
             <div class="timeline-time">
@@ -2239,6 +2264,11 @@
           
           container.appendChild(timelineItem);
           currentTime = endTime;
+        });
+        
+        console.log('✅ [generateAirportTimeline] 완료:', {
+          renderedCount: container.children.length,
+          selectedCount: airportPOIs.length
         });
       }
 

@@ -12,7 +12,8 @@ class ViaFlightRouter {
       '/airport-only': 'airport-only.html',
       '/airport-external': 'airport-external.html',
       '/trip-summary': 'trip-summary.html',
-      '/navigation': 'navigation.html'
+      '/navigation': 'navigation.html',
+      '/review-detail': 'review-detail.html'
     };
     
     this.currentPage = null;
@@ -387,6 +388,9 @@ document.addEventListener('DOMContentLoaded', function() {
       break;
     case 'navigation.html':
       window.initNavigationPage();
+      break;
+    case 'review-detail.html':
+      // review-detail.html은 자체 스크립트에서 초기화
       break;
     default:
       console.log('알 수 없는 페이지:', currentPage);

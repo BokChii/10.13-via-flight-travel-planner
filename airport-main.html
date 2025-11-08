@@ -165,26 +165,21 @@
           <div class="recommendation-card">
             <h4>베스트 환승 여행 코스</h4>
             <div class="course-list">
-              <div class="course-item">
-                <div class="course-time">2-3시간</div>
-                <div class="course-content">
-                  <strong>공항 내부 탐험</strong>
-                  <p>면세점 + 식당 + 라운지</p>
-                </div>
+              <!-- 동적으로 생성됨 -->
+            </div>
+          </div>
+
+          <div class="recommendation-card">
+            <h4>📝 다른 여행자들의 리뷰</h4>
+            <div class="reviews-container" id="city-reviews-container">
+              <div class="reviews-loading" style="display: none;">
+                <p>리뷰를 불러오는 중...</p>
               </div>
-              <div class="course-item">
-                <div class="course-time">4-6시간</div>
-                <div class="course-content">
-                  <strong>도시 나들이</strong>
-                  <p>명소 + 맛집 + 쇼핑</p>
-                </div>
+              <div class="reviews-list" id="city-reviews-list">
+                <!-- 동적으로 생성됨 -->
               </div>
-              <div class="course-item">
-                <div class="course-time">6시간+</div>
-                <div class="course-content">
-                  <strong>통합 여행</strong>
-                  <p>공항 + 도시 + 문화체험</p>
-                </div>
+              <div class="reviews-empty" id="city-reviews-empty" style="display: none;">
+                <p>아직 작성된 리뷰가 없습니다.<br>첫 번째 리뷰를 작성해보세요!</p>
               </div>
             </div>
           </div>
@@ -194,6 +189,7 @@
 
     <script type="module" src="scripts/router.js"></script>
     <script src="scripts/sqliteClient.js"></script>
+    <script src="scripts/reviewDB.js"></script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -235,6 +231,9 @@
         // 공항 활동 및 추천 코스 로드 (비동기)
         await loadAirportActivities();
         renderRecommendationCourses();
+        
+        // 동일 도시 리뷰 로드
+        await loadCityReviews();
         
         // 애니메이션 효과
         setTimeout(() => {
@@ -542,6 +541,249 @@
             </div>
           `;
         }).join('');
+      }
+
+      // 도시 이름 정규화 함수
+      function normalizeCityName(city) {
+        if (!city) return '';
+        
+        const cityNameMap = {
+          '싱가포르': 'Singapore',
+          'Singapore': 'Singapore',
+          '서울': 'Seoul',
+          'Seoul': 'Seoul',
+          '도쿄': 'Tokyo',
+          'Tokyo': 'Tokyo',
+          '방콕': 'Bangkok',
+          'Bangkok': 'Bangkok'
+        };
+        
+        // 정확한 매칭 시도
+        if (cityNameMap[city]) {
+          return cityNameMap[city];
+        }
+        
+        // 대소문자 무시 매칭
+        const cityLower = city.toLowerCase();
+        for (const [key, value] of Object.entries(cityNameMap)) {
+          if (key.toLowerCase() === cityLower) {
+            return value;
+          }
+        }
+        
+        // 매핑되지 않으면 원본 반환
+        return city;
+      }
+
+      // 동일 도시 리뷰 로드
+      async function loadCityReviews() {
+        const container = document.getElementById('city-reviews-list');
+        const loadingEl = document.querySelector('.reviews-loading');
+        const emptyEl = document.getElementById('city-reviews-empty');
+        
+        console.log('🔍 [loadCityReviews] 시작');
+        
+        if (!container) {
+          console.warn('⚠️ [loadCityReviews] 리뷰 컨테이너를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 도시 정보 확인
+        if (!transferInfo || !transferInfo.city) {
+          console.warn('⚠️ [loadCityReviews] 도시 정보가 없습니다:', transferInfo);
+          if (emptyEl) emptyEl.style.display = 'block';
+          return;
+        }
+
+        // 도시 이름 정규화
+        const normalizedCity = normalizeCityName(transferInfo.city);
+        console.log('🔍 [loadCityReviews] 도시 이름 정규화:', {
+          originalCity: transferInfo.city,
+          normalizedCity: normalizedCity,
+          transferInfo: transferInfo
+        });
+
+        try {
+          // 로딩 표시
+          if (loadingEl) loadingEl.style.display = 'block';
+          if (emptyEl) emptyEl.style.display = 'none';
+          container.innerHTML = '';
+
+          // 리뷰 DB 초기화
+          console.log('🔍 [loadCityReviews] DB 초기화 시작...');
+          await window.reviewDB.initialize();
+          console.log('✅ [loadCityReviews] 리뷰 DB 초기화 완료');
+
+          // 정규화된 도시 이름으로 리뷰 조회
+          console.log('🔍 [loadCityReviews] 리뷰 조회 시작:', {
+            normalizedCity: normalizedCity,
+            dbInitialized: window.reviewDB.isInitialized
+          });
+          
+          const reviews = window.reviewDB.getCityReviews(normalizedCity);
+          console.log('📋 [loadCityReviews] 조회된 리뷰:', {
+            count: reviews?.length || 0,
+            city: normalizedCity,
+            reviews: reviews
+          });
+
+          if (loadingEl) loadingEl.style.display = 'none';
+
+          if (!reviews || reviews.length === 0) {
+            console.log('⚠️ [loadCityReviews] 리뷰가 없습니다. 디버깅 정보 확인 중...');
+            
+            // 디버깅: 저장된 모든 도시 이름 확인
+            try {
+              const allCities = window.reviewDB.db.exec(`
+                SELECT DISTINCT trip_info_city, COUNT(*) as count 
+                FROM trip_reviews 
+                GROUP BY trip_info_city
+              `);
+              console.log('📊 [loadCityReviews] 저장된 도시 목록:', allCities);
+              
+              // 전체 리뷰 개수 확인
+              const totalReviews = window.reviewDB.db.exec(`
+                SELECT COUNT(*) as count FROM trip_reviews
+              `);
+              console.log('📊 [loadCityReviews] 전체 리뷰 개수:', totalReviews);
+              
+              if (totalReviews.length > 0 && totalReviews[0].values.length > 0) {
+                const totalCount = totalReviews[0].values[0][0];
+                console.log(`📊 [loadCityReviews] 총 ${totalCount}개의 리뷰가 저장되어 있습니다.`);
+                
+                if (totalCount > 0 && allCities.length > 0) {
+                  const cities = allCities[0].values.map(v => v[0]);
+                  console.log('💡 [loadCityReviews] 저장된 도시들:', cities);
+                  console.log('💡 [loadCityReviews] 찾는 도시:', normalizedCity);
+                  console.log('💡 [loadCityReviews] 매칭 여부:', cities.includes(normalizedCity));
+                  
+                  // 대소문자 무시 매칭 확인
+                  const cityLower = normalizedCity.toLowerCase();
+                  const matchingCity = cities.find(c => c.toLowerCase() === cityLower);
+                  console.log('💡 [loadCityReviews] 대소문자 무시 매칭:', matchingCity || '없음');
+                }
+              }
+            } catch (debugError) {
+              console.error('❌ [loadCityReviews] 디버깅 정보 조회 실패:', debugError);
+            }
+            
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+          }
+
+          // 최신순 정렬 (이미 정렬되어 있을 수 있지만 확실히)
+          const sortedReviews = reviews.sort((a, b) => {
+            const dateA = new Date(a.submitted_at);
+            const dateB = new Date(b.submitted_at);
+            return dateB - dateA; // 최신순
+          });
+
+          // 최대 5개만 표시
+          const displayReviews = sortedReviews.slice(0, 5);
+          console.log('✅ [loadCityReviews] 표시할 리뷰:', displayReviews.length, '개');
+
+          renderCityReviews(displayReviews);
+
+        } catch (error) {
+          console.error('❌ [loadCityReviews] 리뷰 로드 실패:', error);
+          console.error('❌ [loadCityReviews] 에러 상세:', {
+            message: error.message,
+            stack: error.stack,
+            city: transferInfo.city,
+            normalizedCity: normalizedCity
+          });
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (emptyEl) emptyEl.style.display = 'block';
+        }
+      }
+
+      // 도시 리뷰 렌더링
+      function renderCityReviews(reviews) {
+        const container = document.getElementById('city-reviews-list');
+        if (!container) return;
+
+        container.innerHTML = reviews.map(review => {
+          // 별점 생성
+          const rating = review.overall_review_rating || 0;
+          const stars = '⭐'.repeat(rating);
+          
+          // 날짜 포맷팅
+          const reviewDate = new Date(review.submitted_at);
+          const formattedDate = formatReviewDate(reviewDate);
+          
+          // 여행 타입 표시
+          const tripTypeText = review.trip_info_trip_type === 'airport-only' 
+            ? '공항 내부만' 
+            : review.trip_info_trip_type === 'airport-external' 
+            ? '공항 + 도시' 
+            : '전체';
+          
+          // 환승 시간 표시
+          const durationText = review.trip_info_duration 
+            ? formatDuration(review.trip_info_duration) 
+            : '';
+
+          return `
+            <div class="review-card-item" onclick="viewReviewDetail('${review.id}')" style="cursor: pointer;">
+              <div class="review-card-header">
+                <div class="review-rating">
+                  <span class="review-stars">${stars}</span>
+                  <span class="review-rating-number">${rating}.0</span>
+                </div>
+                <span class="review-date">${formattedDate}</span>
+              </div>
+              <div class="review-summary">${escapeHtml(review.overall_review_summary || '')}</div>
+              ${review.overall_review_detail ? `<div class="review-detail">${escapeHtml(review.overall_review_detail)}</div>` : ''}
+              <div class="review-meta">
+                <span class="review-trip-type">${tripTypeText}</span>
+                ${durationText ? `<span class="review-duration">${durationText}</span>` : ''}
+                ${review.trip_info_visit_count ? `<span class="review-visit-count">${review.trip_info_visit_count}개 장소 방문</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 날짜 포맷팅 (리뷰용)
+      function formatReviewDate(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+          return '오늘';
+        } else if (diffDays === 1) {
+          return '어제';
+        } else if (diffDays < 7) {
+          return `${diffDays}일 전`;
+        } else if (diffDays < 30) {
+          const weeks = Math.floor(diffDays / 7);
+          return `${weeks}주 전`;
+        } else if (diffDays < 365) {
+          const months = Math.floor(diffDays / 30);
+          return `${months}개월 전`;
+        } else {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}.${month}.${day}`;
+        }
+      }
+
+      // HTML 이스케이프
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // 리뷰 상세 보기
+      function viewReviewDetail(reviewId) {
+        // sessionStorage에 리뷰 ID 저장
+        sessionStorage.setItem('selectedReviewId', reviewId);
+        // 리뷰 상세 페이지로 이동
+        window.location.href = `review-detail.html?id=${reviewId}`;
       }
     </script>
   </body>

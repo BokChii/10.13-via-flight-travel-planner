@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>리뷰 상세 - Via Flight</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/pages/review-detail.css" />
+    <link rel="stylesheet" href="styles/components/buttons.css" />
+    <link rel="stylesheet" href="styles/components/cards.css" />
+  </head>
+  <body class="app review-detail-page">
+    <header class="app-header">
+      <h1>Via Flight</h1>
+      <p class="tagline">리뷰 상세</p>
+      <nav class="breadcrumb">
+        <button class="btn btn--ghost btn--small" onclick="goBack()">← 뒤로가기</button>
+      </nav>
+    </header>
+
+    <main class="review-detail-main">
+      <!-- 로딩 상태 -->
+      <div id="review-loading" class="review-loading">
+        <p>리뷰를 불러오는 중...</p>
+      </div>
+
+      <!-- 에러 상태 -->
+      <div id="review-error" class="review-error" style="display: none;">
+        <p>리뷰를 불러올 수 없습니다.</p>
+        <button class="btn btn--primary" onclick="goBack()">뒤로가기</button>
+      </div>
+
+      <!-- 리뷰 내용 -->
+      <div id="review-content" style="display: none;">
+        <!-- 리뷰 헤더 -->
+        <section class="review-header-section">
+          <div class="review-header-card">
+            <div class="review-header-rating">
+              <div class="review-rating-display" id="review-rating-display">
+                <span class="rating-stars" id="rating-stars"></span>
+                <span class="rating-number" id="rating-number"></span>
+              </div>
+              <div class="review-header-meta">
+                <span class="review-date" id="review-date"></span>
+                <span class="review-city" id="review-city"></span>
+              </div>
+            </div>
+            <div class="review-trip-info" id="review-trip-info">
+              <!-- 동적으로 생성됨 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 전체 리뷰 -->
+        <section class="review-content-section">
+          <div class="review-content-card">
+            <h2 class="section-title">💬 한 줄 후기</h2>
+            <p class="review-summary-text" id="review-summary"></p>
+          </div>
+
+          <div class="review-content-card" id="review-detail-card" style="display: none;">
+            <h2 class="section-title">📄 상세 후기</h2>
+            <p class="review-detail-text" id="review-detail"></p>
+          </div>
+        </section>
+
+        <!-- 여행 정보 -->
+        <section class="review-trip-info-section">
+          <div class="review-info-card">
+            <h2 class="section-title">🗺️ 여행 정보</h2>
+            <div class="trip-info-grid" id="trip-info-grid">
+              <!-- 동적으로 생성됨 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 방문한 장소 리뷰 -->
+        <section class="review-places-section" id="review-places-section" style="display: none;">
+          <div class="review-places-card">
+            <h2 class="section-title">
+              📍 방문한 장소 리뷰
+              <span class="place-count" id="place-count"></span>
+            </h2>
+            <div class="place-reviews-list" id="place-reviews-list">
+              <!-- 동적으로 생성됨 -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="scripts/router.js"></script>
+    <script src="scripts/reviewDB.js"></script>
+    <script>
+      // 전역 변수
+      let reviewId = null;
+
+      // 페이지 로드 시
+      document.addEventListener('DOMContentLoaded', async () => {
+        // URL 파라미터 또는 sessionStorage에서 리뷰 ID 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        reviewId = urlParams.get('id') || sessionStorage.getItem('selectedReviewId');
+
+        if (!reviewId) {
+          showError('리뷰 ID가 없습니다.');
+          return;
+        }
+
+        // 리뷰 로드
+        await loadReview();
+      });
+
+      // 리뷰 로드
+      async function loadReview() {
+        const loadingEl = document.getElementById('review-loading');
+        const errorEl = document.getElementById('review-error');
+        const contentEl = document.getElementById('review-content');
+
+        try {
+          loadingEl.style.display = 'block';
+          errorEl.style.display = 'none';
+          contentEl.style.display = 'none';
+
+          // DB 초기화
+          await window.reviewDB.initialize();
+
+          console.log('🔍 [loadReview] 리뷰 ID:', reviewId);
+
+          // 전체 리뷰 조회
+          const review = window.reviewDB.getTripReviewById(reviewId);
+          console.log('🔍 [loadReview] 조회된 리뷰:', review);
+          
+          if (!review || !review.id) {
+            // 디버깅: 저장된 모든 리뷰 ID 확인
+            try {
+              const allReviews = window.reviewDB.db.exec(`
+                SELECT id FROM trip_reviews
+              `);
+              console.log('📊 [loadReview] 저장된 모든 리뷰 ID:', allReviews);
+            } catch (debugError) {
+              console.error('❌ [loadReview] 디버깅 정보 조회 실패:', debugError);
+            }
+            throw new Error('리뷰를 찾을 수 없습니다.');
+          }
+
+          // 장소 리뷰 조회
+          const placeReviews = window.reviewDB.getPlaceReviewsByTripId(reviewId);
+
+          // 리뷰 렌더링
+          renderReview(review, placeReviews);
+
+          loadingEl.style.display = 'none';
+          contentEl.style.display = 'block';
+
+        } catch (error) {
+          console.error('리뷰 로드 실패:', error);
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'block';
+        }
+      }
+
+      // 리뷰 렌더링
+      function renderReview(review, placeReviews) {
+        // 평점 표시
+        const rating = review.overall_review_rating || 0;
+        document.getElementById('rating-stars').textContent = '⭐'.repeat(rating);
+        document.getElementById('rating-number').textContent = `${rating}.0`;
+
+        // 날짜 표시
+        const reviewDate = new Date(review.submitted_at);
+        document.getElementById('review-date').textContent = formatReviewDate(reviewDate);
+
+        // 도시 표시
+        document.getElementById('review-city').textContent = review.trip_info_city || '';
+
+        // 여행 타입 정보
+        const tripTypeText = review.trip_info_trip_type === 'airport-only' 
+          ? '공항 내부만' 
+          : review.trip_info_trip_type === 'airport-external' 
+          ? '공항 + 도시' 
+          : '전체';
+
+        const durationText = review.trip_info_duration 
+          ? formatDuration(review.trip_info_duration) 
+          : '';
+
+        const tripInfoHtml = `
+          <span class="trip-type-badge">${tripTypeText}</span>
+          ${durationText ? `<span class="trip-duration-badge">${durationText}</span>` : ''}
+          ${review.trip_info_visit_count ? `<span class="trip-visit-badge">${review.trip_info_visit_count}개 장소</span>` : ''}
+        `;
+        document.getElementById('review-trip-info').innerHTML = tripInfoHtml;
+
+        // 한 줄 후기
+        document.getElementById('review-summary').textContent = review.overall_review_summary || '';
+
+        // 상세 후기
+        if (review.overall_review_detail) {
+          document.getElementById('review-detail').textContent = review.overall_review_detail;
+          document.getElementById('review-detail-card').style.display = 'block';
+        }
+
+        // 여행 정보
+        const tripInfoGrid = document.getElementById('trip-info-grid');
+        tripInfoGrid.innerHTML = `
+          <div class="trip-info-item">
+            <span class="trip-info-label">도시</span>
+            <span class="trip-info-value">${review.trip_info_city || '-'}</span>
+          </div>
+          ${durationText ? `
+          <div class="trip-info-item">
+            <span class="trip-info-label">환승 시간</span>
+            <span class="trip-info-value">${durationText}</span>
+          </div>
+          ` : ''}
+          ${review.trip_info_visit_count ? `
+          <div class="trip-info-item">
+            <span class="trip-info-label">방문 장소</span>
+            <span class="trip-info-value">${review.trip_info_visit_count}개</span>
+          </div>
+          ` : ''}
+          <div class="trip-info-item">
+            <span class="trip-info-label">여행 타입</span>
+            <span class="trip-info-value">${tripTypeText}</span>
+          </div>
+          ${review.trip_info_arrival ? `
+          <div class="trip-info-item">
+            <span class="trip-info-label">도착 시간</span>
+            <span class="trip-info-value">${formatDateTime(review.trip_info_arrival)}</span>
+          </div>
+          ` : ''}
+          ${review.trip_info_departure ? `
+          <div class="trip-info-item">
+            <span class="trip-info-label">출발 시간</span>
+            <span class="trip-info-value">${formatDateTime(review.trip_info_departure)}</span>
+          </div>
+          ` : ''}
+        `;
+
+        // 장소 리뷰
+        if (placeReviews && placeReviews.length > 0) {
+          document.getElementById('review-places-section').style.display = 'block';
+          document.getElementById('place-count').textContent = `(${placeReviews.length}개)`;
+
+          const placeReviewsList = document.getElementById('place-reviews-list');
+          placeReviewsList.innerHTML = placeReviews.map(place => {
+            const stars = '⭐'.repeat(place.rating || 0);
+            return `
+              <div class="place-review-item">
+                <div class="place-review-header">
+                  <div class="place-review-name">
+                    <span class="place-icon">${place.poi_category_icon || '📍'}</span>
+                    <span class="place-name">${escapeHtml(place.poi_name || '')}</span>
+                    ${place.poi_category ? `<span class="place-category">${escapeHtml(place.poi_category)}</span>` : ''}
+                  </div>
+                  <div class="place-review-rating">
+                    <span class="place-stars">${stars}</span>
+                    <span class="place-rating-number">${place.rating || 0}.0</span>
+                  </div>
+                </div>
+                ${place.poi_location ? `<p class="place-location">📍 ${escapeHtml(place.poi_location)}</p>` : ''}
+                ${place.comment ? `<p class="place-comment">${escapeHtml(place.comment)}</p>` : ''}
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 날짜 포맷팅
+      function formatReviewDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}.${month}.${day}`;
+      }
+
+      // 시간 포맷팅
+      function formatDateTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}.${month}.${day} ${hours}:${minutes}`;
+      }
+
+      // 기간 포맷팅
+      function formatDuration(durationMs) {
+        if (!durationMs) return '';
+        const hours = Math.floor(durationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+        if (hours > 0 && minutes > 0) {
+          return `${hours}시간 ${minutes}분`;
+        } else if (hours > 0) {
+          return `${hours}시간`;
+        } else if (minutes > 0) {
+          return `${minutes}분`;
+        }
+        return '';
+      }
+
+      // HTML 이스케이프
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // 에러 표시
+      function showError(message) {
+        const errorEl = document.getElementById('review-error');
+        const loadingEl = document.getElementById('review-loading');
+        loadingEl.style.display = 'none';
+        errorEl.style.display = 'block';
+        errorEl.querySelector('p').textContent = message;
+      }
+
+      // 뒤로가기
+      function goBack() {
+        window.history.back();
+      }
+    </script>
+  </body>
+</html>
+

@@ -6,17 +6,22 @@ const envPath = path.join(projectRoot, '.env');
 const templatePath = path.join(projectRoot, 'navigation.html');
 const plannerTemplatePath = path.join(projectRoot, 'index.html');
 const tripSummaryTemplatePath = path.join(projectRoot, 'trip-summary.html');
+const airportOnlyPath = path.join(projectRoot, 'airport-only.html');
+const airportExternalPath = path.join(projectRoot, 'airport-external.html');
 const distDir = path.join(projectRoot, 'dist');
 const distIndexPath = path.join(distDir, 'navigation.html');
 const distPlannerPath = path.join(distDir, 'index.html');
+const distAirportOnlyPath = path.join(distDir, 'airport-only.html');
+const distAirportExternalPath = path.join(distDir, 'airport-external.html');
 
 // 환경 변수에서 API 키 가져오기 (GitHub Actions용)
 let apiKey = process.env.GOOGLE_MAPS_API_KEY;
+let openaiKey = process.env.OPENAI_API_KEY;
 let resendKey = process.env.RESEND_API_KEY;
 let emailFrom = process.env.EMAIL_FROM;
 
 // .env 파일이 있으면 파일에서도 읽기 (로컬 개발용)
-if (!apiKey && fs.existsSync(envPath)) {
+if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf8');
   const envMap = Object.fromEntries(
     envContent
@@ -29,6 +34,7 @@ if (!apiKey && fs.existsSync(envPath)) {
       })
   );
   apiKey = envMap.GOOGLE_MAPS_API_KEY || apiKey;
+  openaiKey = envMap.OPENAI_API_KEY || openaiKey;
   resendKey = envMap.RESEND_API_KEY || resendKey;
   emailFrom = envMap.EMAIL_FROM || emailFrom;
 }
@@ -95,6 +101,38 @@ const injectedTripSummaryHtml = tripSummaryHtml.replace(
 
 const distTripSummaryPath = path.join(distDir, 'trip-summary.html');
 fs.writeFileSync(distTripSummaryPath, injectedTripSummaryHtml, 'utf8');
+
+// airport-only.html 처리
+if (fs.existsSync(airportOnlyPath)) {
+  let airportOnlyHtml = fs.readFileSync(airportOnlyPath, 'utf8');
+  // Google Maps API 키 주입
+  airportOnlyHtml = airportOnlyHtml.replace(
+    /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
+    `$1${apiKey}$3`
+  );
+  // OpenAI API 키 주입
+  airportOnlyHtml = airportOnlyHtml.replace(
+    /(<meta name="openai-api-key" content=")([^"]*)(" \/>)/,
+    openaiKey ? `$1${openaiKey}$3` : '$1YOUR_OPENAI_API_KEY$3'
+  );
+  fs.writeFileSync(distAirportOnlyPath, airportOnlyHtml, 'utf8');
+}
+
+// airport-external.html 처리
+if (fs.existsSync(airportExternalPath)) {
+  let airportExternalHtml = fs.readFileSync(airportExternalPath, 'utf8');
+  // Google Maps API 키 주입
+  airportExternalHtml = airportExternalHtml.replace(
+    /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
+    `$1${apiKey}$3`
+  );
+  // OpenAI API 키 주입
+  airportExternalHtml = airportExternalHtml.replace(
+    /(<meta name="openai-api-key" content=")([^"]*)(" \/>)/,
+    openaiKey ? `$1${openaiKey}$3` : '$1YOUR_OPENAI_API_KEY$3'
+  );
+  fs.writeFileSync(distAirportExternalPath, airportExternalHtml, 'utf8');
+}
 
 copyDir(path.join(projectRoot, 'styles'), path.join(distDir, 'styles'));
 copyDir(path.join(projectRoot, 'scripts'), path.join(distDir, 'scripts'));

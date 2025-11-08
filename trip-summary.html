@@ -98,6 +98,83 @@
         </div>
       </section>
 
+      <!-- Review Section -->
+      <section class="review-section">
+        <div class="review-container">
+          <h2 class="review-title">📝 여행 리뷰 작성</h2>
+          <p class="review-description">
+            소중한 환승 경험을 기록하고, 다른 여행자들에게 도움을 주세요.
+          </p>
+
+          <!-- 전체 여정 리뷰 (필수) -->
+          <div class="review-card review-card--main">
+            <div class="review-header">
+              <h3>✨ 전체 여정 리뷰</h3>
+              <span class="required-badge">필수</span>
+            </div>
+            
+            <div class="rating-input">
+              <label>전체 만족도</label>
+              <div class="star-rating" id="overall-rating" data-rating="0">
+                <span class="star" data-value="1">⭐</span>
+                <span class="star" data-value="2">⭐</span>
+                <span class="star" data-value="3">⭐</span>
+                <span class="star" data-value="4">⭐</span>
+                <span class="star" data-value="5">⭐</span>
+              </div>
+              <span class="rating-text" id="rating-text">평점을 선택해주세요</span>
+            </div>
+            
+            <div class="review-input">
+              <label for="trip-review-summary">한 줄 후기</label>
+              <input type="text" id="trip-review-summary" 
+                     placeholder="예: 환승 시간을 알차게 보낼 수 있었어요!" 
+                     maxlength="100">
+              <span class="char-count"><span id="summary-char-count">0</span>/100</span>
+            </div>
+            
+            <div class="review-input">
+              <label for="trip-review-detail">상세 후기 (선택)</label>
+              <textarea id="trip-review-detail" 
+                        placeholder="이번 환승 여행에 대한 느낀 점, 추천하고 싶은 점, 개선할 점 등을 자유롭게 작성해주세요."
+                        rows="4"
+                        maxlength="1000"></textarea>
+              <span class="char-count"><span id="detail-char-count">0</span>/1000</span>
+            </div>
+          </div>
+
+          <!-- 개별 장소 리뷰 (선택) -->
+          <div class="review-card review-card--optional">
+            <div class="review-header">
+              <h3>📍 방문한 장소 리뷰</h3>
+              <span class="optional-badge">선택</span>
+              <button class="btn btn--ghost btn--small" id="toggle-place-reviews-btn" onclick="togglePlaceReviews()">
+                <span id="toggle-text">펼치기</span>
+              </button>
+            </div>
+            
+            <div id="place-reviews-container" style="display: none;">
+              <p class="review-hint">
+                💡 특별히 좋았거나 아쉬웠던 장소만 선택해서 리뷰해주세요!
+              </p>
+              <div id="place-reviews-list">
+                <!-- 동적으로 생성: 각 POI마다 리뷰 카드 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 리뷰 제출 -->
+          <div class="review-actions">
+            <button class="btn btn--primary" id="submit-review-btn" onclick="submitReview()">
+              ✅ 리뷰 저장하기
+            </button>
+            <button class="btn btn--ghost" onclick="skipReview()">
+              나중에 작성하기
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Action Buttons -->
       <section class="action-section">
         <div class="action-container">
@@ -134,6 +211,7 @@
     <!-- PDF/Image export libs for 저장 기능 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="scripts/reviewDB.js"></script>
     <script type="module" src="scripts/router.js"></script>
     <script>
       // 전역 상태
@@ -175,6 +253,12 @@
           } catch (error) {
             console.error('generateTips 오류:', error);
           }
+          
+          // 리뷰 관련 초기화 (약간의 지연을 두어 DOM이 완전히 로드되도록)
+          setTimeout(() => {
+            initStarRatings();
+            initCharCounters();
+          }, 300);
           
           console.log('✅ trip-summary 초기화 완료');
         } catch (error) {
@@ -738,6 +822,356 @@
         }
 
         return baseTips;
+      }
+
+      // ===== 리뷰 관련 함수 =====
+      
+      // 별점 클릭 이벤트
+      function initStarRatings() {
+        // 전체 여정 리뷰 별점
+        const overallRating = document.getElementById('overall-rating');
+        if (overallRating) {
+          const stars = overallRating.querySelectorAll('.star');
+          const ratingText = document.getElementById('rating-text');
+          
+          stars.forEach(star => {
+            star.addEventListener('click', function() {
+              const value = parseInt(this.dataset.value);
+              overallRating.dataset.rating = value;
+              
+              // 별점 표시 업데이트
+              stars.forEach((s, index) => {
+                if (index < value) {
+                  s.classList.add('active');
+                } else {
+                  s.classList.remove('active');
+                }
+              });
+              
+              // 텍스트 업데이트
+              const texts = ['', '별로예요', '아쉬워요', '보통이에요', '좋아요', '완벽해요'];
+              if (ratingText) {
+                ratingText.textContent = texts[value] || '평점을 선택해주세요';
+              }
+            });
+            
+            // 호버 효과
+            star.addEventListener('mouseenter', function() {
+              const value = parseInt(this.dataset.value);
+              stars.forEach((s, index) => {
+                if (index < value) {
+                  s.classList.add('hover');
+                } else {
+                  s.classList.remove('hover');
+                }
+              });
+            });
+          });
+          
+          overallRating.addEventListener('mouseleave', function() {
+            const currentRating = parseInt(overallRating.dataset.rating || 0);
+            stars.forEach((s, index) => {
+              s.classList.remove('hover');
+              if (index < currentRating) {
+                s.classList.add('active');
+              } else {
+                s.classList.remove('active');
+              }
+            });
+          });
+        }
+      }
+
+      // 장소 리뷰 토글
+      function togglePlaceReviews() {
+        const container = document.getElementById('place-reviews-container');
+        const toggleText = document.getElementById('toggle-text');
+        
+        if (!container) return;
+        
+        if (container.style.display === 'none') {
+          container.style.display = 'block';
+          if (toggleText) toggleText.textContent = '접기';
+          loadPlaceReviewList();
+        } else {
+          container.style.display = 'none';
+          if (toggleText) toggleText.textContent = '펼치기';
+        }
+      }
+
+      // 장소 리뷰 리스트 로드
+      function loadPlaceReviewList() {
+        const container = document.getElementById('place-reviews-list');
+        if (!container || !scheduleData) return;
+        
+        const allPOIs = [
+          ...(scheduleData.airportPOIs || []),
+          ...(scheduleData.cityPOIs || [])
+        ];
+        
+        if (allPOIs.length === 0) {
+          container.innerHTML = '<p class="empty-place-reviews">방문한 장소가 없습니다.</p>';
+          return;
+        }
+        
+        container.innerHTML = allPOIs.map(poi => `
+          <div class="place-review-item" data-poi-id="${poi.id}">
+            <div class="place-review-header">
+              <div class="place-info">
+                <span class="place-icon">${poi.categoryIcon || '📍'}</span>
+                <div>
+                  <h4>${poi.name}</h4>
+                  <p class="place-category">${poi.category || '기타'}</p>
+                </div>
+              </div>
+              <label class="review-toggle">
+                <input type="checkbox" class="review-checkbox" data-poi-id="${poi.id}" />
+                <span>리뷰 작성하기</span>
+              </label>
+            </div>
+            
+            <div class="place-review-form" style="display: none;">
+              <div class="rating-input">
+                <label>평점</label>
+                <div class="star-rating place-rating" data-poi-id="${poi.id}" data-rating="0">
+                  <span class="star" data-value="1">⭐</span>
+                  <span class="star" data-value="2">⭐</span>
+                  <span class="star" data-value="3">⭐</span>
+                  <span class="star" data-value="4">⭐</span>
+                  <span class="star" data-value="5">⭐</span>
+                </div>
+              </div>
+              <textarea class="place-comment" 
+                        data-poi-id="${poi.id}"
+                        placeholder="이 장소에 대한 후기를 작성해주세요..."
+                        rows="2"
+                        maxlength="500"></textarea>
+              <span class="char-count place-char-count" data-poi-id="${poi.id}"><span class="place-char-num">0</span>/500</span>
+            </div>
+          </div>
+        `).join('');
+        
+        // 체크박스 이벤트 리스너 추가
+        container.querySelectorAll('.review-checkbox').forEach(checkbox => {
+          checkbox.addEventListener('change', function() {
+            const poiId = this.dataset.poiId;
+            const form = this.closest('.place-review-item').querySelector('.place-review-form');
+            if (form) {
+              form.style.display = this.checked ? 'block' : 'none';
+              if (this.checked) {
+                initPlaceStarRating(poiId);
+                initPlaceCommentCounter(poiId);
+              }
+            }
+          });
+        });
+      }
+
+      // 장소별 별점 초기화
+      function initPlaceStarRating(poiId) {
+        const ratingEl = document.querySelector(`.place-rating[data-poi-id="${poiId}"]`);
+        if (!ratingEl) return;
+        
+        const stars = ratingEl.querySelectorAll('.star');
+        
+        stars.forEach(star => {
+          star.addEventListener('click', function() {
+            const value = parseInt(this.dataset.value);
+            ratingEl.dataset.rating = value;
+            
+            stars.forEach((s, index) => {
+              if (index < value) {
+                s.classList.add('active');
+              } else {
+                s.classList.remove('active');
+              }
+            });
+          });
+        });
+      }
+
+      // 장소 코멘트 글자 수 카운터
+      function initPlaceCommentCounter(poiId) {
+        const textarea = document.querySelector(`.place-comment[data-poi-id="${poiId}"]`);
+        const counter = document.querySelector(`.place-char-count[data-poi-id="${poiId}"] .place-char-num`);
+        
+        if (textarea && counter) {
+          textarea.addEventListener('input', function() {
+            counter.textContent = this.value.length;
+          });
+        }
+      }
+
+      // POI 데이터 가져오기
+      function getPOIData(poiId) {
+        if (!scheduleData) return null;
+        
+        const allPOIs = [
+          ...(scheduleData.airportPOIs || []),
+          ...(scheduleData.cityPOIs || [])
+        ];
+        
+        return allPOIs.find(poi => poi.id === poiId);
+      }
+
+      // 선택된 장소 리뷰 수집
+      function getSelectedPlaceReviews() {
+        const placeReviews = [];
+        const checkboxes = document.querySelectorAll('.review-checkbox:checked');
+        
+        checkboxes.forEach(checkbox => {
+          const poiId = checkbox.dataset.poiId;
+          const ratingEl = document.querySelector(`.place-rating[data-poi-id="${poiId}"]`);
+          const commentEl = document.querySelector(`.place-comment[data-poi-id="${poiId}"]`);
+          const poiData = getPOIData(poiId);
+          
+          if (!poiData || !ratingEl) return;
+          
+          const rating = parseInt(ratingEl.dataset.rating || 0);
+          if (rating === 0) return; // 평점이 없으면 제외
+          
+          placeReviews.push({
+            poiId: poiId,
+            poiName: poiData.name,
+            poiCategory: poiData.category || '',
+            poiCategoryIcon: poiData.categoryIcon || '',
+            poiLocation: poiData.address || poiData.location || '',
+            rating: rating,
+            comment: commentEl ? commentEl.value.trim() : ''
+          });
+        });
+        
+        return placeReviews;
+      }
+
+      // 도시 이름 정규화 함수
+      function normalizeCityName(city) {
+        if (!city) return '';
+        
+        const cityNameMap = {
+          '싱가포르': 'Singapore',
+          'Singapore': 'Singapore',
+          '서울': 'Seoul',
+          'Seoul': 'Seoul',
+          '도쿄': 'Tokyo',
+          'Tokyo': 'Tokyo',
+          '방콕': 'Bangkok',
+          'Bangkok': 'Bangkok'
+        };
+        
+        // 정확한 매칭 시도
+        if (cityNameMap[city]) {
+          return cityNameMap[city];
+        }
+        
+        // 대소문자 무시 매칭
+        const cityLower = city.toLowerCase();
+        for (const [key, value] of Object.entries(cityNameMap)) {
+          if (key.toLowerCase() === cityLower) {
+            return value;
+          }
+        }
+        
+        // 매핑되지 않으면 원본 반환
+        return city;
+      }
+
+      // 리뷰 저장
+      async function submitReview() {
+        try {
+          // 전체 리뷰 검증
+          const overallRating = parseInt(document.getElementById('overall-rating').dataset.rating || 0);
+          if (overallRating === 0) {
+            alert('⭐ 전체 만족도를 선택해주세요.');
+            return;
+          }
+
+          const summary = document.getElementById('trip-review-summary').value.trim();
+          if (!summary) {
+            alert('📝 한 줄 후기를 작성해주세요.');
+            return;
+          }
+
+          // 리뷰 DB 초기화
+          await window.reviewDB.initialize();
+
+          // 도시 이름 정규화
+          const normalizedCity = normalizeCityName(transferInfo.city);
+          console.log('💾 리뷰 저장 - 도시 이름 정규화:', {
+            original: transferInfo.city,
+            normalized: normalizedCity
+          });
+
+          // 리뷰 데이터 구성
+          const reviewData = {
+            overallReview: {
+              rating: overallRating,
+              summary: summary,
+              detail: document.getElementById('trip-review-detail').value.trim()
+            },
+            tripInfo: {
+              city: normalizedCity, // 정규화된 도시 이름 사용
+              duration: transferInfo.duration,
+              visitCount: (scheduleData.airportPOIs?.length || 0) + (scheduleData.cityPOIs?.length || 0),
+              tripType: scheduleData.type,
+              arrival: transferInfo.arrival,
+              departure: transferInfo.departure
+            },
+            placeReviews: getSelectedPlaceReviews()
+          };
+
+          // 리뷰 저장
+          const reviewId = await window.reviewDB.saveTripReview(reviewData);
+          
+          // 성공 메시지
+          alert('✅ 리뷰가 저장되었습니다!\n\n다른 여행자들에게 도움이 될 거예요. 감사합니다!');
+          
+          // 리뷰 섹션 숨기기 또는 완료 상태 표시
+          const reviewSection = document.querySelector('.review-section');
+          if (reviewSection) {
+            reviewSection.innerHTML = `
+              <div class="review-completed">
+                <div class="review-completed-icon">✅</div>
+                <h3>리뷰가 저장되었습니다!</h3>
+                <p>소중한 후기를 남겨주셔서 감사합니다.</p>
+              </div>
+            `;
+          }
+
+        } catch (error) {
+          console.error('리뷰 저장 실패:', error);
+          alert('❌ 리뷰 저장에 실패했습니다. 다시 시도해주세요.');
+        }
+      }
+
+      // 리뷰 건너뛰기
+      function skipReview() {
+        if (confirm('리뷰 작성을 건너뛰시겠습니까?\n나중에 작성할 수 있습니다.')) {
+          const reviewSection = document.querySelector('.review-section');
+          if (reviewSection) {
+            reviewSection.style.display = 'none';
+          }
+        }
+      }
+
+      // 글자 수 카운터 초기화
+      function initCharCounters() {
+        const summaryInput = document.getElementById('trip-review-summary');
+        const summaryCounter = document.getElementById('summary-char-count');
+        const detailInput = document.getElementById('trip-review-detail');
+        const detailCounter = document.getElementById('detail-char-count');
+        
+        if (summaryInput && summaryCounter) {
+          summaryInput.addEventListener('input', function() {
+            summaryCounter.textContent = this.value.length;
+          });
+        }
+        
+        if (detailInput && detailCounter) {
+          detailInput.addEventListener('input', function() {
+            detailCounter.textContent = this.value.length;
+          });
+        }
       }
 
       // 일정 수정하기
