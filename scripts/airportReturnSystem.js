@@ -27,7 +27,7 @@ export async function calculateRealTimeReturnInfo(state, progress) {
   // 원본 출발 시간 우선 사용
   const departureTimeStr = tripMeta.originalDeparture || tripMeta.departure;
   if (!departureTimeStr) return null;
-  
+
   const departureTime = new Date(departureTimeStr);
   const currentTime = new Date();
   const remainingMinutes = (departureTime - currentTime) / (1000 * 60);

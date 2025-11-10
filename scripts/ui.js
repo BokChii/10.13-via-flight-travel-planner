@@ -128,7 +128,7 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
     name.className = "waypoint-item__label";
     name.textContent = waypoint.label ?? waypoint.address ?? `경유지 ${index + 1}`;
     rowTop.append(categoryIcon, name);
-
+    
     // 2) 중간: 체류시간 · 주소
     const rowMid = document.createElement("div");
     rowMid.className = "waypoint-item__row waypoint-item__row--middle";
@@ -173,7 +173,7 @@ export async function renderWaypoints(listElement, waypoints, { onRemove, onMove
           hasPlaceId: !!waypoint.placeId,
           hasLabel: !!waypoint.label
         });
-      }
+    }
       if (!travelTime) {
         console.warn('⚠️ 영업 상태 표시 실패: travelTime 없음', {
           waypoint: waypoint.label || waypoint.address,

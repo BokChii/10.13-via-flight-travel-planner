@@ -234,7 +234,7 @@ async function bootstrap() {
     const mapEl = document.getElementById("map");
     if (mapEl) {
       mapEl.textContent = "지도를 불러오지 못했습니다. API 키를 확인하세요.";
-    }
+  }
   }
   
   // 페이지 언로드 시 모든 타이머 정리

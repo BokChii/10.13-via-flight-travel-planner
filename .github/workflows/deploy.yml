@@ -34,7 +34,7 @@ jobs:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # inject-env.js 실행하여 API 키 주입 및 dist 폴더 생성
+          # inject-env.js 실행하여 API 키 주입된 HTML 파일 생성
           node tools/inject-env.js
           
           # inject-env.js가 복사하지 않는 추가 파일들 복사

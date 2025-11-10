@@ -182,12 +182,12 @@
             <h2>🎉 환승 여행을 완료하셨습니다!</h2>
             <p>소중한 여행의 기록을 공유하고 저장해보세요.</p>
           </div>
-
+          
           <!-- 나란히 두 버튼: 일정 저장 / 일정 공유 -->
           <div class="cta-row">
             <button class="btn btn--secondary" onclick="saveSummaryPDF()">💾 일정 저장</button>
             <button class="btn btn--primary" onclick="shareSummary()">📤 일정 공유</button>
-          </div>
+            </div>
 
           <!-- 이메일 전송: 최소 UI -->
           <div class="cta-gap"></div>
@@ -688,12 +688,12 @@
           console.warn('updateStats: scheduleData가 없습니다');
           return;
         }
-
+        
         // 방문 장소 수
         const airportCount = Array.isArray(scheduleData.airportPOIs) ? scheduleData.airportPOIs.length : 0;
         const cityCount = Array.isArray(scheduleData.cityPOIs) ? scheduleData.cityPOIs.length : 0;
         const totalLocations = airportCount + cityCount;
-
+        
         const totalLocationsEl = document.getElementById('total-locations');
         if (totalLocationsEl) totalLocationsEl.textContent = totalLocations;
 
