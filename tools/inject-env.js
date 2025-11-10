@@ -8,19 +8,11 @@ const plannerTemplatePath = path.join(projectRoot, 'index.html');
 const tripSummaryTemplatePath = path.join(projectRoot, 'trip-summary.html');
 const airportOnlyPath = path.join(projectRoot, 'airport-only.html');
 const airportExternalPath = path.join(projectRoot, 'airport-external.html');
-const transferInfoPath = path.join(projectRoot, 'transfer-info.html');
-const landingPath = path.join(projectRoot, 'landing.html');
-const airportMainPath = path.join(projectRoot, 'airport-main.html');
-const reviewDetailPath = path.join(projectRoot, 'review-detail.html');
 const distDir = path.join(projectRoot, 'dist');
 const distIndexPath = path.join(distDir, 'navigation.html');
 const distPlannerPath = path.join(distDir, 'index.html');
 const distAirportOnlyPath = path.join(distDir, 'airport-only.html');
 const distAirportExternalPath = path.join(distDir, 'airport-external.html');
-const distTransferInfoPath = path.join(distDir, 'transfer-info.html');
-const distLandingPath = path.join(distDir, 'landing.html');
-const distAirportMainPath = path.join(distDir, 'airport-main.html');
-const distReviewDetailPath = path.join(distDir, 'review-detail.html');
 
 // 환경 변수에서 API 키 가져오기 (GitHub Actions용)
 let apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -140,47 +132,6 @@ if (fs.existsSync(airportExternalPath)) {
     openaiKey ? `$1${openaiKey}$3` : '$1YOUR_OPENAI_API_KEY$3'
   );
   fs.writeFileSync(distAirportExternalPath, airportExternalHtml, 'utf8');
-}
-
-// transfer-info.html 처리
-if (fs.existsSync(transferInfoPath)) {
-  let transferInfoHtml = fs.readFileSync(transferInfoPath, 'utf8');
-  // Google Maps API 키 주입
-  transferInfoHtml = transferInfoHtml.replace(
-    /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
-    `$1${apiKey}$3`
-  );
-  // OpenAI API 키 주입
-  transferInfoHtml = transferInfoHtml.replace(
-    /(<meta name="openai-api-key" content=")([^"]*)(" \/>)/,
-    openaiKey ? `$1${openaiKey}$3` : '$1YOUR_OPENAI_API_KEY$3'
-  );
-  fs.writeFileSync(distTransferInfoPath, transferInfoHtml, 'utf8');
-}
-
-// landing.html 처리 (Google Maps API 키만)
-if (fs.existsSync(landingPath)) {
-  let landingHtml = fs.readFileSync(landingPath, 'utf8');
-  landingHtml = landingHtml.replace(
-    /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
-    `$1${apiKey}$3`
-  );
-  fs.writeFileSync(distLandingPath, landingHtml, 'utf8');
-}
-
-// airport-main.html 처리 (Google Maps API 키만)
-if (fs.existsSync(airportMainPath)) {
-  let airportMainHtml = fs.readFileSync(airportMainPath, 'utf8');
-  airportMainHtml = airportMainHtml.replace(
-    /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
-    `$1${apiKey}$3`
-  );
-  fs.writeFileSync(distAirportMainPath, airportMainHtml, 'utf8');
-}
-
-// review-detail.html 처리 (API 키 불필요, 그냥 복사)
-if (fs.existsSync(reviewDetailPath)) {
-  fs.copyFileSync(reviewDetailPath, distReviewDetailPath);
 }
 
 copyDir(path.join(projectRoot, 'styles'), path.join(distDir, 'styles'));
