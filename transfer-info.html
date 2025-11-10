@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="openai-api-key" content="YOUR_OPENAI_API_KEY" />
     <title>환승 정보 입력 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/transfer-info.css" />
@@ -62,6 +63,21 @@
               <div class="tip-icon">🎒</div>
               <h4>짐 보관</h4>
               <p>공항 짐 보관소를 이용하면 가벼운 도시 관광이 가능합니다</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI 맞춤 가이드 -->
+        <div class="ai-guide-section" id="ai-guide-section" style="display: none;">
+          <div class="ai-guide-card">
+            <div class="ai-guide-header">
+              <h3 class="ai-guide-title" id="ai-guide-title">🤖 AI 맞춤 가이드</h3>
+              <span class="ai-badge">AI 생성</span>
+            </div>
+            <div class="ai-guide-content" id="ai-guide-content">
+              <div class="ai-guide-loading">
+                <p>맞춤형 가이드를 생성하는 중...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -150,6 +166,18 @@
 
     <script type="module" src="scripts/router.js"></script>
     <script type="module" src="scripts/toast.js"></script>
+    <script src="scripts/aiTipsService.js"></script>
+    <script type="module">
+      import { getOpenAIApiKey } from './scripts/config.js';
+      
+      // OpenAI API 키 설정
+      const apiKey = getOpenAIApiKey();
+      if (apiKey && apiKey !== 'YOUR_OPENAI_API_KEY') {
+        if (window.aiTipsService) {
+          window.aiTipsService.setApiKey(apiKey);
+        }
+      }
+    </script>
     <script>
       // 전역 상태 관리
       const transferState = {
@@ -232,6 +260,11 @@
           `;
           
           validateForm();
+          
+          // AI 가이드 생성 (도시가 선택되어 있으면)
+          if (transferState.city) {
+            generateAIGuide();
+          }
         } else {
           durationDisplay.innerHTML = `
             <div class="duration-content">
@@ -258,6 +291,11 @@
         
         // 폼 유효성 검사
         validateForm();
+        
+        // AI 가이드 생성 (시간이 입력되어 있으면)
+        if (transferState.arrival && transferState.departure && transferState.duration > 0) {
+          generateAIGuide();
+        }
       }
 
       // 폼 유효성 검사
@@ -315,6 +353,92 @@
       // 입력 이벤트 리스너
       arrivalInput.addEventListener('change', updateDuration);
       departureInput.addEventListener('change', updateDuration);
+
+      // AI 가이드 생성
+      async function generateAIGuide() {
+        // 필수 정보 확인
+        if (!transferState.city || !transferState.arrival || !transferState.departure || transferState.duration <= 0) {
+          return;
+        }
+
+        const guideSection = document.getElementById('ai-guide-section');
+        const guideContent = document.getElementById('ai-guide-content');
+        const guideTitle = document.getElementById('ai-guide-title');
+
+        // 섹션 표시
+        guideSection.style.display = 'block';
+        guideContent.innerHTML = `
+          <div class="ai-guide-loading">
+            <p>🤖 맞춤형 가이드를 생성하는 중...</p>
+          </div>
+        `;
+
+        try {
+          const guide = await window.aiTipsService.generateTransferInfoTips(
+            transferState.city,
+            transferState.duration,
+            transferState.arrival,
+            transferState.departure
+          );
+
+          // 가이드 렌더링
+          let html = `
+            <div class="ai-guide-summary">
+              <p>${guide.summary}</p>
+            </div>
+          `;
+
+          if (guide.recommendations && guide.recommendations.length > 0) {
+            html += `
+              <div class="ai-guide-recommendations">
+                <h4>✨ 추천 활동</h4>
+                <ul>
+                  ${guide.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+
+          if (guide.tips && guide.tips.length > 0) {
+            html += `
+              <div class="ai-guide-tips">
+                <h4>💡 실용 팁</h4>
+                <ul>
+                  ${guide.tips.map(tip => `<li>${tip}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+
+          if (guide.warning) {
+            html += `
+              <div class="ai-guide-warning">
+                <h4>⚠️ 주의사항</h4>
+                <p>${guide.warning}</p>
+              </div>
+            `;
+          }
+
+          guideTitle.textContent = `🤖 ${guide.title}`;
+          guideContent.innerHTML = html;
+
+        } catch (error) {
+          console.error('AI 가이드 생성 실패:', error);
+          
+          let errorMessage = '맞춤형 가이드를 생성하는 중 오류가 발생했습니다.';
+          if (error.message.includes('401')) {
+            errorMessage = 'OpenAI API 키가 올바르지 않습니다. 설정을 확인해주세요.';
+          } else if (error.message.includes('429')) {
+            errorMessage = 'API 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+          }
+
+          guideContent.innerHTML = `
+            <div class="ai-guide-error">
+              <p>${errorMessage}</p>
+            </div>
+          `;
+        }
+      }
 
       // 뒤로가기 함수
       function goBack() {

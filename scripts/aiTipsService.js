@@ -508,6 +508,189 @@ ${poiList}
   }
 
   /**
+   * 환승 정보 기반 맞춤 가이드 생성
+   */
+  async generateTransferInfoTips(city, duration, arrival, departure) {
+    const cacheKey = this.getTransferInfoCacheKey(city, duration);
+    
+    // 캐시 확인
+    const cached = this.getCachedTip(cacheKey);
+    if (cached) {
+      console.log('✅ 환승 정보 가이드 캐시에서 반환');
+      return cached;
+    }
+
+    if (!this.apiKey) {
+      throw new Error('OpenAI API 키가 설정되지 않았습니다.');
+    }
+
+    // 프롬프트 생성
+    const prompt = this.buildTransferInfoPrompt(city, duration, arrival, departure);
+
+    try {
+      const response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: '당신은 전문 환승 여행 가이드입니다. 사용자의 환승 정보(도시, 시간)를 바탕으로 실용적이고 구체적인 맞춤형 가이드를 제공합니다. 한국어로 친절하고 명확하게 답변하세요.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`OpenAI API 오류: ${response.status} - ${errorData.error?.message || '알 수 없는 오류'}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // JSON 파싱
+      const guide = this.parseTransferInfoGuide(content);
+
+      // 캐시 저장
+      this.cacheTip(cacheKey, guide);
+
+      return guide;
+
+    } catch (error) {
+      console.error('환승 정보 가이드 생성 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 환승 정보 프롬프트 생성
+   */
+  buildTransferInfoPrompt(city, duration, arrival, departure) {
+    const durationHours = Math.floor(duration / (1000 * 60 * 60));
+    const durationMinutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+    const durationText = durationHours > 0 
+      ? `${durationHours}시간 ${durationMinutes > 0 ? durationMinutes + '분' : ''}`.trim()
+      : `${durationMinutes}분`;
+
+    const arrivalDate = new Date(arrival);
+    const departureDate = new Date(departure);
+    const arrivalTime = arrivalDate.toLocaleString('ko-KR', { 
+      month: 'long', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      weekday: 'short'
+    });
+    const departureTime = departureDate.toLocaleString('ko-KR', { 
+      month: 'long', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      weekday: 'short'
+    });
+
+    // 실제 관광 가능 시간 계산 (입국 심사 30분, 이동 시간 1시간 고려)
+    const actualTourTime = Math.max(0, durationHours - 1.5);
+    const canTourCity = actualTourTime >= 2;
+
+    return `당신은 환승 여행 전문 가이드입니다. 다음 정보를 바탕으로 맞춤형 가이드를 제공해주세요.
+
+**환승 정보:**
+- 경유 도시: ${city}
+- 환승 시간: ${durationText}
+- 도착 시간: ${arrivalTime}
+- 출발 시간: ${departureTime}
+- 실제 관광 가능 시간: ${actualTourTime >= 2 ? `약 ${Math.floor(actualTourTime)}시간 (입국 심사 및 이동 시간 고려)` : '부족 (공항 내부 활동 권장)'}
+
+**응답 형식:**
+반드시 다음 JSON 형식으로만 응답하세요. 다른 설명이나 텍스트는 포함하지 마세요.
+
+{
+  "title": "가이드 제목 (예: '싱가포르 4시간 환승 가이드')",
+  "summary": "한 줄 요약 (50자 이내)",
+  "recommendations": [
+    "추천 활동 1 (구체적이고 실용적)",
+    "추천 활동 2",
+    "추천 활동 3"
+  ],
+  "tips": [
+    "실용적인 팁 1",
+    "실용적인 팁 2"
+  ],
+  "warning": "주의사항 (있는 경우, 없으면 null)"
+}
+
+**작성 지침:**
+- 환승 시간에 맞는 실용적인 추천을 제공하세요
+- ${canTourCity ? '도시 관광이 가능한 시간이므로 공항 내부와 도시 관광을 모두 추천할 수 있습니다.' : '시간이 부족하므로 공항 내부 시설 활용을 중심으로 추천하세요.'}
+- 구체적인 장소명, 예상 소요 시간, 가격 정보 등을 포함하면 좋습니다
+- 한국어로 작성하세요
+- JSON 형식만 응답하세요`;
+  }
+
+  /**
+   * 환승 정보 가이드 파싱
+   */
+  parseTransferInfoGuide(text) {
+    try {
+      // JSON 추출 (코드 블록 제거)
+      let jsonText = text.trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const guide = JSON.parse(jsonText);
+      
+      // 필수 필드 검증
+      if (!guide.title || !guide.summary) {
+        throw new Error('필수 필드가 없습니다.');
+      }
+
+      return {
+        title: guide.title || '환승 가이드',
+        summary: guide.summary || '',
+        recommendations: Array.isArray(guide.recommendations) ? guide.recommendations : [],
+        tips: Array.isArray(guide.tips) ? guide.tips : [],
+        warning: guide.warning || null
+      };
+    } catch (error) {
+      console.error('환승 정보 가이드 파싱 실패:', error);
+      console.error('원본 텍스트:', text.substring(0, 200));
+      
+      // Fallback
+      return {
+        title: '환승 가이드',
+        summary: '맞춤형 가이드를 생성하는 중 문제가 발생했습니다.',
+        recommendations: ['잠시 후 다시 시도해주세요.'],
+        tips: [],
+        warning: null
+      };
+    }
+  }
+
+  /**
+   * 캐시 키 생성 (환승 정보)
+   */
+  getTransferInfoCacheKey(city, duration) {
+    const durationMinutes = Math.floor(duration / (1000 * 60));
+    // 30분 단위로 그룹화하여 캐싱 효율성 향상
+    const durationGroup = Math.floor(durationMinutes / 30) * 30;
+    return `transfer_info_${city}_${durationGroup}`;
+  }
+
+  /**
    * 캐시된 팁 가져오기
    */
   getCachedTip(key) {
