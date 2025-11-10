@@ -134,9 +134,29 @@ if (fs.existsSync(airportExternalPath)) {
   fs.writeFileSync(distAirportExternalPath, airportExternalHtml, 'utf8');
 }
 
+// 나머지 HTML 파일들 복사 (landing.html, airport-main.html, transfer-info.html, review-detail.html 등)
+const htmlFilesToCopy = [
+  'landing.html',
+  'airport-main.html',
+  'transfer-info.html',
+  'review-detail.html'
+];
+
+htmlFilesToCopy.forEach(htmlFile => {
+  const srcPath = path.join(projectRoot, htmlFile);
+  const destPath = path.join(distDir, htmlFile);
+  if (fs.existsSync(srcPath)) {
+    fs.copyFileSync(srcPath, destPath);
+    console.log(`[inject-env] ${htmlFile} 복사 완료`);
+  }
+});
+
+// 필요한 폴더들 복사
 copyDir(path.join(projectRoot, 'styles'), path.join(distDir, 'styles'));
 copyDir(path.join(projectRoot, 'scripts'), path.join(distDir, 'scripts'));
 copyDir(path.join(projectRoot, 'api'), path.join(distDir, 'api'));
+copyDir(path.join(projectRoot, 'data'), path.join(distDir, 'data')); // data 폴더 추가 (SQLite DB 등)
+copyDir(path.join(projectRoot, 'assets'), path.join(distDir, 'assets')); // assets 폴더 추가 (있을 경우)
 
 console.log('[inject-env] dist/ 폴더에 API 키가 주입된 정적 파일을 생성했습니다.');
 
