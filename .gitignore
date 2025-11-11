@@ -33,3 +33,6 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Past versions (backup)
+past/

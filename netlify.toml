@@ -1,0 +1,13 @@
+[build]
+  publish = "."
+  command = "npm run prepare"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# 모든 경로를 index.html로 리디렉트 (SPA 지원)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
