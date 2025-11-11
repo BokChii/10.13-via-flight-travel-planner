@@ -171,6 +171,14 @@
 
           <div class="recommendation-card">
             <h4>📝 다른 여행자들의 리뷰</h4>
+            <div class="reviews-sort-container">
+              <label for="review-sort-select">정렬:</label>
+              <select id="review-sort-select" class="review-sort-select" onchange="applySort()">
+                <option value="latest">최신순</option>
+                <option value="rating-desc">평점 높은순</option>
+                <option value="rating-asc">평점 낮은순</option>
+              </select>
+            </div>
             <div class="reviews-container" id="city-reviews-container">
               <div class="reviews-loading" style="display: none;">
                 <p>리뷰를 불러오는 중...</p>
@@ -194,6 +202,11 @@
       // 전역 상태
       let transferInfo = null;
       let selectedChoice = null;
+      
+      // 리뷰 관련 상태 (최소한의 전역 변수)
+      let allCityReviews = []; // 전체 리뷰 저장
+      let showingAllReviews = false; // 전체 보기 여부
+      let currentSortType = 'latest'; // 현재 정렬 타입
 
       // 활동 카테고리 매핑
       const ACTIVITY_CATEGORIES = {
@@ -671,18 +684,21 @@
             return;
           }
 
-          // 최신순 정렬 (이미 정렬되어 있을 수 있지만 확실히)
-          const sortedReviews = reviews.sort((a, b) => {
-            const dateA = new Date(a.submitted_at);
-            const dateB = new Date(b.submitted_at);
-            return dateB - dateA; // 최신순
-          });
+          // 정렬 적용
+          currentSortType = 'latest'; // 기본 정렬
+          const sortedReviews = sortReviews(reviews, currentSortType);
+          
+          // 전체 리뷰 저장 (정렬된 버전)
+          allCityReviews = sortedReviews;
+          showingAllReviews = false; // 초기화
 
-          // 최대 5개만 표시
-          const displayReviews = sortedReviews.slice(0, 5);
+          // 3개만 표시
+          const displayReviews = sortedReviews.slice(0, 3);
+          const hasMore = sortedReviews.length > 3;
           console.log('✅ [loadCityReviews] 표시할 리뷰:', displayReviews.length, '개');
+          console.log('📊 [loadCityReviews] 전체 리뷰:', sortedReviews.length, '개');
 
-          renderCityReviews(displayReviews);
+          renderCityReviews(displayReviews, hasMore);
 
         } catch (error) {
           console.error('❌ [loadCityReviews] 리뷰 로드 실패:', error);
@@ -698,11 +714,11 @@
       }
 
       // 도시 리뷰 렌더링
-      function renderCityReviews(reviews) {
+      function renderCityReviews(reviews, hasMore = false) {
         const container = document.getElementById('city-reviews-list');
         if (!container) return;
 
-        container.innerHTML = reviews.map(review => {
+        const reviewsHtml = reviews.map(review => {
           // 별점 생성
           const rating = review.overall_review_rating || 0;
           const stars = '⭐'.repeat(rating);
@@ -723,6 +739,10 @@
             ? formatDuration(review.trip_info_duration) 
             : '';
 
+          // 좋아요 상태 확인
+          const isLiked = checkIfLiked(review.id);
+          const likeCount = getLikeCount(review.id);
+
           return `
             <div class="review-card-item" onclick="viewReviewDetail('${review.id}')" style="cursor: pointer;">
               <div class="review-card-header">
@@ -739,9 +759,99 @@
                 ${durationText ? `<span class="review-duration">${durationText}</span>` : ''}
                 ${review.trip_info_visit_count ? `<span class="review-visit-count">${review.trip_info_visit_count}개 장소 방문</span>` : ''}
               </div>
+              <!-- 좋아요 버튼 -->
+              <div class="review-actions" onclick="event.stopPropagation(); toggleLike('${review.id}')">
+                <button class="btn-like ${isLiked ? 'liked' : ''}" id="like-btn-${review.id}">
+                  <span class="like-icon">${isLiked ? '❤️' : '🤍'}</span>
+                  <span class="like-count" id="like-count-${review.id}">${likeCount}</span>
+                </button>
+              </div>
             </div>
           `;
         }).join('');
+
+        // "더 보기" 버튼 추가
+        let moreButtonHtml = '';
+        if (hasMore) {
+          const remainingCount = allCityReviews.length - reviews.length;
+          moreButtonHtml = `
+            <div class="reviews-more-container">
+              <button class="btn btn--ghost btn--small" onclick="showAllReviews()">
+                더 보기 (${remainingCount}개 더)
+              </button>
+            </div>
+          `;
+        }
+
+        container.innerHTML = reviewsHtml + moreButtonHtml;
+      }
+
+      // 정렬 함수
+      function sortReviews(reviews, sortType) {
+        const sorted = [...reviews]; // 복사본 생성
+        
+        switch (sortType) {
+          case 'latest':
+            return sorted.sort((a, b) => {
+              const dateA = new Date(a.submitted_at);
+              const dateB = new Date(b.submitted_at);
+              return dateB - dateA; // 최신순
+            });
+          
+          case 'rating-desc':
+            return sorted.sort((a, b) => {
+              const ratingA = a.overall_review_rating || 0;
+              const ratingB = b.overall_review_rating || 0;
+              if (ratingB !== ratingA) {
+                return ratingB - ratingA; // 평점 높은순
+              }
+              // 평점이 같으면 최신순
+              return new Date(b.submitted_at) - new Date(a.submitted_at);
+            });
+          
+          case 'rating-asc':
+            return sorted.sort((a, b) => {
+              const ratingA = a.overall_review_rating || 0;
+              const ratingB = b.overall_review_rating || 0;
+              if (ratingA !== ratingB) {
+                return ratingA - ratingB; // 평점 낮은순
+              }
+              // 평점이 같으면 최신순
+              return new Date(b.submitted_at) - new Date(a.submitted_at);
+            });
+          
+          default:
+            return sorted;
+        }
+      }
+
+      // 정렬 적용 함수
+      function applySort() {
+        const sortSelect = document.getElementById('review-sort-select');
+        if (!sortSelect) return;
+        
+        currentSortType = sortSelect.value;
+        showingAllReviews = false; // 정렬 변경 시 초기화
+        
+        // 원본 리뷰 가져오기 (DB에서 다시 조회하여 원본 데이터 확보)
+        const normalizedCity = normalizeCityName(transferInfo.city);
+        const originalReviews = window.reviewDB.getCityReviews(normalizedCity);
+        
+        // 정렬 적용
+        const sortedReviews = sortReviews(originalReviews, currentSortType);
+        allCityReviews = sortedReviews;
+        
+        // 3개만 표시
+        const displayReviews = sortedReviews.slice(0, 3);
+        const hasMore = sortedReviews.length > 3;
+        
+        renderCityReviews(displayReviews, hasMore);
+      }
+
+      // 전체 리뷰 표시
+      function showAllReviews() {
+        showingAllReviews = true;
+        renderCityReviews(allCityReviews, false);
       }
 
       // 날짜 포맷팅 (리뷰용)
@@ -784,6 +894,74 @@
         sessionStorage.setItem('selectedReviewId', reviewId);
         // 리뷰 상세 페이지로 이동
         window.location.href = `review-detail.html?id=${reviewId}`;
+      }
+
+      // 좋아요 관련 함수들 (localStorage 기반 - 로그인 전 대비)
+      function getLikeCount(reviewId) {
+        try {
+          const likes = JSON.parse(localStorage.getItem('review_likes') || '{}');
+          return likes[reviewId]?.count || 0;
+        } catch (e) {
+          return 0;
+        }
+      }
+
+      function checkIfLiked(reviewId) {
+        try {
+          const userLikes = JSON.parse(localStorage.getItem('user_liked_reviews') || '[]');
+          return userLikes.includes(reviewId);
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function toggleLike(reviewId) {
+        try {
+          // 사용자가 좋아요한 리뷰 목록
+          let userLikes = JSON.parse(localStorage.getItem('user_liked_reviews') || '[]');
+          const isLiked = userLikes.includes(reviewId);
+          
+          // 좋아요 개수
+          let likes = JSON.parse(localStorage.getItem('review_likes') || '{}');
+          if (!likes[reviewId]) {
+            likes[reviewId] = { count: 0 };
+          }
+          
+          if (isLiked) {
+            // 좋아요 취소
+            userLikes = userLikes.filter(id => id !== reviewId);
+            likes[reviewId].count = Math.max(0, likes[reviewId].count - 1);
+          } else {
+            // 좋아요 추가
+            userLikes.push(reviewId);
+            likes[reviewId].count = (likes[reviewId].count || 0) + 1;
+          }
+          
+          localStorage.setItem('user_liked_reviews', JSON.stringify(userLikes));
+          localStorage.setItem('review_likes', JSON.stringify(likes));
+          
+          // UI 업데이트
+          const likeBtn = document.getElementById(`like-btn-${reviewId}`);
+          const likeCount = document.getElementById(`like-count-${reviewId}`);
+          const likeIcon = likeBtn?.querySelector('.like-icon');
+          
+          if (likeBtn && likeCount && likeIcon) {
+            if (isLiked) {
+              likeBtn.classList.remove('liked');
+              likeIcon.textContent = '🤍';
+            } else {
+              likeBtn.classList.add('liked');
+              likeIcon.textContent = '❤️';
+            }
+            likeCount.textContent = likes[reviewId].count;
+          }
+          
+          // TODO: 로그인 기능 추가 후 DB에 동기화
+          console.log('좋아요 상태 변경:', { reviewId, isLiked: !isLiked, count: likes[reviewId].count });
+          
+        } catch (e) {
+          console.error('좋아요 토글 실패:', e);
+        }
       }
     </script>
   </body>

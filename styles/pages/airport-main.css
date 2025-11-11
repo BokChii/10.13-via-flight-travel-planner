@@ -353,6 +353,115 @@
   border-left-color: var(--color-accent);
 }
 
+/* 정렬 UI */
+.reviews-sort-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.reviews-sort-container label {
+  font-size: 0.9rem;
+  color: #495057;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.review-sort-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 0.5rem;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+  color: #212529;
+}
+
+.review-sort-select:hover {
+  border-color: var(--color-primary);
+  background: #fff;
+}
+
+.review-sort-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* 더 보기 버튼 */
+.reviews-more-container {
+  text-align: center;
+  padding: 1.5rem 0;
+  margin-top: 1rem;
+}
+
+.reviews-more-container .btn {
+  width: 100%;
+  max-width: 300px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* 좋아요 버튼 */
+.review-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.btn-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.btn-like:hover {
+  background: var(--bg-hover, #f8f9fa);
+  border-color: var(--color-primary);
+}
+
+.btn-like.liked {
+  border-color: var(--color-primary);
+  background: rgba(0, 123, 255, 0.1);
+}
+
+.btn-like.liked .like-icon {
+  animation: likePulse 0.3s ease;
+}
+
+@keyframes likePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.like-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.like-count {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.btn-like.liked .like-count {
+  color: var(--color-primary);
+}
+
 .review-card-header {
   display: flex;
   justify-content: space-between;

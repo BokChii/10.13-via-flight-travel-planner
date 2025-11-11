@@ -328,7 +328,17 @@
                   city: plannerResult.meta?.cityText || '싱가포르',
                   arrival: plannerResult.meta?.originalArrival || plannerResult.meta?.arrival,
                   departure: plannerResult.meta?.originalDeparture || plannerResult.meta?.departure,
-                  duration: plannerResult.meta?.exploreWindow?.availableMinutes * 60000
+                  duration: (() => {
+                    const arrival = plannerResult.meta?.originalArrival || plannerResult.meta?.arrival;
+                    const departure = plannerResult.meta?.originalDeparture || plannerResult.meta?.departure;
+                    if (arrival && departure) {
+                      const arrivalTime = new Date(arrival).getTime();
+                      const departureTime = new Date(departure).getTime();
+                      return departureTime - arrivalTime;
+                    }
+                    // 폴백: availableMinutes 사용 (버퍼 포함 추정)
+                    return (plannerResult.meta?.exploreWindow?.availableMinutes || 0) * 60000;
+                  })()
                 },
                 type: 'airport-external',
                 waypoints: allWaypoints,

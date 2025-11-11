@@ -147,6 +147,27 @@ class ReviewDB {
       ON trip_reviews(submitted_at)
     `);
 
+    // 좋아요 테이블 (로그인 기능 추가 전 대비)
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS review_likes (
+        id TEXT PRIMARY KEY,
+        review_id TEXT NOT NULL,
+        user_id TEXT, -- 로그인 기능 추가 전에는 NULL 가능
+        liked_at TEXT NOT NULL,
+        FOREIGN KEY (review_id) REFERENCES trip_reviews(id) ON DELETE CASCADE
+      )
+    `);
+
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_review_likes_review_id 
+      ON review_likes(review_id)
+    `);
+
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_review_likes_user_id 
+      ON review_likes(user_id)
+    `);
+
     // 변경사항 저장
     await this.saveToIndexedDB();
   }
@@ -517,6 +538,66 @@ class ReviewDB {
       totalPlaceReviews: placeCount,
       averageRating: avgRating ? parseFloat(avgRating.toFixed(1)) : 0
     };
+  }
+
+  /**
+   * 좋아요 개수 조회 (DB에서)
+   * 로그인 기능 추가 후 사용
+   */
+  getLikeCount(reviewId) {
+    if (!this.isInitialized || !this.db) {
+      return 0;
+    }
+    
+    try {
+      const stmt = this.db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM review_likes 
+        WHERE review_id = ?
+      `);
+      stmt.bind([reviewId]);
+      stmt.step();
+      const result = stmt.getAsObject();
+      stmt.free();
+      return result.count || 0;
+    } catch (e) {
+      console.error('좋아요 개수 조회 실패:', e);
+      return 0;
+    }
+  }
+
+  /**
+   * 좋아요 추가 (로그인 기능 추가 후 사용)
+   */
+  async addLike(reviewId, userId = null) {
+    await this.initialize();
+    
+    const likeId = `like_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
+    
+    this.db.run(`
+      INSERT INTO review_likes (id, review_id, user_id, liked_at)
+      VALUES (?, ?, ?, ?)
+    `, [likeId, reviewId, userId, now]);
+    
+    await this.saveToIndexedDB();
+    return likeId;
+  }
+
+  /**
+   * 좋아요 삭제 (로그인 기능 추가 후 사용)
+   */
+  async removeLike(reviewId, userId = null) {
+    await this.initialize();
+    
+    if (userId) {
+      this.db.run(`
+        DELETE FROM review_likes 
+        WHERE review_id = ? AND user_id = ?
+      `, [reviewId, userId]);
+    }
+    
+    await this.saveToIndexedDB();
   }
 
   /**
