@@ -96,6 +96,15 @@
       </section>
     </main>
 
+    <!-- initProfilePage를 먼저 정의 (비모듈 스크립트로 즉시 실행) -->
+    <script>
+      // 프로필 페이지 초기화 함수를 먼저 정의 (빈 함수로 시작, 나중에 실제 구현으로 교체)
+      window.initProfilePage = async function() {
+        // 실제 구현은 아래 모듈 스크립트에서 교체됨
+        console.log('initProfilePage: 기본 함수 호출됨 (아직 구현되지 않음)');
+      };
+    </script>
+
     <script type="module" src="scripts/userProfile.js"></script>
     <script type="module" src="scripts/scheduleDB.js"></script>
     <script type="module" src="scripts/auth.js"></script>
@@ -113,7 +122,7 @@
         authInitPromise = initAuth();
       }
       
-      // 프로필 페이지 초기화 (router.js보다 먼저 정의)
+      // 프로필 페이지 초기화 (router.js보다 먼저 정의, 실제 구현으로 교체)
       window.initProfilePage = async function() {
         // Auth0 초기화가 완료될 때까지 대기
         if (authInitPromise) {

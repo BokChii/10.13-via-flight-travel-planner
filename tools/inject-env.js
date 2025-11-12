@@ -139,7 +139,8 @@ const htmlFilesToCopy = [
   'index.html',
   'airport-main.html',
   'transfer-info.html',
-  'review-detail.html'
+  'review-detail.html',
+  'profile.html'
 ];
 
 htmlFilesToCopy.forEach(htmlFile => {
