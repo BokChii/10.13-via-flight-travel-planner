@@ -98,6 +98,19 @@
         </div>
       </section>
 
+      <!-- Save Schedule Section -->
+      <section class="save-schedule-section">
+        <div class="save-schedule-container">
+          <h2 class="save-schedule-title">💾 일정 저장</h2>
+          <p class="save-schedule-description">
+            이 일정을 저장하면 나중에 다시 불러올 수 있습니다.
+          </p>
+          <button class="btn btn--primary" id="save-schedule-btn" onclick="openSaveScheduleModal()">
+            마이 페이지에 일정 저장
+          </button>
+        </div>
+      </section>
+
       <!-- Review Section -->
       <section class="review-section">
         <div class="review-container">
@@ -208,11 +221,47 @@
       </section>
     </main>
 
+    <!-- 일정 저장 모달 -->
+    <div id="save-schedule-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>일정 저장</h3>
+          <button class="modal-close" onclick="closeSaveScheduleModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>이 일정에 이름을 붙여주세요.</p>
+          <input 
+            type="text" 
+            id="schedule-name-input" 
+            class="form-input" 
+            placeholder="예: 싱가포르 3시간 여행"
+            maxlength="50"
+            autofocus
+          />
+          <div class="modal-actions">
+            <button class="btn btn--ghost" onclick="closeSaveScheduleModal()">취소</button>
+            <button class="btn btn--primary" onclick="saveScheduleToDB()">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PDF/Image export libs for 저장 기능 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="scripts/reviewDB.js"></script>
+    <script type="module" src="scripts/scheduleDB.js"></script>
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
+    <script type="module" src="scripts/auth.js"></script>
+    <script type="module">
+      import { initAuth } from './scripts/auth.js';
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAuth);
+      } else {
+        initAuth();
+      }
+    </script>
     <script>
       // 전역 상태
       let scheduleData = null;
@@ -1089,6 +1138,14 @@
       // 리뷰 저장
       async function submitReview() {
         try {
+          // 로그인 확인
+          if (window.requireAuth) {
+            const authenticated = await window.requireAuth('리뷰를 작성하려면 로그인이 필요합니다.');
+            if (!authenticated) {
+              return; // 로그인하지 않으면 진행하지 않음
+            }
+          }
+          
           // 전체 리뷰 검증
           const overallRating = parseInt(document.getElementById('overall-rating').dataset.rating || 0);
           if (overallRating === 0) {
@@ -1099,6 +1156,13 @@
           const summary = document.getElementById('trip-review-summary').value.trim();
           if (!summary) {
             alert('📝 한 줄 후기를 작성해주세요.');
+            return;
+          }
+
+          // 사용자 ID 가져오기
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
             return;
           }
 
@@ -1114,6 +1178,7 @@
 
           // 리뷰 데이터 구성
           const reviewData = {
+            userId: userId, // 사용자 ID 추가
             overallReview: {
               rating: overallRating,
               summary: summary,
@@ -1373,6 +1438,127 @@
           alert('❌ 이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
       }
+
+      // 일정 저장 모달 열기
+      window.openSaveScheduleModal = function() {
+        // 로그인 확인
+        if (window.requireAuth) {
+          window.requireAuth('일정을 저장하려면 로그인이 필요합니다.').then(authenticated => {
+            if (authenticated) {
+              const modal = document.getElementById('save-schedule-modal');
+              if (modal) {
+                modal.style.display = 'flex';
+                const input = document.getElementById('schedule-name-input');
+                if (input) {
+                  input.value = '';
+                  input.focus();
+                }
+              }
+            }
+          });
+        } else {
+          const modal = document.getElementById('save-schedule-modal');
+          if (modal) {
+            modal.style.display = 'flex';
+            const input = document.getElementById('schedule-name-input');
+            if (input) {
+              input.value = '';
+              input.focus();
+            }
+          }
+        }
+      };
+
+      // 일정 저장 모달 닫기
+      window.closeSaveScheduleModal = function() {
+        const modal = document.getElementById('save-schedule-modal');
+        if (modal) {
+          modal.style.display = 'none';
+        }
+      };
+
+      // 일정 저장
+      window.saveScheduleToDB = async function() {
+        try {
+          const scheduleName = document.getElementById('schedule-name-input')?.value?.trim();
+          if (!scheduleName) {
+            alert('일정 이름을 입력해주세요.');
+            return;
+          }
+
+          if (scheduleName.length > 50) {
+            alert('일정 이름은 50자 이하여야 합니다.');
+            return;
+          }
+
+          // 사용자 ID 확인
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('로그인이 필요합니다.');
+            return;
+          }
+
+          // finalTripPlan과 scheduleData 가져오기
+          const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
+          if (!finalTripPlanStr) {
+            alert('일정 데이터를 찾을 수 없습니다.');
+            return;
+          }
+
+          const finalTripPlan = JSON.parse(finalTripPlanStr);
+          
+          // scheduleData는 전역 변수에서 가져오기
+          if (!scheduleData) {
+            alert('일정 데이터를 찾을 수 없습니다.');
+            return;
+          }
+
+          // 일정 저장
+          await window.saveSchedule(userId, scheduleName, finalTripPlan, scheduleData);
+          
+          // 저장 완료 메시지로 섹션 변경
+          const saveSection = document.querySelector('.save-schedule-section');
+          if (saveSection) {
+            saveSection.innerHTML = `
+              <div class="save-schedule-container">
+                <div class="save-schedule-completed">
+                  <div class="save-schedule-completed-icon">✅</div>
+                  <h2 class="save-schedule-title">일정이 저장되었습니다!</h2>
+                  <p class="save-schedule-description">
+                    마이 페이지에서 저장된 일정을 확인할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            `;
+          }
+          
+          closeSaveScheduleModal();
+          
+        } catch (error) {
+          console.error('일정 저장 실패:', error);
+          alert('❌ 일정 저장에 실패했습니다. 다시 시도해주세요.');
+        }
+      };
+
+      // 모달 외부 클릭 시 닫기
+      document.addEventListener('click', (e) => {
+        const modal = document.getElementById('save-schedule-modal');
+        if (modal && e.target === modal) {
+          closeSaveScheduleModal();
+        }
+      });
+
+      // Enter 키로 저장
+      document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('save-schedule-modal');
+        if (modal && modal.style.display !== 'none') {
+          if (e.key === 'Enter') {
+            saveScheduleToDB();
+          } else if (e.key === 'Escape') {
+            closeSaveScheduleModal();
+          }
+        }
+      });
     </script>
   </body>
 </html>

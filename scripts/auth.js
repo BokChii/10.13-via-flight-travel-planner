@@ -102,8 +102,14 @@ export async function initAuth() {
  */
 export async function loginWithGoogle() {
   try {
+    // auth0Client가 없거나 초기화 중이면 초기화 대기
     if (!auth0Client) {
       await initAuth();
+    }
+    
+    // 초기화 후에도 null이면 에러
+    if (!auth0Client) {
+      throw new Error('Auth0 클라이언트를 초기화할 수 없습니다.');
     }
 
     // Google 연결을 사용하여 로그인
@@ -153,6 +159,11 @@ export async function getCurrentUser() {
       await initAuth();
     }
     
+    // 초기화 후에도 null이면 null 반환
+    if (!auth0Client) {
+      return null;
+    }
+    
     if (!user) {
       user = await auth0Client.getUser();
     }
@@ -172,8 +183,15 @@ export async function isAuthenticated() {
     if (!auth0Client) {
       await initAuth();
     }
+    
+    // 초기화 후에도 null이면 false 반환
+    if (!auth0Client) {
+      return false;
+    }
+    
     return await auth0Client.isAuthenticated();
   } catch (error) {
+    console.warn('인증 상태 확인 실패:', error);
     return false;
   }
 }
@@ -194,6 +212,9 @@ export async function getUserEmail() {
   return currentUser?.email || null;
 }
 
+// 전역 함수로 노출
+window.getUserEmail = getUserEmail;
+
 /**
  * 사용자 이름 가져오기
  */
@@ -210,6 +231,7 @@ export async function getUserName() {
  */
 async function updateAuthUI(user) {
   const authButtons = document.querySelectorAll('.auth-button');
+  const userInfoContainers = document.querySelectorAll('.user-info-container');
   const userInfo = document.querySelectorAll('.user-info');
   const userEmail = document.querySelectorAll('.user-email');
   
@@ -224,9 +246,19 @@ async function updateAuthUI(user) {
       }
     });
     
-    const name = await getUserName();
+    // 사용자 닉네임 가져오기 (userProfile.js 사용)
+    let nickname = null;
+    try {
+      if (window.getCurrentUserNickname) {
+        nickname = await window.getCurrentUserNickname();
+      }
+    } catch (error) {
+      console.warn('닉네임 가져오기 실패, 기본 이름 사용:', error);
+    }
+    
+    const displayName = nickname || await getUserName();
     userInfo.forEach(info => {
-      info.textContent = name;
+      info.textContent = displayName;
       info.style.display = 'block';
     });
     
@@ -234,6 +266,20 @@ async function updateAuthUI(user) {
     userEmail.forEach(em => {
       em.textContent = email;
       em.style.display = 'block';
+    });
+    
+    // 사용자 정보 컨테이너 표시 및 프로필 이동 이벤트
+    userInfoContainers.forEach(container => {
+      container.style.display = 'flex';
+      // 기존 클릭 이벤트 제거 후 새로 추가
+      container.onclick = (e) => {
+        e.stopPropagation();
+        if (window.navigateTo) {
+          window.navigateTo('/profile');
+        } else {
+          window.location.href = 'profile.html';
+        }
+      };
     });
   } else {
     // 로그아웃 상태
@@ -244,6 +290,10 @@ async function updateAuthUI(user) {
       if (btn.dataset.action === 'logout') {
         btn.style.display = 'none';
       }
+    });
+    
+    userInfoContainers.forEach(container => {
+      container.style.display = 'none';
     });
     
     userInfo.forEach(info => {
@@ -279,18 +329,39 @@ async function handleAuthStateChange(user) {
 
 /**
  * 보호된 기능 접근 확인
+ * @param {string} message - 로그인 필요 시 표시할 메시지
+ * @returns {Promise<boolean>} - 인증 여부
  */
-export async function requireAuth() {
+export async function requireAuth(message = '이 기능을 사용하려면 로그인이 필요합니다.') {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    await loginWithGoogle();
+    // 사용자에게 로그인 안내
+    const shouldLogin = confirm(`${message}\n\nGoogle 계정으로 로그인하시겠습니까?`);
+    if (shouldLogin) {
+      await loginWithGoogle();
+    }
     return false;
   }
   return true;
+}
+
+/**
+ * 로그인 필요 기능 실행 (간단한 헬퍼)
+ * @param {Function} callback - 로그인 후 실행할 함수
+ * @param {string} message - 로그인 필요 메시지
+ */
+export async function withAuth(callback, message = '이 기능을 사용하려면 로그인이 필요합니다.') {
+  const authenticated = await requireAuth(message);
+  if (authenticated && callback) {
+    return await callback();
+  }
+  return null;
 }
 
 // 전역 함수로 노출
 window.loginWithGoogle = loginWithGoogle;
 window.logout = logout;
 window.getUserId = getUserId;
+window.requireAuth = requireAuth;
+window.withAuth = withAuth;
 

@@ -1,0 +1,219 @@
+/* Profile Page Styles */
+/* ========================================== */
+
+.profile-page {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+.profile-page .app-header {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+}
+
+.profile-main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.profile-section {
+  margin-bottom: 2rem;
+}
+
+.profile-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary, #1a73e8);
+  margin: 0 0 1.5rem 0;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-field label {
+  font-weight: 600;
+  color: var(--color-text, #333);
+  font-size: 0.9rem;
+}
+
+.profile-value {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1rem;
+  color: var(--color-text, #333);
+}
+
+.profile-value input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.schedules-list,
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+  font-size: 0.9rem;
+}
+
+.review-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+}
+
+.review-item:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.review-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.review-rating {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary, #1a73e8);
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.review-item-summary {
+  font-size: 0.95rem;
+  color: var(--color-text, #333);
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.review-item-city {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .profile-main {
+    padding: 20px 15px;
+  }
+  
+  .profile-card {
+    padding: 1.5rem;
+  }
+  
+  .section-title {
+    font-size: 1.25rem;
+  }
+  
+  .profile-value {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* 일정 아이템 스타일 */
+.schedule-item {
+  margin-bottom: 1rem;
+}
+
+.schedule-item-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.schedule-item-content:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: var(--color-primary, #1a73e8);
+}
+
+.schedule-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.schedule-item-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text, #333);
+  margin: 0;
+  flex: 1;
+}
+
+.btn-delete-schedule {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.btn-delete-schedule:hover {
+  opacity: 1;
+}
+
+.schedule-item-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.schedule-item-city,
+.schedule-item-date {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+

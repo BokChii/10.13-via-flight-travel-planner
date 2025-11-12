@@ -13,7 +13,8 @@ class ViaFlightRouter {
       '/airport-external': 'airport-external.html',
       '/trip-summary': 'trip-summary.html',
       '/navigation': 'navigation.html',
-      '/review-detail': 'review-detail.html'
+      '/review-detail': 'review-detail.html',
+      '/profile': 'profile.html'
     };
     
     this.currentPage = null;
@@ -371,6 +372,9 @@ document.addEventListener('DOMContentLoaded', function() {
     case 'index.html':
     case 'landing.html': // 호환성을 위해 유지
       window.initLandingPage();
+      break;
+    case 'profile.html':
+      window.initProfilePage();
       break;
     case 'transfer-info.html':
       window.initTransferInfoPage();

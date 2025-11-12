@@ -20,14 +20,14 @@
       
       <!-- 인증 UI -->
       <div class="auth-container">
-        <div class="user-info-container" style="display: none;">
+        <div class="user-info-container" style="display: none;" title="프로필 보기">
           <span class="user-info"></span>
-          <span class="user-email" style="font-size: 0.8rem; color: #666;"></span>
+          <span class="user-email"></span>
         </div>
-        <button class="auth-button btn btn--secondary" data-action="login" onclick="window.loginWithGoogle()">
+        <button class="auth-button" data-action="login" onclick="window.loginWithGoogle()">
           Google로 로그인
         </button>
-        <button class="auth-button btn btn--secondary" data-action="logout" style="display: none;" onclick="window.logout()">
+        <button class="auth-button" data-action="logout" style="display: none;" onclick="window.logout()">
           로그아웃
         </button>
       </div>
@@ -120,6 +120,7 @@
     </footer>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
     <script type="module" src="scripts/auth.js"></script>
     <script type="module">
       import { initAuth, isAuthenticated } from './scripts/auth.js';

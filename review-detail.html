@@ -90,6 +90,7 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
     <script src="scripts/reviewDB.js"></script>
     <script>
       // 전역 변수
@@ -147,7 +148,7 @@
           const placeReviews = window.reviewDB.getPlaceReviewsByTripId(reviewId);
 
           // 리뷰 렌더링
-          renderReview(review, placeReviews);
+          await renderReview(review, placeReviews);
 
           loadingEl.style.display = 'none';
           contentEl.style.display = 'block';
@@ -160,18 +161,34 @@
       }
 
       // 리뷰 렌더링
-      function renderReview(review, placeReviews) {
+      async function renderReview(review, placeReviews) {
         // 평점 표시
         const rating = review.overall_review_rating || 0;
         document.getElementById('rating-stars').textContent = '⭐'.repeat(rating);
         document.getElementById('rating-number').textContent = `${rating}.0`;
 
+        // 작성자 이름 가져오기
+        let authorName = '익명 사용자';
+        if (review.user_id && window.getUserNickname) {
+          try {
+            authorName = await window.getUserNickname(review.user_id) || '익명 사용자';
+          } catch (e) {
+            console.warn('작성자 이름 가져오기 실패:', e);
+          }
+        }
+
         // 날짜 표시
         const reviewDate = new Date(review.submitted_at);
         document.getElementById('review-date').textContent = formatReviewDate(reviewDate);
 
-        // 도시 표시
-        document.getElementById('review-city').textContent = review.trip_info_city || '';
+        // 도시 표시 (작성자 정보 포함)
+        const cityEl = document.getElementById('review-city');
+        cityEl.innerHTML = `
+          <span>${review.trip_info_city || ''}</span>
+          <span class="review-author" style="margin-left: 0.5rem; color: var(--color-text-secondary); font-size: 0.9rem;">
+            ✍️ ${escapeHtml(authorName)}
+          </span>
+        `;
 
         // 여행 타입 정보
         const tripTypeText = review.trip_info_trip_type === 'airport-only' 

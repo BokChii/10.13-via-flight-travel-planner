@@ -34,6 +34,9 @@ class ReviewDB {
         // 기존 데이터가 있으면 복원
         this.db = new SQL.Database(new Uint8Array(savedData));
         console.log('✅ 기존 리뷰 DB 복원 완료');
+        
+        // 기존 DB에도 마이그레이션 실행
+        await this.migrateTables();
       } else {
         // 새 데이터베이스 생성
         this.db = new SQL.Database();
@@ -88,6 +91,47 @@ class ReviewDB {
   }
 
   /**
+   * 기존 테이블 마이그레이션 (컬럼 추가 등)
+   */
+  async migrateTables() {
+    if (!this.db) return;
+    
+    try {
+      // user_id 컬럼이 있는지 확인 (prepare 방식 사용)
+      const stmt = this.db.prepare(`
+        SELECT sql FROM sqlite_master 
+        WHERE type='table' AND name='trip_reviews'
+      `);
+      
+      let tableSql = '';
+      if (stmt.step()) {
+        const result = stmt.getAsObject();
+        tableSql = result.sql || '';
+      }
+      stmt.free();
+      
+      // user_id 컬럼이 없으면 추가
+      if (tableSql && !tableSql.includes('user_id')) {
+        console.log('🔄 user_id 컬럼 추가 중...');
+        this.db.run(`ALTER TABLE trip_reviews ADD COLUMN user_id TEXT`);
+        await this.saveToIndexedDB();
+        console.log('✅ user_id 컬럼 추가 완료');
+      } else {
+        console.log('ℹ️ user_id 컬럼이 이미 존재합니다.');
+      }
+    } catch (e) {
+      // 컬럼이 이미 존재하거나 다른 오류
+      if (e.message && (e.message.includes('duplicate column') || e.message.includes('no such column'))) {
+        // duplicate column: 이미 존재함
+        // no such column: 테이블이 없거나 다른 문제 (무시)
+        console.log('ℹ️ user_id 컬럼 마이그레이션 확인 완료');
+      } else {
+        console.warn('마이그레이션 중 오류 (무시 가능):', e.message);
+      }
+    }
+  }
+
+  /**
    * 테이블 생성
    */
   async createTables() {
@@ -95,6 +139,7 @@ class ReviewDB {
     this.db.run(`
       CREATE TABLE IF NOT EXISTS trip_reviews (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         overall_review_rating INTEGER NOT NULL,
         overall_review_summary TEXT,
         overall_review_detail TEXT,
@@ -181,16 +226,20 @@ class ReviewDB {
     const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
 
+    // 사용자 ID 가져오기
+    const userId = reviewData.userId || (window.getUserId ? await window.getUserId() : null);
+    
     // 전체 리뷰 저장
     this.db.run(`
       INSERT INTO trip_reviews (
-        id, overall_review_rating, overall_review_summary, overall_review_detail,
+        id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
         trip_info_city, trip_info_duration, trip_info_visit_count,
         trip_info_trip_type, trip_info_arrival, trip_info_departure,
         submitted_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       reviewId,
+      userId,
       reviewData.overallReview.rating,
       reviewData.overallReview.summary || '',
       reviewData.overallReview.detail || '',
@@ -283,6 +332,7 @@ class ReviewDB {
     const stmt = this.db.prepare(`
       SELECT 
         id,
+        user_id,
         overall_review_rating,
         overall_review_summary,
         overall_review_detail,
@@ -355,6 +405,7 @@ class ReviewDB {
     const stmt = this.db.prepare(`
       SELECT 
         id,
+        user_id,
         overall_review_rating,
         overall_review_summary,
         overall_review_detail,
@@ -429,7 +480,7 @@ class ReviewDB {
     const buffer = new Uint8Array(data);
 
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('ViaFlightStorage', 1);
+      const request = indexedDB.open('ViaFlightStorage', 3);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
@@ -450,6 +501,16 @@ class ReviewDB {
         if (!db.objectStoreNames.contains('databases')) {
           db.createObjectStore('databases');
         }
+        // user_profiles store도 확인
+        if (!db.objectStoreNames.contains('user_profiles')) {
+          db.createObjectStore('user_profiles', { keyPath: 'userId' });
+        }
+        // user_schedules store도 확인
+        if (!db.objectStoreNames.contains('user_schedules')) {
+          const store = db.createObjectStore('user_schedules', { keyPath: 'scheduleId' });
+          store.createIndex('userId', 'userId', { unique: false });
+          store.createIndex('createdAt', 'createdAt', { unique: false });
+        }
       };
     });
   }
@@ -459,7 +520,7 @@ class ReviewDB {
    */
   async loadFromIndexedDB() {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('ViaFlightStorage', 1);
+      const request = indexedDB.open('ViaFlightStorage', 3);
 
       request.onerror = () => resolve(null); // 오류 시 null 반환 (새 DB 생성)
       request.onsuccess = () => {
@@ -478,6 +539,16 @@ class ReviewDB {
         const db = event.target.result;
         if (!db.objectStoreNames.contains('databases')) {
           db.createObjectStore('databases');
+        }
+        // user_profiles store도 확인
+        if (!db.objectStoreNames.contains('user_profiles')) {
+          db.createObjectStore('user_profiles', { keyPath: 'userId' });
+        }
+        // user_schedules store도 확인
+        if (!db.objectStoreNames.contains('user_schedules')) {
+          const store = db.createObjectStore('user_schedules', { keyPath: 'scheduleId' });
+          store.createIndex('userId', 'userId', { unique: false });
+          store.createIndex('createdAt', 'createdAt', { unique: false });
         }
       };
     });
@@ -502,6 +573,52 @@ class ReviewDB {
     
     URL.revokeObjectURL(url);
     console.log('✅ 리뷰 DB 다운로드 완료');
+  }
+
+  /**
+   * 리뷰 데이터베이스 초기화 (모든 데이터 삭제)
+   * @returns {Promise<void>}
+   */
+  async clearDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('ViaFlightStorage', 3);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(['databases'], 'readwrite');
+        const store = transaction.objectStore('databases');
+        
+        // 리뷰 DB 삭제
+        const deleteRequest = store.delete(this.storageKey);
+        
+        deleteRequest.onsuccess = () => {
+          console.log('✅ 리뷰 DB IndexedDB에서 삭제 완료');
+          
+          // 메모리의 DB도 초기화
+          if (this.db) {
+            this.db.close();
+            this.db = null;
+          }
+          this.isInitialized = false;
+          
+          // 새 DB 생성
+          this.initialize().then(() => {
+            console.log('✅ 리뷰 DB 초기화 완료 (새 DB 생성됨)');
+            resolve();
+          }).catch(reject);
+        };
+        
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('databases')) {
+          db.createObjectStore('databases');
+        }
+      };
+    });
   }
 
   /**
@@ -544,8 +661,10 @@ class ReviewDB {
    * 좋아요 개수 조회 (DB에서)
    * 로그인 기능 추가 후 사용
    */
-  getLikeCount(reviewId) {
-    if (!this.isInitialized || !this.db) {
+  async getLikeCount(reviewId) {
+    await this.initialize();
+    
+    if (!this.db) {
       return 0;
     }
     
@@ -563,6 +682,36 @@ class ReviewDB {
     } catch (e) {
       console.error('좋아요 개수 조회 실패:', e);
       return 0;
+    }
+  }
+
+  /**
+   * 리뷰의 좋아요 목록 가져오기
+   */
+  async getLikesByReviewId(reviewId) {
+    await this.initialize();
+    
+    if (!this.db) {
+      return [];
+    }
+    
+    try {
+      const stmt = this.db.prepare(`
+        SELECT * FROM review_likes 
+        WHERE review_id = ?
+      `);
+      stmt.bind([reviewId]);
+      
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      
+      return results;
+    } catch (e) {
+      console.error('좋아요 목록 조회 실패:', e);
+      return [];
     }
   }
 
@@ -607,6 +756,91 @@ class ReviewDB {
   }
 
   /**
+   * 사용자 ID로 작성한 리뷰 조회
+   */
+  async getReviewsByUserId(userId) {
+    await this.initialize();
+    
+    if (!this.db || !userId) {
+      return [];
+    }
+    
+    try {
+      const stmt = this.db.prepare(`
+        SELECT 
+          id,
+          overall_review_rating,
+          overall_review_summary,
+          overall_review_detail,
+          trip_info_city,
+          trip_info_duration,
+          trip_info_visit_count,
+          trip_info_trip_type,
+          submitted_at
+        FROM trip_reviews
+        WHERE user_id = ?
+        ORDER BY submitted_at DESC
+      `);
+      
+      stmt.bind([userId]);
+      
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      
+      return results;
+    } catch (e) {
+      console.error('사용자 리뷰 조회 실패:', e);
+      return [];
+    }
+  }
+
+  /**
+   * 사용자 ID로 좋아요한 리뷰 조회
+   */
+  async getLikedReviewsByUserId(userId) {
+    await this.initialize();
+    
+    if (!this.db || !userId) {
+      return [];
+    }
+    
+    try {
+      const stmt = this.db.prepare(`
+        SELECT DISTINCT
+          tr.id,
+          tr.overall_review_rating,
+          tr.overall_review_summary,
+          tr.overall_review_detail,
+          tr.trip_info_city,
+          tr.trip_info_duration,
+          tr.trip_info_visit_count,
+          tr.trip_info_trip_type,
+          tr.submitted_at
+        FROM trip_reviews tr
+        INNER JOIN review_likes rl ON tr.id = rl.review_id
+        WHERE rl.user_id = ?
+        ORDER BY rl.liked_at DESC
+      `);
+      
+      stmt.bind([userId]);
+      
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      
+      return results;
+    } catch (e) {
+      console.error('좋아요한 리뷰 조회 실패:', e);
+      return [];
+    }
+  }
+
+  /**
    * 데이터베이스 연결 해제
    */
   close() {
@@ -620,5 +854,20 @@ class ReviewDB {
 
 // 전역 인스턴스 생성
 window.reviewDB = new ReviewDB();
+
+// 전역 함수로 초기화 함수 노출
+window.clearReviewDB = async function() {
+  if (confirm('리뷰 데이터베이스를 초기화하시겠습니까?\n\n모든 리뷰 데이터가 삭제되며 되돌릴 수 없습니다.')) {
+    try {
+      await window.reviewDB.clearDatabase();
+      alert('✅ 리뷰 데이터베이스가 초기화되었습니다.');
+      // 페이지 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error('리뷰 DB 초기화 실패:', error);
+      alert('❌ 리뷰 데이터베이스 초기화에 실패했습니다.');
+    }
+  }
+};
 
 

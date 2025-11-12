@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>프로필 - Via Flight</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/components/buttons.css" />
+    <link rel="stylesheet" href="styles/components/cards.css" />
+    <link rel="stylesheet" href="styles/pages/profile.css" />
+  </head>
+  <body class="app profile-page">
+    <header class="app-header">
+      <div>
+        <h1>Via Flight</h1>
+        <p class="tagline">내 프로필</p>
+        <nav class="breadcrumb">
+          <a href="index.html" class="breadcrumb__link">← 홈으로</a>
+        </nav>
+      </div>
+      
+      <!-- 인증 UI -->
+      <div class="auth-container">
+        <div class="user-info-container" style="display: none;" title="프로필 보기">
+          <span class="user-info"></span>
+          <span class="user-email"></span>
+        </div>
+        <button class="auth-button" data-action="login" onclick="window.loginWithGoogle()">
+          Google로 로그인
+        </button>
+        <button class="auth-button" data-action="logout" style="display: none;" onclick="window.logout()">
+          로그아웃
+        </button>
+      </div>
+    </header>
+
+    <main class="profile-main">
+      <!-- 프로필 정보 섹션 -->
+      <section class="profile-section">
+        <div class="profile-card">
+          <h2 class="section-title">👤 프로필 정보</h2>
+          <div class="profile-info">
+            <div class="profile-field">
+              <label>닉네임</label>
+              <div class="profile-value">
+                <span id="profile-nickname">-</span>
+                <button class="btn btn--small btn--ghost" id="edit-nickname-btn" onclick="editNickname()">
+                  수정
+                </button>
+              </div>
+            </div>
+            <div class="profile-field">
+              <label>이메일</label>
+              <div class="profile-value" id="profile-email">-</div>
+            </div>
+            <div class="profile-field" id="nickname-edit-form" style="display: none;">
+              <label>새 닉네임</label>
+              <div class="profile-value">
+                <input type="text" id="nickname-input" maxlength="20" placeholder="닉네임을 입력하세요">
+                <button class="btn btn--small btn--primary" onclick="saveNickname()">저장</button>
+                <button class="btn btn--small btn--ghost" onclick="cancelEditNickname()">취소</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 내 일정 섹션 -->
+      <section class="profile-section">
+        <div class="profile-card">
+          <h2 class="section-title">📅 내 일정</h2>
+          <div id="schedules-list" class="schedules-list">
+            <p class="empty-message">저장된 일정이 없습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 작성한 리뷰 섹션 -->
+      <section class="profile-section">
+        <div class="profile-card">
+          <h2 class="section-title">✍️ 작성한 리뷰</h2>
+          <div id="my-reviews-list" class="reviews-list">
+            <p class="empty-message">작성한 리뷰가 없습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 좋아요한 리뷰 섹션 -->
+      <section class="profile-section">
+        <div class="profile-card">
+          <h2 class="section-title">❤️ 좋아요한 리뷰</h2>
+          <div id="liked-reviews-list" class="reviews-list">
+            <p class="empty-message">좋아요한 리뷰가 없습니다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
+    <script type="module" src="scripts/scheduleDB.js"></script>
+    <script type="module" src="scripts/auth.js"></script>
+    <script src="scripts/reviewDB.js"></script>
+    <script type="module">
+      import { initAuth } from './scripts/auth.js';
+      
+      // Auth0 초기화 (비동기로 완료 대기)
+      let authInitPromise = null;
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          authInitPromise = initAuth();
+        });
+      } else {
+        authInitPromise = initAuth();
+      }
+      
+      // 프로필 페이지 초기화
+      window.initProfilePage = async function() {
+        // Auth0 초기화가 완료될 때까지 대기
+        if (authInitPromise) {
+          await authInitPromise;
+        } else {
+          // 이미 초기화되었는지 확인하고 필요시 재초기화
+          if (window.initAuth) {
+            await window.initAuth();
+          }
+        }
+        
+        // 로그인 확인
+        if (window.requireAuth) {
+          const authenticated = await window.requireAuth('프로필을 보려면 로그인이 필요합니다.');
+          if (!authenticated) {
+            return;
+          }
+        }
+        
+        await loadProfileData();
+      };
+      
+      // 프로필 데이터 로드
+      async function loadProfileData() {
+        try {
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('사용자 정보를 가져올 수 없습니다.');
+            return;
+          }
+          
+          // 프로필 정보 로드
+          const nickname = await window.getCurrentUserNickname();
+          const email = await window.getUserEmail();
+          
+          document.getElementById('profile-nickname').textContent = nickname || '-';
+          document.getElementById('profile-email').textContent = email || '-';
+          
+          // 내 일정 로드
+          await loadMySchedules(userId);
+          
+          // 작성한 리뷰 로드
+          await loadMyReviews(userId);
+          
+          // 좋아요한 리뷰 로드
+          await loadLikedReviews(userId);
+          
+        } catch (error) {
+          console.error('프로필 데이터 로드 실패:', error);
+        }
+      }
+      
+      // 닉네임 수정
+      function editNickname() {
+        document.getElementById('nickname-edit-form').style.display = 'block';
+        const currentNickname = document.getElementById('profile-nickname').textContent;
+        document.getElementById('nickname-input').value = currentNickname;
+      }
+      
+      // 닉네임 수정 취소
+      function cancelEditNickname() {
+        document.getElementById('nickname-edit-form').style.display = 'none';
+        document.getElementById('nickname-input').value = '';
+      }
+      
+      // 닉네임 저장
+      async function saveNickname() {
+        const newNickname = document.getElementById('nickname-input').value.trim();
+        if (!newNickname) {
+          alert('닉네임을 입력해주세요.');
+          return;
+        }
+        
+        if (newNickname.length > 20) {
+          alert('닉네임은 20자 이하여야 합니다.');
+          return;
+        }
+        
+        try {
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('사용자 정보를 가져올 수 없습니다.');
+            return;
+          }
+          
+          await window.updateUserNickname(userId, newNickname);
+          document.getElementById('profile-nickname').textContent = newNickname;
+          cancelEditNickname();
+          
+          // 헤더의 사용자 정보도 업데이트
+          if (window.initAuth) {
+            const { getCurrentUser } = await import('./scripts/auth.js');
+            const user = await getCurrentUser();
+            if (user) {
+              const { updateAuthUI } = await import('./scripts/auth.js');
+              // updateAuthUI는 내부 함수이므로 직접 호출 불가
+              // 대신 페이지 새로고침 또는 이벤트 발생
+              window.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user } }));
+            }
+          }
+          
+          alert('✅ 닉네임이 변경되었습니다.');
+        } catch (error) {
+          console.error('닉네임 저장 실패:', error);
+          alert('닉네임 저장에 실패했습니다.');
+        }
+      }
+      
+      // 내 일정 로드
+      async function loadMySchedules(userId) {
+        try {
+          if (!window.getSchedulesByUserId) {
+            const container = document.getElementById('schedules-list');
+            container.innerHTML = '<p class="empty-message">일정 저장 기능을 사용할 수 없습니다.</p>';
+            return;
+          }
+
+          console.log('📋 일정 목록 로드 시작, userId:', userId);
+          const schedules = await window.getSchedulesByUserId(userId);
+          console.log('📋 일정 목록 로드 완료, 일정 개수:', schedules.length, schedules);
+          
+          const container = document.getElementById('schedules-list');
+          
+          if (schedules.length === 0) {
+            container.innerHTML = '<p class="empty-message">저장된 일정이 없습니다.</p>';
+            return;
+          }
+
+          container.innerHTML = schedules.map(schedule => {
+            const scheduleDate = new Date(schedule.createdAt);
+            const formattedDate = formatScheduleDate(scheduleDate);
+            const city = schedule.scheduleData?.transferInfo?.city || '알 수 없음';
+            
+            return `
+              <div class="schedule-item" data-schedule-id="${escapeHtml(schedule.scheduleId)}">
+                <div class="schedule-item-content" onclick="loadSchedule('${schedule.scheduleId}')">
+                  <div class="schedule-item-header">
+                    <h3 class="schedule-item-name">${escapeHtml(schedule.scheduleName)}</h3>
+                    <button class="btn-delete-schedule" onclick="event.stopPropagation(); deleteScheduleConfirm('${schedule.scheduleId}', '${escapeHtml(schedule.scheduleName)}')" title="일정 삭제">
+                      🗑️
+                    </button>
+                  </div>
+                  <div class="schedule-item-meta">
+                    <span class="schedule-item-city">📍 ${escapeHtml(city)}</span>
+                    <span class="schedule-item-date">📅 ${formattedDate}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+        } catch (error) {
+          console.error('일정 로드 실패:', error);
+          const container = document.getElementById('schedules-list');
+          container.innerHTML = '<p class="empty-message">일정을 불러오는 중 오류가 발생했습니다.</p>';
+        }
+      }
+
+      // 일정 날짜 포맷팅
+      function formatScheduleDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}.${month}.${day}`;
+      }
+
+      // 일정 불러오기
+      window.loadSchedule = async function(scheduleId) {
+        try {
+          console.log('일정 불러오기 시작:', scheduleId);
+          
+          // 먼저 getScheduleById 시도
+          let schedule = null;
+          if (window.getScheduleById) {
+            try {
+              schedule = await window.getScheduleById(scheduleId);
+            } catch (e) {
+              console.warn('getScheduleById 실패, 대체 방법 시도:', e);
+            }
+          }
+          
+          // getScheduleById로 찾지 못한 경우, getSchedulesByUserId로 전체 목록에서 찾기
+          if (!schedule) {
+            console.log('getScheduleById로 찾지 못함, 전체 목록에서 검색...');
+            const userId = window.getUserId ? await window.getUserId() : null;
+            if (userId && window.getSchedulesByUserId) {
+              const schedules = await window.getSchedulesByUserId(userId);
+              schedule = schedules.find(s => s.scheduleId === scheduleId);
+              console.log('전체 목록에서 검색 결과:', schedule ? '찾음' : '없음');
+            }
+          }
+          
+          if (!schedule) {
+            console.error('일정을 찾을 수 없습니다. scheduleId:', scheduleId);
+            alert('일정을 찾을 수 없습니다.');
+            return;
+          }
+
+          // sessionStorage에 데이터 복원
+          sessionStorage.setItem('finalTripPlan', JSON.stringify(schedule.finalTripPlan));
+          
+          // navigation.html이 plannerResult를 찾으므로 별도로 저장
+          if (schedule.finalTripPlan && schedule.finalTripPlan.plannerResult) {
+            sessionStorage.setItem('plannerResult', JSON.stringify(schedule.finalTripPlan.plannerResult));
+            console.log('✅ plannerResult 저장 완료');
+          }
+          
+          // cityPlan도 확인 (airport-external 타입인 경우)
+          if (schedule.finalTripPlan && schedule.finalTripPlan.plannerResult) {
+            // plannerResult가 cityPlan 형식인 경우 cityPlan으로도 저장
+            sessionStorage.setItem('cityPlan', JSON.stringify(schedule.finalTripPlan.plannerResult));
+            console.log('✅ cityPlan 저장 완료');
+          }
+          
+          // scheduleData도 복원 (navigation.html에서 사용)
+          if (schedule.scheduleData) {
+            // airport-external 타입인 경우 airportPOIData도 복원 필요
+            if (schedule.scheduleData.type === 'airport-external' && schedule.scheduleData.airportPOIs) {
+              const airportPOIData = {
+                selectedPOIs: schedule.scheduleData.airportPOIs.map(poi => poi.id),
+                allPOIs: schedule.scheduleData.airportPOIs
+              };
+              sessionStorage.setItem('airportPOIData', JSON.stringify(airportPOIData));
+              console.log('✅ airportPOIData 저장 완료');
+            }
+          }
+
+          console.log('✅ 일정 데이터 복원 완료, navigation.html로 이동');
+          // navigation.html로 이동
+          window.location.href = 'navigation.html';
+          
+        } catch (error) {
+          console.error('일정 불러오기 실패:', error);
+          alert('일정을 불러오는 중 오류가 발생했습니다.');
+        }
+      };
+
+      // 일정 삭제 확인
+      window.deleteScheduleConfirm = function(scheduleId, scheduleName) {
+        if (confirm(`"${scheduleName}" 일정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+          deleteSchedule(scheduleId);
+        }
+      };
+
+      // 일정 삭제
+      async function deleteSchedule(scheduleId) {
+        try {
+          // scheduleDB.js의 deleteSchedule 함수 사용 (이름 충돌 방지)
+          const scheduleDBDelete = window.deleteSchedule;
+          if (!scheduleDBDelete) {
+            alert('일정 삭제 기능을 사용할 수 없습니다.');
+            return;
+          }
+
+          console.log('🗑️ 일정 삭제 시작, scheduleId:', scheduleId);
+          
+          // 삭제 실행
+          await scheduleDBDelete(scheduleId);
+          console.log('✅ 일정 삭제 완료 (트랜잭션 커밋됨):', scheduleId);
+          
+          // 일정 목록 새로고침 (삭제 완료 후 즉시)
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (userId) {
+            console.log('🔄 일정 목록 새로고침 시작...');
+            // 약간의 지연을 추가하여 IndexedDB가 완전히 업데이트되도록 함
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 목록 새로고침
+            await loadMySchedules(userId);
+            
+            // 삭제된 일정이 여전히 목록에 있는지 확인하고 필터링
+            const container = document.getElementById('schedules-list');
+            if (container) {
+              // data-schedule-id 속성을 사용하여 삭제된 일정을 찾아서 제거
+              const deletedItem = container.querySelector(`[data-schedule-id="${scheduleId}"]`);
+              if (deletedItem) {
+                console.log('🗑️ 삭제된 일정을 목록에서 제거:', scheduleId);
+                deletedItem.remove();
+              }
+              
+              // 모든 일정이 삭제된 경우 빈 메시지 표시
+              const remainingItems = container.querySelectorAll('.schedule-item');
+              if (remainingItems.length === 0) {
+                container.innerHTML = '<p class="empty-message">저장된 일정이 없습니다.</p>';
+              }
+            }
+            
+            console.log('🔄 일정 목록 새로고침 완료');
+          } else {
+            // userId가 없어도 목록 새로고침 시도
+            const container = document.getElementById('schedules-list');
+            if (container) {
+              container.innerHTML = '<p class="empty-message">저장된 일정이 없습니다.</p>';
+            }
+          }
+          
+          alert('✅ 일정이 삭제되었습니다.');
+          
+        } catch (error) {
+          console.error('일정 삭제 실패:', error);
+          alert('일정 삭제에 실패했습니다.');
+        }
+      }
+      
+      // 작성한 리뷰 로드
+      async function loadMyReviews(userId) {
+        try {
+          if (!window.reviewDB) {
+            return;
+          }
+          
+          await window.reviewDB.initialize();
+          
+          // 사용자 ID로 리뷰 조회
+          const reviews = window.reviewDB.getReviewsByUserId
+            ? await window.reviewDB.getReviewsByUserId(userId)
+            : [];
+          
+          const container = document.getElementById('my-reviews-list');
+          if (reviews.length === 0) {
+            container.innerHTML = '<p class="empty-message">작성한 리뷰가 없습니다.</p>';
+            return;
+          }
+          
+          container.innerHTML = reviews.map(review => {
+            const stars = '⭐'.repeat(review.overall_review_rating || 0);
+            const date = new Date(review.submitted_at);
+            const formattedDate = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+            
+            return `
+              <div class="review-item" onclick="viewReviewDetail('${review.id}')">
+                <div class="review-item-header">
+                  <span class="review-rating">${stars} ${review.overall_review_rating || 0}.0</span>
+                  <span class="review-date">${formattedDate}</span>
+                </div>
+                <div class="review-item-summary">${escapeHtml(review.overall_review_summary || '')}</div>
+                <div class="review-item-city">${review.trip_info_city || ''}</div>
+              </div>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('작성한 리뷰 로드 실패:', error);
+        }
+      }
+      
+      // 좋아요한 리뷰 로드
+      async function loadLikedReviews(userId) {
+        try {
+          if (!window.reviewDB) {
+            return;
+          }
+          
+          await window.reviewDB.initialize();
+          
+          // 사용자 ID로 좋아요한 리뷰 조회
+          const likedReviews = window.reviewDB.getLikedReviewsByUserId
+            ? await window.reviewDB.getLikedReviewsByUserId(userId)
+            : [];
+          
+          const container = document.getElementById('liked-reviews-list');
+          if (likedReviews.length === 0) {
+            container.innerHTML = '<p class="empty-message">좋아요한 리뷰가 없습니다.</p>';
+            return;
+          }
+          
+          container.innerHTML = likedReviews.map(review => {
+            const stars = '⭐'.repeat(review.overall_review_rating || 0);
+            const date = new Date(review.submitted_at);
+            const formattedDate = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+            
+            return `
+              <div class="review-item" onclick="viewReviewDetail('${review.id}')">
+                <div class="review-item-header">
+                  <span class="review-rating">${stars} ${review.overall_review_rating || 0}.0</span>
+                  <span class="review-date">${formattedDate}</span>
+                </div>
+                <div class="review-item-summary">${escapeHtml(review.overall_review_summary || '')}</div>
+                <div class="review-item-city">${review.trip_info_city || ''}</div>
+              </div>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('좋아요한 리뷰 로드 실패:', error);
+        }
+      }
+      
+      // HTML 이스케이프
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+      
+      // 리뷰 상세 보기
+      function viewReviewDetail(reviewId) {
+        sessionStorage.setItem('selectedReviewId', reviewId);
+        window.location.href = `review-detail.html?id=${reviewId}`;
+      }
+      
+      // 전역 함수로 노출
+      window.editNickname = editNickname;
+      window.cancelEditNickname = cancelEditNickname;
+      window.saveNickname = saveNickname;
+      window.viewReviewDetail = viewReviewDetail;
+      
+      // 페이지 로드 시 초기화
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          if (window.initProfilePage) {
+            window.initProfilePage();
+          }
+        });
+      } else {
+        if (window.initProfilePage) {
+          window.initProfilePage();
+        }
+      }
+    </script>
+  </body>
+</html>
+

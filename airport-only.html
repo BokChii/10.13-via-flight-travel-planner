@@ -15,11 +15,27 @@
   </head>
   <body class="app airport-only-page">
     <header class="app-header">
-      <h1>Via Flight</h1>
-      <p class="tagline">공항 내부 일정 만들기</p>
-      <nav class="breadcrumb">
-        <a href="airport-main.html" class="breadcrumb__link">← 여행 스타일 다시 선택</a>
-      </nav>
+      <div>
+        <h1>Via Flight</h1>
+        <p class="tagline">공항 내부 일정 만들기</p>
+        <nav class="breadcrumb">
+          <a href="airport-main.html" class="breadcrumb__link">← 여행 스타일 다시 선택</a>
+        </nav>
+      </div>
+      
+      <!-- 인증 UI -->
+      <div class="auth-container">
+        <div class="user-info-container" style="display: none;" title="프로필 보기">
+          <span class="user-info"></span>
+          <span class="user-email"></span>
+        </div>
+        <button class="auth-button" data-action="login" onclick="window.loginWithGoogle()">
+          Google로 로그인
+        </button>
+        <button class="auth-button" data-action="logout" style="display: none;" onclick="window.logout()">
+          로그아웃
+        </button>
+      </div>
     </header>
 
     <main class="airport-only-main">
@@ -227,9 +243,19 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
+    <script type="module" src="scripts/auth.js"></script>
     <script type="module" src="scripts/airportPOIService.js"></script>
     <script type="module" src="scripts/cityPOIService.js"></script>
     <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script type="module">
+      import { initAuth } from './scripts/auth.js';
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAuth);
+      } else {
+        initAuth();
+      }
+    </script>
     <script type="module" src="scripts/toast.js"></script>
     <script src="scripts/sqliteClient.js"></script>
     <script src="scripts/aiTipsService.js"></script>

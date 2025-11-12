@@ -13,11 +13,27 @@
   </head>
   <body class="app airport-main-page">
     <header class="app-header">
-      <h1>Via Flight</h1>
-      <p class="tagline">어떤 여행을 원하시나요?</p>
-      <nav class="breadcrumb">
-        <a href="transfer-info.html" class="breadcrumb__link">← 환승 정보 수정</a>
-      </nav>
+      <div>
+        <h1>Via Flight</h1>
+        <p class="tagline">어떤 여행을 원하시나요?</p>
+        <nav class="breadcrumb">
+          <a href="transfer-info.html" class="breadcrumb__link">← 환승 정보 수정</a>
+        </nav>
+      </div>
+      
+      <!-- 인증 UI -->
+      <div class="auth-container">
+        <div class="user-info-container" style="display: none;" title="프로필 보기">
+          <span class="user-info"></span>
+          <span class="user-email"></span>
+        </div>
+        <button class="auth-button" data-action="login" onclick="window.loginWithGoogle()">
+          Google로 로그인
+        </button>
+        <button class="auth-button" data-action="logout" style="display: none;" onclick="window.logout()">
+          로그아웃
+        </button>
+      </div>
     </header>
 
     <main class="airport-main-content">
@@ -196,6 +212,8 @@
     </main>
 
     <script type="module" src="scripts/router.js"></script>
+    <script type="module" src="scripts/userProfile.js"></script>
+    <script type="module" src="scripts/auth.js"></script>
     <script src="scripts/sqliteClient.js"></script>
     <script src="scripts/reviewDB.js"></script>
     <script>
@@ -334,14 +352,24 @@
       }
 
       // 공항 밖에도 나갈래요 선택
-      function chooseAirportExternal() {
+      async function chooseAirportExternal() {
+        // 로그인 확인
+        if (window.requireAuth) {
+          const authenticated = await window.requireAuth('공항 밖으로 나가려면 로그인이 필요합니다.');
+          if (!authenticated) {
+            return; // 로그인하지 않으면 진행하지 않음
+          }
+        }
+        
         selectedChoice = 'airport-external';
         
         // 선택 상태 표시
         document.querySelectorAll('.choice-card').forEach(card => {
           card.classList.remove('selected');
         });
-        event.target.closest('.choice-card').classList.add('selected');
+        if (event && event.target) {
+          event.target.closest('.choice-card')?.classList.add('selected');
+        }
         
         // 라우터를 통해 다음 페이지로 이동
         setTimeout(() => {
@@ -698,7 +726,7 @@
           console.log('✅ [loadCityReviews] 표시할 리뷰:', displayReviews.length, '개');
           console.log('📊 [loadCityReviews] 전체 리뷰:', sortedReviews.length, '개');
 
-          renderCityReviews(displayReviews, hasMore);
+          await renderCityReviews(displayReviews, hasMore);
 
         } catch (error) {
           console.error('❌ [loadCityReviews] 리뷰 로드 실패:', error);
@@ -714,11 +742,12 @@
       }
 
       // 도시 리뷰 렌더링
-      function renderCityReviews(reviews, hasMore = false) {
+      async function renderCityReviews(reviews, hasMore = false) {
         const container = document.getElementById('city-reviews-list');
         if (!container) return;
 
-        const reviewsHtml = reviews.map(review => {
+        // 리뷰 HTML 생성 (비동기 처리)
+        const reviewsHtmlPromises = reviews.map(async (review) => {
           // 별점 생성
           const rating = review.overall_review_rating || 0;
           const stars = '⭐'.repeat(rating);
@@ -739,9 +768,19 @@
             ? formatDuration(review.trip_info_duration) 
             : '';
 
-          // 좋아요 상태 확인
-          const isLiked = checkIfLiked(review.id);
-          const likeCount = getLikeCount(review.id);
+          // 좋아요 상태 확인 (비동기)
+          const isLiked = await checkIfLiked(review.id);
+          const likeCount = await getLikeCount(review.id);
+          
+          // 작성자 이름 가져오기
+          let authorName = '익명 사용자';
+          if (review.user_id && window.getUserNickname) {
+            try {
+              authorName = await window.getUserNickname(review.user_id) || '익명 사용자';
+            } catch (e) {
+              console.warn('작성자 이름 가져오기 실패:', e);
+            }
+          }
 
           return `
             <div class="review-card-item" onclick="viewReviewDetail('${review.id}')" style="cursor: pointer;">
@@ -750,7 +789,10 @@
                   <span class="review-stars">${stars}</span>
                   <span class="review-rating-number">${rating}.0</span>
                 </div>
-                <span class="review-date">${formattedDate}</span>
+                <div class="review-header-right">
+                  <span class="review-author">✍️ ${escapeHtml(authorName)}</span>
+                  <span class="review-date">${formattedDate}</span>
+                </div>
               </div>
               <div class="review-summary">${escapeHtml(review.overall_review_summary || '')}</div>
               ${review.overall_review_detail ? `<div class="review-detail">${escapeHtml(review.overall_review_detail)}</div>` : ''}
@@ -768,7 +810,10 @@
               </div>
             </div>
           `;
-        }).join('');
+        });
+        
+        // 모든 Promise 해결 후 HTML 조인
+        const reviewsHtml = (await Promise.all(reviewsHtmlPromises)).join('');
 
         // "더 보기" 버튼 추가
         let moreButtonHtml = '';
@@ -849,9 +894,9 @@
       }
 
       // 전체 리뷰 표시
-      function showAllReviews() {
+      async function showAllReviews() {
         showingAllReviews = true;
-        renderCityReviews(allCityReviews, false);
+        await renderCityReviews(allCityReviews, false);
       }
 
       // 날짜 포맷팅 (리뷰용)
@@ -896,56 +941,93 @@
         window.location.href = `review-detail.html?id=${reviewId}`;
       }
 
-      // 좋아요 관련 함수들 (localStorage 기반 - 로그인 전 대비)
-      function getLikeCount(reviewId) {
+      // 좋아요 관련 함수들 (DB 기반)
+      async function getLikeCount(reviewId) {
         try {
+          if (window.reviewDB) {
+            await window.reviewDB.initialize();
+            return await window.reviewDB.getLikeCount(reviewId);
+          }
+          // 폴백: localStorage
           const likes = JSON.parse(localStorage.getItem('review_likes') || '{}');
           return likes[reviewId]?.count || 0;
         } catch (e) {
+          console.error('좋아요 개수 가져오기 실패:', e);
           return 0;
         }
       }
 
-      function checkIfLiked(reviewId) {
+      async function checkIfLiked(reviewId) {
         try {
+          // 로그인하지 않은 경우 false 반환
+          let userId = null;
+          try {
+            userId = window.getUserId ? await window.getUserId() : null;
+          } catch (e) {
+            // 사용자 정보 가져오기 실패 시 무시하고 계속 진행 (비로그인 상태일 수 있음)
+            console.warn('사용자 ID 가져오기 실패 (비로그인 상태일 수 있음):', e);
+          }
+          
+          if (window.reviewDB && userId) {
+            await window.reviewDB.initialize();
+            const likes = await window.reviewDB.getLikesByReviewId(reviewId);
+            return likes.some(like => like.user_id === userId);
+          }
+          // 폴백: localStorage
           const userLikes = JSON.parse(localStorage.getItem('user_liked_reviews') || '[]');
           return userLikes.includes(reviewId);
         } catch (e) {
+          console.error('좋아요 상태 확인 실패:', e);
           return false;
         }
       }
 
-      function toggleLike(reviewId) {
+      async function toggleLike(reviewId) {
         try {
-          // 사용자가 좋아요한 리뷰 목록
-          let userLikes = JSON.parse(localStorage.getItem('user_liked_reviews') || '[]');
-          const isLiked = userLikes.includes(reviewId);
-          
-          // 좋아요 개수
-          let likes = JSON.parse(localStorage.getItem('review_likes') || '{}');
-          if (!likes[reviewId]) {
-            likes[reviewId] = { count: 0 };
+          // 로그인 확인
+          if (window.requireAuth) {
+            const authenticated = await window.requireAuth('리뷰에 좋아요를 누르려면 로그인이 필요합니다.');
+            if (!authenticated) {
+              return; // 로그인하지 않으면 진행하지 않음
+            }
           }
+          
+          // 사용자 ID 가져오기
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+            return;
+          }
+          
+          // ReviewDB 초기화
+          if (!window.reviewDB) {
+            console.error('ReviewDB를 사용할 수 없습니다.');
+            return;
+          }
+          
+          await window.reviewDB.initialize();
+          
+          // 현재 좋아요 상태 확인
+          const currentLikes = await window.reviewDB.getLikesByReviewId(reviewId);
+          const isLiked = currentLikes.some(like => like.user_id === userId);
           
           if (isLiked) {
             // 좋아요 취소
-            userLikes = userLikes.filter(id => id !== reviewId);
-            likes[reviewId].count = Math.max(0, likes[reviewId].count - 1);
+            await window.reviewDB.removeLike(reviewId, userId);
           } else {
             // 좋아요 추가
-            userLikes.push(reviewId);
-            likes[reviewId].count = (likes[reviewId].count || 0) + 1;
+            await window.reviewDB.addLike(reviewId, userId);
           }
           
-          localStorage.setItem('user_liked_reviews', JSON.stringify(userLikes));
-          localStorage.setItem('review_likes', JSON.stringify(likes));
+          // 좋아요 개수 다시 가져오기
+          const likeCount = await window.reviewDB.getLikeCount(reviewId);
           
           // UI 업데이트
           const likeBtn = document.getElementById(`like-btn-${reviewId}`);
-          const likeCount = document.getElementById(`like-count-${reviewId}`);
+          const likeCountEl = document.getElementById(`like-count-${reviewId}`);
           const likeIcon = likeBtn?.querySelector('.like-icon');
           
-          if (likeBtn && likeCount && likeIcon) {
+          if (likeBtn && likeCountEl && likeIcon) {
             if (isLiked) {
               likeBtn.classList.remove('liked');
               likeIcon.textContent = '🤍';
@@ -953,14 +1035,14 @@
               likeBtn.classList.add('liked');
               likeIcon.textContent = '❤️';
             }
-            likeCount.textContent = likes[reviewId].count;
+            likeCountEl.textContent = likeCount;
           }
           
-          // TODO: 로그인 기능 추가 후 DB에 동기화
-          console.log('좋아요 상태 변경:', { reviewId, isLiked: !isLiked, count: likes[reviewId].count });
+          console.log('✅ 좋아요 상태 변경 완료:', { reviewId, isLiked: !isLiked, count: likeCount });
           
         } catch (e) {
           console.error('좋아요 토글 실패:', e);
+          alert('좋아요 기능을 사용할 수 없습니다. 다시 시도해주세요.');
         }
       }
     </script>
