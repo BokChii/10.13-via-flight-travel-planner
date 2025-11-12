@@ -256,6 +256,14 @@
 
       // 페이지 로드 시 환승 정보 표시
       document.addEventListener('DOMContentLoaded', async function() {
+        // Auth0 초기화
+        try {
+          const { initAuth } = await import('./scripts/auth.js');
+          await initAuth();
+        } catch (error) {
+          console.error('Auth0 초기화 실패:', error);
+        }
+        
         loadTransferInfo();
         updateSummary();
         

@@ -10,14 +10,31 @@
     <link rel="stylesheet" href="styles/components/buttons.css" />
     <link rel="stylesheet" href="styles/components/cards.css" />
     <link rel="stylesheet" href="styles/components/forms.css" />
+    <link rel="stylesheet" href="styles/components/auth.css" />
   </head>
   <body class="app trip-summary-page">
     <header class="app-header">
-      <h1>Via Flight</h1>
-      <p class="tagline">여행 일정 요약</p>
-      <nav class="breadcrumb">
-        <a href="index.html" class="breadcrumb__link">← 홈으로</a>
-      </nav>
+      <div>
+        <h1>Via Flight</h1>
+        <p class="tagline">여행 일정 요약</p>
+        <nav class="breadcrumb">
+          <a href="index.html" class="breadcrumb__link">← 홈으로</a>
+        </nav>
+      </div>
+      
+      <!-- 인증 UI -->
+      <div class="auth-container">
+        <div class="user-info-container" style="display: none;" title="프로필 보기">
+          <span class="user-info"></span>
+          <span class="user-email"></span>
+        </div>
+        <button class="auth-button" data-action="login" onclick="window.loginWithGoogle()">
+          Google로 로그인
+        </button>
+        <button class="auth-button" data-action="logout" style="display: none;" onclick="window.logout()">
+          로그아웃
+        </button>
+      </div>
     </header>
 
     <main class="trip-summary-main">

@@ -11,10 +11,22 @@
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   color: var(--color-text);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
   padding: 1.5rem 2rem;
+  position: relative;
+}
+
+.airport-only-page .app-header > div:first-child {
+  grid-column: 2;
+  text-align: center;
+}
+
+.airport-only-page .app-header .auth-container {
+  grid-column: 3;
+  justify-self: end;
 }
 
 .airport-only-page .app-header h1 {
@@ -852,6 +864,21 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .airport-only-page .app-header {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .airport-only-page .app-header > div:first-child {
+    grid-column: 1;
+  }
+
+  .airport-only-page .app-header .auth-container {
+    grid-column: 1;
+    justify-self: center;
+  }
+
   .airport-only-main {
     padding: 30px 16px;
   }

@@ -11,6 +11,22 @@
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   color: var(--color-text);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  position: relative;
+}
+
+.trip-summary-page .app-header > div:first-child {
+  grid-column: 2;
+  text-align: center;
+}
+
+.trip-summary-page .app-header .auth-container {
+  grid-column: 3;
+  justify-self: end;
 }
 
 .trip-summary-page .app-header h1 {
@@ -732,6 +748,21 @@
 /* Responsive Design */
 /* Review Section - Mobile */
 @media (max-width: 768px) {
+  .trip-summary-page .app-header {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .trip-summary-page .app-header > div:first-child {
+    grid-column: 1;
+  }
+
+  .trip-summary-page .app-header .auth-container {
+    grid-column: 1;
+    justify-self: center;
+  }
+
   .review-container {
     padding: 24px 20px;
   }
