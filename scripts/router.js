@@ -374,7 +374,25 @@ document.addEventListener('DOMContentLoaded', function() {
       window.initLandingPage();
       break;
     case 'profile.html':
-      window.initProfilePage();
+      // initProfilePage가 정의될 때까지 대기 (모듈 스크립트 로드 대기)
+      if (window.initProfilePage) {
+        window.initProfilePage();
+      } else {
+        // 모듈 스크립트 로드를 기다리기 위해 재시도 (최대 20회, 총 1초)
+        let retryCount = 0;
+        const maxRetries = 20;
+        const checkInitProfilePage = () => {
+          if (window.initProfilePage) {
+            window.initProfilePage();
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(checkInitProfilePage, 50);
+          } else {
+            console.error('initProfilePage 함수를 찾을 수 없습니다. profile.html의 스크립트 로드 순서를 확인하세요.');
+          }
+        };
+        setTimeout(checkInitProfilePage, 50);
+      }
       break;
     case 'transfer-info.html':
       window.initTransferInfoPage();
