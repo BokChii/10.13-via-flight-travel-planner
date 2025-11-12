@@ -8,6 +8,7 @@
 @import 'components/modals.css';
 @import 'components/navigation.css';
 @import 'components/poi-cards.css';
+@import 'components/auth.css';
 @import 'layouts/main-layout.css';
 
 /* 기본 CSS 변수 (기존 호환성 유지) */

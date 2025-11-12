@@ -1,0 +1,43 @@
+/* 인증 UI 스타일 */
+.auth-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.user-info-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.user-info {
+  color: var(--text-primary, #333);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.user-email {
+  color: var(--text-secondary, #666);
+  font-size: 0.8rem;
+}
+
+.auth-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .auth-container {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .user-info-container {
+    align-items: center;
+  }
+}
+

@@ -1,0 +1,296 @@
+// scripts/auth.js
+// Auth0 인증 관리 모듈 (Google 계정 전용)
+
+import { auth0Config } from './auth0-config.js';
+
+let auth0Client = null;
+let isLoading = false;
+let user = null;
+
+/**
+ * Auth0 SDK 로드 (CDN 사용)
+ */
+async function loadAuth0SDK() {
+  return new Promise((resolve, reject) => {
+    // 이미 로드되어 있는지 확인
+    if (typeof window.createAuth0Client !== 'undefined') {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js';
+    script.async = true;
+    script.onload = () => {
+      // CDN에서 로드된 경우
+      if (typeof window.createAuth0Client === 'undefined') {
+        // auth0 객체에서 가져오기 시도
+        if (window.auth0 && window.auth0.createAuth0Client) {
+          window.createAuth0Client = window.auth0.createAuth0Client;
+          resolve();
+        } else {
+          reject(new Error('Auth0 SDK를 로드할 수 없습니다.'));
+        }
+        return;
+      }
+      resolve();
+    };
+    script.onerror = () => reject(new Error('Auth0 SDK 로드 실패'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Auth0 클라이언트 초기화
+ */
+export async function initAuth() {
+  if (isLoading) {
+    return;
+  }
+
+  isLoading = true;
+
+  try {
+    // CDN 사용 시 SDK 로드
+    if (typeof window.createAuth0Client === 'undefined') {
+      await loadAuth0SDK();
+    }
+
+    // createAuth0Client 함수 가져오기
+    const createAuth0Client = window.createAuth0Client || window.auth0?.createAuth0Client;
+    
+    if (!createAuth0Client) {
+      throw new Error('createAuth0Client 함수를 찾을 수 없습니다.');
+    }
+
+    // Auth0 클라이언트 생성
+    auth0Client = await createAuth0Client(auth0Config);
+
+    // 콜백 처리 (리디렉트 후 복귀 시)
+    const query = window.location.search;
+    if (query.includes('code=') && query.includes('state=')) {
+      await auth0Client.handleRedirectCallback();
+      // URL 정리
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // 사용자 정보 확인
+    user = await auth0Client.getUser();
+
+    // 인증 상태 확인
+    const isAuthenticated = await auth0Client.isAuthenticated();
+
+    if (isAuthenticated && user) {
+      updateAuthUI(user);
+      handleAuthStateChange(user);
+    } else {
+      updateAuthUI(null);
+    }
+
+    console.log('Auth0 초기화 완료', { isAuthenticated, user });
+    return true;
+  } catch (error) {
+    console.error('Auth0 초기화 실패:', error);
+    return false;
+  } finally {
+    isLoading = false;
+  }
+}
+
+/**
+ * Google 로그인
+ */
+export async function loginWithGoogle() {
+  try {
+    if (!auth0Client) {
+      await initAuth();
+    }
+
+    // Google 연결을 사용하여 로그인
+    // connection 이름은 Auth0 대시보드에서 확인하세요
+    // Authentication → Social → Google에서 연결 이름 확인
+    await auth0Client.loginWithRedirect({
+      authorizationParams: {
+        connection: 'google-oauth2' // Google 연결 이름 (Auth0에서 확인 필요)
+      }
+    });
+  } catch (error) {
+    console.error('Google 로그인 실패:', error);
+    console.error('에러 상세:', error.message || error);
+    
+    // 사용자에게 친화적인 에러 메시지 표시
+    alert('로그인 중 오류가 발생했습니다.\n\n확인 사항:\n1. Auth0 설정에서 Callback URL이 올바르게 설정되었는지 확인하세요\n2. Google 연결이 활성화되어 있는지 확인하세요\n3. 브라우저 콘솔을 확인하세요');
+    throw error;
+  }
+}
+
+/**
+ * 로그아웃
+ */
+export async function logout() {
+  try {
+    if (auth0Client) {
+      await auth0Client.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    }
+    user = null;
+    updateAuthUI(null);
+    handleAuthStateChange(null);
+  } catch (error) {
+    console.error('로그아웃 실패:', error);
+  }
+}
+
+/**
+ * 현재 사용자 정보 가져오기
+ */
+export async function getCurrentUser() {
+  try {
+    if (!auth0Client) {
+      await initAuth();
+    }
+    
+    if (!user) {
+      user = await auth0Client.getUser();
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('사용자 정보 가져오기 실패:', error);
+    return null;
+  }
+}
+
+/**
+ * 인증 상태 확인
+ */
+export async function isAuthenticated() {
+  try {
+    if (!auth0Client) {
+      await initAuth();
+    }
+    return await auth0Client.isAuthenticated();
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * 사용자 ID 가져오기
+ */
+export async function getUserId() {
+  const currentUser = await getCurrentUser();
+  return currentUser?.sub || null; // Auth0의 sub는 사용자 고유 ID
+}
+
+/**
+ * 사용자 이메일 가져오기
+ */
+export async function getUserEmail() {
+  const currentUser = await getCurrentUser();
+  return currentUser?.email || null;
+}
+
+/**
+ * 사용자 이름 가져오기
+ */
+export async function getUserName() {
+  const currentUser = await getCurrentUser();
+  return currentUser?.name || 
+         currentUser?.nickname || 
+         currentUser?.email?.split('@')[0] || 
+         '사용자';
+}
+
+/**
+ * 인증 UI 업데이트
+ */
+async function updateAuthUI(user) {
+  const authButtons = document.querySelectorAll('.auth-button');
+  const userInfo = document.querySelectorAll('.user-info');
+  const userEmail = document.querySelectorAll('.user-email');
+  
+  if (user) {
+    // 로그인 상태
+    authButtons.forEach(btn => {
+      if (btn.dataset.action === 'login') {
+        btn.style.display = 'none';
+      }
+      if (btn.dataset.action === 'logout') {
+        btn.style.display = 'block';
+      }
+    });
+    
+    const name = await getUserName();
+    userInfo.forEach(info => {
+      info.textContent = name;
+      info.style.display = 'block';
+    });
+    
+    const email = await getUserEmail();
+    userEmail.forEach(em => {
+      em.textContent = email;
+      em.style.display = 'block';
+    });
+  } else {
+    // 로그아웃 상태
+    authButtons.forEach(btn => {
+      if (btn.dataset.action === 'login') {
+        btn.style.display = 'block';
+      }
+      if (btn.dataset.action === 'logout') {
+        btn.style.display = 'none';
+      }
+    });
+    
+    userInfo.forEach(info => {
+      info.style.display = 'none';
+    });
+    
+    userEmail.forEach(em => {
+      em.style.display = 'none';
+    });
+  }
+}
+
+/**
+ * 인증 상태 변경 핸들러
+ */
+async function handleAuthStateChange(user) {
+  if (user) {
+    const name = await getUserName();
+    sessionStorage.setItem('currentUser', JSON.stringify({
+      id: user.sub,
+      email: user.email,
+      name: name
+    }));
+  } else {
+    sessionStorage.removeItem('currentUser');
+  }
+
+  // 커스텀 이벤트 발생
+  window.dispatchEvent(new CustomEvent('authStateChanged', {
+    detail: { user }
+  }));
+}
+
+/**
+ * 보호된 기능 접근 확인
+ */
+export async function requireAuth() {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    await loginWithGoogle();
+    return false;
+  }
+  return true;
+}
+
+// 전역 함수로 노출
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;
+window.getUserId = getUserId;
+

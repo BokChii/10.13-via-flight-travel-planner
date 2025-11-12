@@ -572,13 +572,16 @@ class ReviewDB {
   async addLike(reviewId, userId = null) {
     await this.initialize();
     
+    // auth.js에서 사용자 ID 가져오기 (전역 함수 사용)
+    const currentUserId = userId || (window.getUserId ? await window.getUserId() : null);
+    
     const likeId = `like_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
     
     this.db.run(`
       INSERT INTO review_likes (id, review_id, user_id, liked_at)
       VALUES (?, ?, ?, ?)
-    `, [likeId, reviewId, userId, now]);
+    `, [likeId, reviewId, currentUserId, now]);
     
     await this.saveToIndexedDB();
     return likeId;
@@ -590,11 +593,14 @@ class ReviewDB {
   async removeLike(reviewId, userId = null) {
     await this.initialize();
     
-    if (userId) {
+    // auth.js에서 사용자 ID 가져오기 (전역 함수 사용)
+    const currentUserId = userId || (window.getUserId ? await window.getUserId() : null);
+    
+    if (currentUserId) {
       this.db.run(`
         DELETE FROM review_likes 
         WHERE review_id = ? AND user_id = ?
-      `, [reviewId, userId]);
+      `, [reviewId, currentUserId]);
     }
     
     await this.saveToIndexedDB();

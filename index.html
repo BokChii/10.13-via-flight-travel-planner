@@ -9,11 +9,28 @@
     <link rel="stylesheet" href="styles/pages/landing.css" />
     <link rel="stylesheet" href="styles/components/buttons.css" />
     <link rel="stylesheet" href="styles/components/cards.css" />
+    
+    <!-- Auth0 SDK -->
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
   </head>
   <body class="app landing-page">
     <header class="app-header">
       <h1>Via Flight</h1>
       <p class="tagline">환승 시간을 특별한 여행으로</p>
+      
+      <!-- 인증 UI -->
+      <div class="auth-container">
+        <div class="user-info-container" style="display: none;">
+          <span class="user-info"></span>
+          <span class="user-email" style="font-size: 0.8rem; color: #666;"></span>
+        </div>
+        <button class="auth-button btn btn--secondary" data-action="login" onclick="window.loginWithGoogle()">
+          Google로 로그인
+        </button>
+        <button class="auth-button btn btn--secondary" data-action="logout" style="display: none;" onclick="window.logout()">
+          로그아웃
+        </button>
+      </div>
     </header>
 
     <main class="landing-main">
@@ -103,11 +120,31 @@
     </footer>
 
     <script type="module" src="scripts/router.js"></script>
-    <script>
-      function startService() {
+    <script type="module" src="scripts/auth.js"></script>
+    <script type="module">
+      import { initAuth, isAuthenticated } from './scripts/auth.js';
+      
+      // Auth0 초기화
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAuth);
+      } else {
+        initAuth();
+      }
+      
+      // 서비스 시작 함수 (로그인 체크 포함)
+      window.startService = async function() {
+        // 로그인 확인 (선택사항 - 나중에 필요하면 활성화)
+        // const authenticated = await isAuthenticated();
+        // if (!authenticated) {
+        //   window.loginWithGoogle();
+        //   return;
+        // }
+        
         // 라우터를 통해 Transfer Info Page로 이동
         window.navigateTo('/transfer-info');
-      }
+      };
+    </script>
+    <script>
 
       // 페이지 로드 시 애니메이션 효과
       document.addEventListener('DOMContentLoaded', function() {
