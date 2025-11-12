@@ -5,8 +5,8 @@ import { isValidRouterState, safeParseFromStorage } from "./validation.js";
 class ViaFlightRouter {
   constructor() {
     this.routes = {
-      '/': 'landing.html',
-      '/landing': 'landing.html',
+      '/': 'index.html',
+      '/landing': 'index.html',
       '/transfer-info': 'transfer-info.html',
       '/airport-main': 'airport-main.html',
       '/airport-only': 'airport-only.html',
@@ -46,7 +46,7 @@ class ViaFlightRouter {
     const path = window.location.pathname;
     const filename = path.split('/').pop();
     
-    this.currentPage = filename || 'landing.html';
+    this.currentPage = filename || 'index.html';
     console.log('현재 페이지:', this.currentPage);
   }
   
@@ -136,11 +136,11 @@ class ViaFlightRouter {
   // 뒤로가기 처리
   goBack() {
     const backRoutes = {
-      'transfer-info.html': 'landing.html',
+      'transfer-info.html': 'index.html',
       'airport-main.html': 'transfer-info.html',
       'airport-only.html': 'airport-main.html',
       'airport-external.html': 'airport-main.html',
-      'trip-summary.html': 'landing.html',
+      'trip-summary.html': 'index.html',
       'navigation.html': 'trip-summary.html'
     };
     
@@ -154,7 +154,7 @@ class ViaFlightRouter {
   
   // 홈으로 이동
   goHome() {
-    this.navigate('/landing');
+    this.navigate('/');
   }
   
   // 네비게이션 시작
@@ -368,7 +368,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const currentPage = window.location.pathname.split('/').pop();
   
   switch (currentPage) {
-    case 'landing.html':
+    case 'index.html':
+    case 'landing.html': // 호환성을 위해 유지
       window.initLandingPage();
       break;
     case 'transfer-info.html':

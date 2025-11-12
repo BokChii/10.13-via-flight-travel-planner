@@ -134,9 +134,9 @@ if (fs.existsSync(airportExternalPath)) {
   fs.writeFileSync(distAirportExternalPath, airportExternalHtml, 'utf8');
 }
 
-// 나머지 HTML 파일들 복사 (landing.html, airport-main.html, transfer-info.html, review-detail.html 등)
+// 나머지 HTML 파일들 복사 (index.html, airport-main.html, transfer-info.html, review-detail.html 등)
 const htmlFilesToCopy = [
-  'landing.html',
+  'index.html',
   'airport-main.html',
   'transfer-info.html',
   'review-detail.html'

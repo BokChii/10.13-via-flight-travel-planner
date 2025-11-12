@@ -110,7 +110,7 @@ npm start
 
 ### 주요 페이지
 
-- **Landing Page** (`landing.html`): 서비스 소개 및 시작
+- **Landing Page** (`index.html`): 서비스 소개 및 시작
 - **Transfer Info** (`transfer-info.html`): 환승 정보 입력
 - **Airport Main** (`airport-main.html`): 여행 스타일 선택
 - **Airport Only** (`airport-only.html`): 공항 내부 일정 구성
@@ -138,8 +138,7 @@ npm start
 │   └── airport.db       # SQLite 데이터베이스
 ├── tools/               # 빌드 도구
 │   └── inject-env.js    # 환경 변수 주입
-├── index.html           # 진입점 (플래너)
-├── landing.html         # 랜딩 페이지
+├── index.html           # 진입점 (랜딩 페이지)
 ├── navigation.html      # 네비게이션 페이지
 └── package.json         # 프로젝트 설정
 ```
