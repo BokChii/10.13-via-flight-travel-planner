@@ -39,8 +39,6 @@ class ViaFlightRouter {
     
     // 이벤트 리스너 등록
     this.setupEventListeners();
-    
-    console.log('Via Flight Router 초기화 완료');
   }
   
   detectCurrentPage() {
@@ -48,7 +46,6 @@ class ViaFlightRouter {
     const filename = path.split('/').pop();
     
     this.currentPage = filename || 'index.html';
-    console.log('현재 페이지:', this.currentPage);
   }
   
   restoreState() {
@@ -59,7 +56,6 @@ class ViaFlightRouter {
       try {
         // 검증된 상태를 병합
         this.state = { ...this.state, ...savedState };
-        console.log('상태 복원 완료:', this.state);
       } catch (error) {
         console.error('상태 복원 실패:', error);
         // 에러 발생 시 기본 상태 유지
@@ -78,7 +74,6 @@ class ViaFlightRouter {
   saveState() {
     // 현재 상태를 세션 스토리지에 저장
     sessionStorage.setItem('viaFlightState', JSON.stringify(this.state));
-    console.log('상태 저장 완료:', this.state);
   }
   
   setupEventListeners() {
@@ -95,8 +90,6 @@ class ViaFlightRouter {
   
   // 페이지 이동
   navigate(page, data = {}) {
-    console.log(`페이지 이동: ${this.currentPage} → ${page}`);
-    
     // 데이터 업데이트
     this.updateState(data);
     
@@ -120,17 +113,17 @@ class ViaFlightRouter {
   handlePageSpecificUpdates(data) {
     // Transfer Info 페이지에서 이동할 때
     if (data.transferInfo) {
-      console.log('환승 정보 업데이트:', data.transferInfo);
+      // 환승 정보 업데이트
     }
     
     // Airport Main 페이지에서 선택할 때
     if (data.userChoice) {
-      console.log('사용자 선택 업데이트:', data.userChoice);
+      // 사용자 선택 업데이트
     }
     
     // POI 선택 완료 시
     if (data.selectedPois) {
-      console.log('선택된 POI 업데이트:', data.selectedPois);
+      // 선택된 POI 업데이트
     }
   }
   

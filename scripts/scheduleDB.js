@@ -74,7 +74,6 @@ export async function saveSchedule(userId, scheduleName, finalTripPlan, schedule
     const request = store.put(schedule);
 
     request.onsuccess = () => {
-      console.log('✅ 일정 저장 완료:', scheduleId);
       resolve(scheduleId);
     };
     request.onerror = () => reject(request.error);
@@ -107,15 +106,12 @@ export async function getSchedulesByUserId(userId) {
         // userId가 일치하는 일정만 추가
         if (schedule.userId === userId) {
           schedules.push(schedule);
-          console.log('📋 일정 발견:', schedule.scheduleId, schedule.scheduleName);
         }
         cursor.continue();
       } else {
         // 모든 일정을 스캔 완료
         // createdAt 기준 내림차순 정렬 (최신순)
         schedules.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        console.log('📋 일정 목록 스캔 완료, 총 일정 개수:', schedules.length);
-        console.log('📋 일정 ID 목록:', schedules.map(s => s.scheduleId));
         // cursor가 완료되면 바로 resolve (트랜잭션 완료를 기다릴 필요 없음)
         resolve(schedules);
       }
@@ -151,7 +147,6 @@ export async function getScheduleById(scheduleId) {
 
       request.onsuccess = () => {
         const result = request.result || null;
-        console.log('getScheduleById 성공:', { scheduleId, found: !!result });
         resolve(result);
       };
       request.onerror = () => {
@@ -175,7 +170,6 @@ export async function deleteSchedule(scheduleId) {
     throw new Error('일정 ID가 필요합니다.');
   }
 
-  console.log('🗑️ deleteSchedule 호출됨, scheduleId:', scheduleId);
   const db = await initDB();
   
   // 삭제 실행 (존재 확인을 같은 트랜잭션 내에서 수행)
@@ -184,16 +178,13 @@ export async function deleteSchedule(scheduleId) {
     const store = transaction.objectStore(STORE_NAME);
     
     // 먼저 존재하는지 확인
-    console.log('🔍 일정 존재 확인 시작, scheduleId:', scheduleId);
     const checkRequest = store.get(scheduleId);
     
     checkRequest.onsuccess = () => {
       const existingSchedule = checkRequest.result;
-      console.log('🔍 일정 존재 확인 결과:', existingSchedule ? `찾음 (${existingSchedule.scheduleName})` : '찾지 못함');
       
       if (!existingSchedule) {
         // 전체 스토어를 스캔하여 실제로 존재하는지 확인
-        console.log('⚠️ store.get으로 찾지 못함, 전체 스토어 스캔 시작...');
         const scanRequest = store.openCursor();
         let foundInScan = false;
         let deleteRequestMade = false;
@@ -204,13 +195,12 @@ export async function deleteSchedule(scheduleId) {
             const schedule = cursor.value;
             if (schedule.scheduleId === scheduleId) {
               foundInScan = true;
-              console.log('✅ 전체 스캔에서 일정 발견:', schedule.scheduleId, schedule.scheduleName);
               // 발견했으므로 삭제 실행
               deleteRequestMade = true;
               const deleteRequest = store.delete(scheduleId);
               
               deleteRequest.onsuccess = () => {
-                console.log('✅ 일정 삭제 요청 성공:', scheduleId);
+                // 삭제 요청 성공
               };
               
               deleteRequest.onerror = () => {
@@ -250,13 +240,11 @@ export async function deleteSchedule(scheduleId) {
       }
       
       // existingSchedule이 있는 경우
-      console.log('🗑️ 일정 삭제 시작, 존재 확인됨:', scheduleId, existingSchedule.scheduleName);
-      
       // 삭제 실행
       const deleteRequest = store.delete(scheduleId);
       
       deleteRequest.onsuccess = () => {
-        console.log('✅ 일정 삭제 요청 성공:', scheduleId);
+        // 삭제 요청 성공
       };
       
       deleteRequest.onerror = () => {
@@ -272,8 +260,6 @@ export async function deleteSchedule(scheduleId) {
 
     // 트랜잭션이 완전히 완료될 때까지 대기
     transaction.oncomplete = () => {
-      console.log('✅ 일정 삭제 완료 (트랜잭션 커밋됨):', scheduleId);
-      
       // 삭제가 실제로 되었는지 검증 (새 트랜잭션에서 확인)
       const verifyPromise = new Promise((resolveVerify, rejectVerify) => {
         // 약간의 지연을 추가하여 트랜잭션이 완전히 커밋되도록 함
@@ -294,7 +280,6 @@ export async function deleteSchedule(scheduleId) {
       verifyPromise
         .then((verifyResult) => {
           if (verifyResult === undefined) {
-            console.log('✅ 일정 삭제 검증 완료: 실제로 삭제됨', scheduleId);
             resolve();
           } else {
             console.error('❌ 일정 삭제 검증 실패: 삭제 후에도 여전히 존재함', scheduleId, verifyResult);
@@ -345,7 +330,6 @@ export async function updateScheduleName(scheduleId, newName) {
 
       const putRequest = store.put(schedule);
       putRequest.onsuccess = () => {
-        console.log('✅ 일정 이름 수정 완료:', scheduleId);
         resolve();
       };
       putRequest.onerror = () => reject(putRequest.error);

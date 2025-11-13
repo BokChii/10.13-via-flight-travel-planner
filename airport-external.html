@@ -1761,8 +1761,6 @@
       
       // 도시 일정 생성
       async function generateCityPlan() {
-        console.log('🏙️ [generateCityPlan] 도시 일정 생성 시작');
-        
         // transferInfo에서 도착/출발 시간 가져오기
         const arrivalTime = new Date(transferInfo.arrival);
         const departureTime = new Date(transferInfo.departure);
@@ -1779,13 +1777,6 @@
         const endWindow = new Date(departureTime.getTime() - returnBufferMinutes * 60000);
         const availableMinutes = Math.max((endWindow.getTime() - startWindow.getTime()) / 60000, 0);
         
-        console.log('⏰ [generateCityPlan] 도시 탐방 시간:', {
-          start: startWindow.toISOString(),
-          end: endWindow.toISOString(),
-          available: availableMinutes,
-          selectedCategories: selectedCityPreferences
-        });
-        
         // 도시 POI 검색 (POI Service Manager 사용)
         if (!window.poiServiceManager) {
           throw new Error('POI Service Manager가 초기화되지 않았습니다.');
@@ -1798,8 +1789,6 @@
         const categoryPOIsMap = new Map(); // 카테고리별 POI 그룹
         const targetCount = 3; // 최종적으로 선택할 POI 개수
         
-        console.log('🔍 [generateCityPlan] 카테고리별 POI 검색 시작');
-        
         for (const category of selectedCityPreferences) {
           const pois = await window.poiServiceManager.searchCityPOIs(cityCenter, [category], 10000); // 10km 반경
           
@@ -1808,11 +1797,6 @@
             categoryPOIsMap.set(category, pois.slice(0, 10)); // 상위 10개만 사용
           }
         }
-        
-        console.log('📊 [generateCityPlan] 카테고리별 POI 검색 완료:', {
-          totalCategories: categoryPOIsMap.size,
-          poisPerCategory: Array.from(categoryPOIsMap.entries()).map(([cat, pois]) => ({ category: cat, count: pois.length }))
-        });
         
         // 2단계: 각 POI의 상세 정보(운영 시간 포함) 가져오기 및 운영 시간 필터링
         const allPOIsWithDetails = [];
@@ -1874,13 +1858,7 @@
           }
         }
         
-        console.log('📊 [generateCityPlan] 운영 시간 필터링 완료:', {
-          totalOpen: allPOIsWithDetails.length,
-          categories: Array.from(new Set(allPOIsWithDetails.map(p => p.category)))
-        });
-        
         // 3단계: 카테고리별 균형 있는 선택
-        console.log('⚖️ [generateCityPlan] 카테고리별 균형 있는 선택 시작');
         const selectedPOIs = [];
         const categoryCount = selectedCityPreferences.length;
         const poisPerCategory = Math.ceil(targetCount / categoryCount); // 카테고리당 최소 개수
@@ -1944,12 +1922,6 @@
           }
         }
         
-        console.log('✅ [generateCityPlan] 카테고리별 균형 선택 완료:', {
-          selectedCount: selectedPOIs.length,
-          categories: Array.from(new Set(selectedPOIs.map(p => p.category))),
-          selectedPOIs: selectedPOIs.map(p => ({ name: p.name, category: p.category, rating: p.rating }))
-        });
-        
         // 검색된 POI를 waypoint 형태로 변환 (Google Maps API 실제 데이터 포함)
         const waypoints = selectedPOIs.map((poi, index) => ({
           label: poi.name,
@@ -1999,24 +1971,6 @@
         
         // 생성된 일정 저장
         sessionStorage.setItem('cityPlan', JSON.stringify(plan));
-        
-        console.log('✅ [generateCityPlan] 도시 일정 생성 완료:', {
-          selectedCategories: selectedCityPreferences,
-          selectedPOIs: selectedPOIs.map(p => ({
-            name: p.name,
-            category: p.category,
-            rating: p.rating,
-            businessStatus: p.businessStatus
-          })),
-          waypointsCount: waypoints.length,
-          originalArrival: arrivalTime.toISOString(),
-          originalDeparture: departureTime.toISOString(),
-          bufferedArrival: startWindow.toISOString(),
-          bufferedDeparture: endWindow.toISOString(),
-          entryBuffer: entryBufferMinutes,
-          returnBuffer: returnBufferMinutes,
-          availableMinutes: Math.round(availableMinutes)
-        });
         
         return plan;
       }

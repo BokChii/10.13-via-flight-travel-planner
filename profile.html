@@ -101,7 +101,6 @@
       // 프로필 페이지 초기화 함수를 먼저 정의 (빈 함수로 시작, 나중에 실제 구현으로 교체)
       window.initProfilePage = async function() {
         // 실제 구현은 아래 모듈 스크립트에서 교체됨
-        console.log('initProfilePage: 기본 함수 호출됨 (아직 구현되지 않음)');
       };
     </script>
 
@@ -240,10 +239,7 @@
             return;
           }
 
-          console.log('📋 일정 목록 로드 시작, userId:', userId);
           const schedules = await window.getSchedulesByUserId(userId);
-          console.log('📋 일정 목록 로드 완료, 일정 개수:', schedules.length, schedules);
-          
           const container = document.getElementById('schedules-list');
           
           if (schedules.length === 0) {
@@ -292,8 +288,6 @@
       // 일정 불러오기
       window.loadSchedule = async function(scheduleId) {
         try {
-          console.log('일정 불러오기 시작:', scheduleId);
-          
           // 먼저 getScheduleById 시도
           let schedule = null;
           if (window.getScheduleById) {
@@ -306,12 +300,10 @@
           
           // getScheduleById로 찾지 못한 경우, getSchedulesByUserId로 전체 목록에서 찾기
           if (!schedule) {
-            console.log('getScheduleById로 찾지 못함, 전체 목록에서 검색...');
             const userId = window.getUserId ? await window.getUserId() : null;
             if (userId && window.getSchedulesByUserId) {
               const schedules = await window.getSchedulesByUserId(userId);
               schedule = schedules.find(s => s.scheduleId === scheduleId);
-              console.log('전체 목록에서 검색 결과:', schedule ? '찾음' : '없음');
             }
           }
           
@@ -327,14 +319,12 @@
           // navigation.html이 plannerResult를 찾으므로 별도로 저장
           if (schedule.finalTripPlan && schedule.finalTripPlan.plannerResult) {
             sessionStorage.setItem('plannerResult', JSON.stringify(schedule.finalTripPlan.plannerResult));
-            console.log('✅ plannerResult 저장 완료');
           }
           
           // cityPlan도 확인 (airport-external 타입인 경우)
           if (schedule.finalTripPlan && schedule.finalTripPlan.plannerResult) {
             // plannerResult가 cityPlan 형식인 경우 cityPlan으로도 저장
             sessionStorage.setItem('cityPlan', JSON.stringify(schedule.finalTripPlan.plannerResult));
-            console.log('✅ cityPlan 저장 완료');
           }
           
           // scheduleData도 복원 (navigation.html에서 사용)
@@ -346,11 +336,9 @@
                 allPOIs: schedule.scheduleData.airportPOIs
               };
               sessionStorage.setItem('airportPOIData', JSON.stringify(airportPOIData));
-              console.log('✅ airportPOIData 저장 완료');
             }
           }
 
-          console.log('✅ 일정 데이터 복원 완료, navigation.html로 이동');
           // navigation.html로 이동
           window.location.href = 'navigation.html';
           
@@ -376,17 +364,13 @@
             alert('일정 삭제 기능을 사용할 수 없습니다.');
             return;
           }
-
-          console.log('🗑️ 일정 삭제 시작, scheduleId:', scheduleId);
           
           // 삭제 실행
           await scheduleDBDelete(scheduleId);
-          console.log('✅ 일정 삭제 완료 (트랜잭션 커밋됨):', scheduleId);
           
           // 일정 목록 새로고침 (삭제 완료 후 즉시)
           const userId = window.getUserId ? await window.getUserId() : null;
           if (userId) {
-            console.log('🔄 일정 목록 새로고침 시작...');
             // 약간의 지연을 추가하여 IndexedDB가 완전히 업데이트되도록 함
             await new Promise(resolve => setTimeout(resolve, 100));
             
@@ -399,7 +383,6 @@
               // data-schedule-id 속성을 사용하여 삭제된 일정을 찾아서 제거
               const deletedItem = container.querySelector(`[data-schedule-id="${scheduleId}"]`);
               if (deletedItem) {
-                console.log('🗑️ 삭제된 일정을 목록에서 제거:', scheduleId);
                 deletedItem.remove();
               }
               
@@ -409,8 +392,6 @@
                 container.innerHTML = '<p class="empty-message">저장된 일정이 없습니다.</p>';
               }
             }
-            
-            console.log('🔄 일정 목록 새로고침 완료');
           } else {
             // userId가 없어도 목록 새로고침 시도
             const container = document.getElementById('schedules-list');

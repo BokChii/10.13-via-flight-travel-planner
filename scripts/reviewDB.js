@@ -20,8 +20,6 @@ class ReviewDB {
     }
 
     try {
-      console.log('리뷰 DB 초기화 시작...');
-      
       // sql.js 라이브러리 로드 확인
       if (typeof SQL === 'undefined') {
         await this.loadSQLJS();
@@ -33,7 +31,6 @@ class ReviewDB {
       if (savedData) {
         // 기존 데이터가 있으면 복원
         this.db = new SQL.Database(new Uint8Array(savedData));
-        console.log('✅ 기존 리뷰 DB 복원 완료');
         
         // 기존 DB에도 마이그레이션 실행
         await this.migrateTables();
@@ -41,7 +38,6 @@ class ReviewDB {
         // 새 데이터베이스 생성
         this.db = new SQL.Database();
         await this.createTables();
-        console.log('✅ 새 리뷰 DB 생성 완료');
       }
 
       this.isInitialized = true;
@@ -112,19 +108,51 @@ class ReviewDB {
       
       // user_id 컬럼이 없으면 추가
       if (tableSql && !tableSql.includes('user_id')) {
-        console.log('🔄 user_id 컬럼 추가 중...');
         this.db.run(`ALTER TABLE trip_reviews ADD COLUMN user_id TEXT`);
         await this.saveToIndexedDB();
-        console.log('✅ user_id 컬럼 추가 완료');
-      } else {
-        console.log('ℹ️ user_id 컬럼이 이미 존재합니다.');
+      }
+      
+      // review_likes 테이블이 존재하는지 확인
+      const likesTableStmt = this.db.prepare(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='review_likes'
+      `);
+      
+      let likesTableExists = false;
+      if (likesTableStmt.step()) {
+        likesTableExists = true;
+      }
+      likesTableStmt.free();
+      
+      // review_likes 테이블이 없으면 생성
+      if (!likesTableExists) {
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS review_likes (
+            id TEXT PRIMARY KEY,
+            review_id TEXT NOT NULL,
+            user_id TEXT,
+            liked_at TEXT NOT NULL,
+            FOREIGN KEY (review_id) REFERENCES trip_reviews(id) ON DELETE CASCADE
+          )
+        `);
+        
+        this.db.run(`
+          CREATE INDEX IF NOT EXISTS idx_review_likes_review_id 
+          ON review_likes(review_id)
+        `);
+        
+        this.db.run(`
+          CREATE INDEX IF NOT EXISTS idx_review_likes_user_id 
+          ON review_likes(user_id)
+        `);
+        
+        await this.saveToIndexedDB();
       }
     } catch (e) {
       // 컬럼이 이미 존재하거나 다른 오류
       if (e.message && (e.message.includes('duplicate column') || e.message.includes('no such column'))) {
         // duplicate column: 이미 존재함
         // no such column: 테이블이 없거나 다른 문제 (무시)
-        console.log('ℹ️ user_id 컬럼 마이그레이션 확인 완료');
       } else {
         console.warn('마이그레이션 중 오류 (무시 가능):', e.message);
       }

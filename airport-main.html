@@ -630,8 +630,6 @@
         const loadingEl = document.querySelector('.reviews-loading');
         const emptyEl = document.getElementById('city-reviews-empty');
         
-        console.log('🔍 [loadCityReviews] 시작');
-        
         if (!container) {
           console.warn('⚠️ [loadCityReviews] 리뷰 컨테이너를 찾을 수 없습니다.');
           return;
@@ -646,11 +644,6 @@
 
         // 도시 이름 정규화
         const normalizedCity = normalizeCityName(transferInfo.city);
-        console.log('🔍 [loadCityReviews] 도시 이름 정규화:', {
-          originalCity: transferInfo.city,
-          normalizedCity: normalizedCity,
-          transferInfo: transferInfo
-        });
 
         try {
           // 로딩 표시
@@ -659,63 +652,14 @@
           container.innerHTML = '';
 
           // 리뷰 DB 초기화
-          console.log('🔍 [loadCityReviews] DB 초기화 시작...');
           await window.reviewDB.initialize();
-          console.log('✅ [loadCityReviews] 리뷰 DB 초기화 완료');
-
-          // 정규화된 도시 이름으로 리뷰 조회
-          console.log('🔍 [loadCityReviews] 리뷰 조회 시작:', {
-            normalizedCity: normalizedCity,
-            dbInitialized: window.reviewDB.isInitialized
-          });
           
+          // 정규화된 도시 이름으로 리뷰 조회
           const reviews = window.reviewDB.getCityReviews(normalizedCity);
-          console.log('📋 [loadCityReviews] 조회된 리뷰:', {
-            count: reviews?.length || 0,
-            city: normalizedCity,
-            reviews: reviews
-          });
 
           if (loadingEl) loadingEl.style.display = 'none';
 
           if (!reviews || reviews.length === 0) {
-            console.log('⚠️ [loadCityReviews] 리뷰가 없습니다. 디버깅 정보 확인 중...');
-            
-            // 디버깅: 저장된 모든 도시 이름 확인
-            try {
-              const allCities = window.reviewDB.db.exec(`
-                SELECT DISTINCT trip_info_city, COUNT(*) as count 
-                FROM trip_reviews 
-                GROUP BY trip_info_city
-              `);
-              console.log('📊 [loadCityReviews] 저장된 도시 목록:', allCities);
-              
-              // 전체 리뷰 개수 확인
-              const totalReviews = window.reviewDB.db.exec(`
-                SELECT COUNT(*) as count FROM trip_reviews
-              `);
-              console.log('📊 [loadCityReviews] 전체 리뷰 개수:', totalReviews);
-              
-              if (totalReviews.length > 0 && totalReviews[0].values.length > 0) {
-                const totalCount = totalReviews[0].values[0][0];
-                console.log(`📊 [loadCityReviews] 총 ${totalCount}개의 리뷰가 저장되어 있습니다.`);
-                
-                if (totalCount > 0 && allCities.length > 0) {
-                  const cities = allCities[0].values.map(v => v[0]);
-                  console.log('💡 [loadCityReviews] 저장된 도시들:', cities);
-                  console.log('💡 [loadCityReviews] 찾는 도시:', normalizedCity);
-                  console.log('💡 [loadCityReviews] 매칭 여부:', cities.includes(normalizedCity));
-                  
-                  // 대소문자 무시 매칭 확인
-                  const cityLower = normalizedCity.toLowerCase();
-                  const matchingCity = cities.find(c => c.toLowerCase() === cityLower);
-                  console.log('💡 [loadCityReviews] 대소문자 무시 매칭:', matchingCity || '없음');
-                }
-              }
-            } catch (debugError) {
-              console.error('❌ [loadCityReviews] 디버깅 정보 조회 실패:', debugError);
-            }
-            
             if (emptyEl) emptyEl.style.display = 'block';
             return;
           }
@@ -731,8 +675,6 @@
           // 3개만 표시
           const displayReviews = sortedReviews.slice(0, 3);
           const hasMore = sortedReviews.length > 3;
-          console.log('✅ [loadCityReviews] 표시할 리뷰:', displayReviews.length, '개');
-          console.log('📊 [loadCityReviews] 전체 리뷰:', sortedReviews.length, '개');
 
           await renderCityReviews(displayReviews, hasMore);
 
