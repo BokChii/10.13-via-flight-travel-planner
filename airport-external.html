@@ -1719,8 +1719,11 @@
           return;
         }
         
-        // 로딩 표시
-        alert('일정을 생성하고 있습니다. 잠시만 기다려주세요...');
+        // 로딩 오버레이 표시
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'flex';
+        }
         
         try {
           // 공항 내부 POI 데이터를 sessionStorage에 저장
@@ -1741,7 +1744,7 @@
             allPOIsIds: allPOIsArray.map(p => p.id).slice(0, 10) // 처음 10개만 로그
           });
           
-          // 일정 생성
+          // 일정 생성 (운영 시간 비교 포함)
           await generateCityPlan();
           
           // 전체 일정 페이지로 이동
@@ -1756,6 +1759,11 @@
         } catch (error) {
           console.error('도시 일정 생성 실패:', error);
           alert('일정 생성에 실패했습니다. 다시 시도해주세요.');
+        } finally {
+          // 로딩 오버레이 숨김
+          if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+          }
         }
       }
       
@@ -2145,8 +2153,14 @@
           return;
         }
         
+        // 로딩 오버레이 표시
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'flex';
+        }
+        
         try {
-          // 도시 일정 생성
+          // 도시 일정 생성 (운영 시간 비교 포함)
           await generateCityPlan();
           
           // 전체 일정 페이지로 이동
@@ -2161,6 +2175,11 @@
         } catch (error) {
           console.error('도시 일정 생성 실패:', error);
           showToast({ message: '일정 생성에 실패했습니다. 다시 시도해주세요.', type: 'error' });
+        } finally {
+          // 로딩 오버레이 숨김
+          if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+          }
         }
       }
 
@@ -2400,5 +2419,14 @@
         return labels[category] || category;
       }
     </script>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" style="display: none;">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p class="loading-message">일정을 생성하고 있습니다...</p>
+        <p class="loading-submessage">운영 시간을 확인 중입니다. 잠시만 기다려주세요.</p>
+      </div>
+    </div>
   </body>
 </html>
