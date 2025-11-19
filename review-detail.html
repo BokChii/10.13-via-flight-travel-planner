@@ -128,7 +128,7 @@
           console.log('🔍 [loadReview] 리뷰 ID:', reviewId);
 
           // 전체 리뷰 조회
-          const review = window.reviewDB.getTripReviewById(reviewId);
+          const review = await window.reviewDB.getTripReviewById(reviewId);
           console.log('🔍 [loadReview] 조회된 리뷰:', review);
           
           if (!review || !review.id) {

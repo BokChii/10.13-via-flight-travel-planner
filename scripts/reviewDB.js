@@ -1,14 +1,18 @@
 /**
  * Review Database Service
- * SQLite 기반 리뷰 데이터 저장 서비스
- * 기존 sqliteClient.js와 동일한 방식으로 구현
+ * 하이브리드 방식: Supabase (우선) + SQLite/IndexedDB (백업/오프라인)
  */
+
+import { getSupabase, getSupabaseUserId } from './supabaseClient.js';
 
 class ReviewDB {
   constructor() {
     this.db = null;
     this.isInitialized = false;
     this.storageKey = 'viaflight_reviews_db'; // IndexedDB 키
+    
+    // Supabase 사용 여부 (환경 변수나 설정으로 제어 가능)
+    this.useSupabase = true;
   }
 
   /**
@@ -247,15 +251,55 @@ class ReviewDB {
 
   /**
    * 전체 여정 리뷰 저장
+   * @param {Object} reviewData - 리뷰 데이터
+   * @returns {Promise<string>} - 저장된 리뷰 ID
    */
   async saveTripReview(reviewData) {
-    await this.initialize();
-
-    const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
+    
+    // 사용자 ID 가져오기 (Auth0 ID)
+    const auth0UserId = reviewData.userId || (window.getUserId ? await window.getUserId() : null);
+    if (!auth0UserId) {
+      throw new Error('사용자 ID가 필요합니다. 로그인해주세요.');
+    }
 
-    // 사용자 ID 가져오기
-    const userId = reviewData.userId || (window.getUserId ? await window.getUserId() : null);
+    // 1. Supabase에 저장 시도 (우선)
+    if (this.useSupabase) {
+      try {
+        const supabase = await getSupabase();
+        const supabaseUserId = await getSupabaseUserId(auth0UserId);
+        
+        // Supabase에 리뷰 저장
+        const { data, error } = await supabase
+          .from('trip_reviews')
+          .insert({
+            user_id: supabaseUserId,
+            city: reviewData.tripInfo.city,
+            rating: reviewData.overallReview.rating,
+            summary: reviewData.overallReview.summary || '',
+            detail: reviewData.overallReview.detail || ''
+          })
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        const reviewId = data.id;
+        
+        // IndexedDB에도 백업 저장 (오프라인 지원 및 기존 코드 호환성)
+        await this.saveToIndexedDBFallback(reviewData, reviewId, auth0UserId, now);
+        
+        console.log('✅ 리뷰 저장 완료 (Supabase):', reviewId);
+        return reviewId;
+      } catch (error) {
+        console.warn('⚠️ Supabase 저장 실패, IndexedDB로 fallback:', error);
+        // Supabase 실패 시 IndexedDB로 계속 진행
+      }
+    }
+
+    // 2. IndexedDB에 저장 (fallback 또는 Supabase 비활성화 시)
+    await this.initialize();
+    const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // 전체 리뷰 저장
     this.db.run(`
@@ -267,7 +311,7 @@ class ReviewDB {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       reviewId,
-      userId,
+      auth0UserId,
       reviewData.overallReview.rating,
       reviewData.overallReview.summary || '',
       reviewData.overallReview.detail || '',
@@ -309,8 +353,70 @@ class ReviewDB {
     // 변경사항 저장
     await this.saveToIndexedDB();
 
-    console.log('✅ 리뷰 저장 완료:', reviewId);
+    console.log('✅ 리뷰 저장 완료 (IndexedDB):', reviewId);
     return reviewId;
+  }
+
+  /**
+   * IndexedDB에 리뷰 백업 저장 (내부 함수)
+   */
+  async saveToIndexedDBFallback(reviewData, reviewId, auth0UserId, now) {
+    try {
+      await this.initialize();
+      
+      // 전체 리뷰 저장
+      this.db.run(`
+        INSERT OR REPLACE INTO trip_reviews (
+          id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
+          trip_info_city, trip_info_duration, trip_info_visit_count,
+          trip_info_trip_type, trip_info_arrival, trip_info_departure,
+          submitted_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        reviewId,
+        auth0UserId,
+        reviewData.overallReview.rating,
+        reviewData.overallReview.summary || '',
+        reviewData.overallReview.detail || '',
+        reviewData.tripInfo.city,
+        reviewData.tripInfo.duration,
+        reviewData.tripInfo.visitCount,
+        reviewData.tripInfo.tripType,
+        reviewData.tripInfo.arrival,
+        reviewData.tripInfo.departure,
+        now,
+        now
+      ]);
+
+      // 개별 장소 리뷰 저장
+      if (reviewData.placeReviews && reviewData.placeReviews.length > 0) {
+        for (const placeReview of reviewData.placeReviews) {
+          const placeId = `place_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          this.db.run(`
+            INSERT OR REPLACE INTO place_reviews (
+              id, trip_review_id, poi_id, poi_name, poi_category,
+              poi_category_icon, poi_location, rating, comment, submitted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            placeId,
+            reviewId,
+            placeReview.poiId,
+            placeReview.poiName,
+            placeReview.poiCategory || '',
+            placeReview.poiCategoryIcon || '',
+            placeReview.poiLocation || '',
+            placeReview.rating,
+            placeReview.comment || '',
+            now
+          ]);
+        }
+      }
+
+      await this.saveToIndexedDB();
+    } catch (error) {
+      console.warn('IndexedDB 백업 저장 실패:', error);
+    }
   }
 
   /**
@@ -351,8 +457,72 @@ class ReviewDB {
 
   /**
    * 도시별 전체 리뷰 조회
+   * @param {string} city - 도시 이름
+   * @returns {Promise<Array>} - 리뷰 목록
    */
-  getCityReviews(city) {
+  async getCityReviews(city) {
+    if (!city) {
+      return [];
+    }
+
+    // 1. Supabase에서 조회 시도 (우선)
+    if (this.useSupabase) {
+      try {
+        const supabase = await getSupabase();
+        
+        const { data, error } = await supabase
+          .from('trip_reviews')
+          .select('*')
+          .eq('city', city)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          // Supabase 데이터를 기존 형식으로 변환
+          const reviews = await Promise.all(data.map(async (item) => {
+            // userId 복원 (profiles 테이블에서 조회)
+            let auth0UserId = null;
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('auth0_id')
+                .eq('id', item.user_id)
+                .single();
+              
+              if (profile) {
+                auth0UserId = profile.auth0_id;
+              }
+            } catch (e) {
+              console.warn('userId 복원 실패:', e);
+            }
+
+            return {
+              id: item.id,
+              user_id: auth0UserId,
+              overall_review_rating: item.rating,
+              overall_review_summary: item.summary || '',
+              overall_review_detail: item.detail || '',
+              trip_info_city: item.city,
+              trip_info_duration: null, // Supabase 스키마에 없음
+              trip_info_visit_count: null, // Supabase 스키마에 없음
+              trip_info_trip_type: null, // Supabase 스키마에 없음
+              submitted_at: item.created_at
+            };
+          }));
+
+          // IndexedDB에도 동기화 (백업)
+          await this.syncReviewsToIndexedDB(reviews);
+          
+          return reviews;
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase 조회 실패, IndexedDB로 fallback:', error);
+        // Supabase 실패 시 IndexedDB로 계속 진행
+      }
+    }
+
+    // 2. IndexedDB에서 조회 (fallback)
+    await this.initialize();
+    
     if (!this.isInitialized || !this.db) {
       throw new Error('데이터베이스가 초기화되지 않았습니다.');
     }
@@ -384,6 +554,46 @@ class ReviewDB {
     stmt.free();
 
     return results;
+  }
+
+  /**
+   * Supabase 리뷰를 IndexedDB에 동기화 (내부 함수)
+   */
+  async syncReviewsToIndexedDB(reviews) {
+    try {
+      await this.initialize();
+      if (!this.db) return;
+
+      // 기존 리뷰 삭제 후 새로 저장 (간단한 동기화)
+      for (const review of reviews) {
+        this.db.run(`
+          INSERT OR REPLACE INTO trip_reviews (
+            id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
+            trip_info_city, trip_info_duration, trip_info_visit_count,
+            trip_info_trip_type, trip_info_arrival, trip_info_departure,
+            submitted_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          review.id,
+          review.user_id,
+          review.overall_review_rating,
+          review.overall_review_summary,
+          review.overall_review_detail,
+          review.trip_info_city,
+          review.trip_info_duration,
+          review.trip_info_visit_count,
+          review.trip_info_trip_type,
+          null, // arrival
+          null, // departure
+          review.submitted_at,
+          review.submitted_at
+        ]);
+      }
+
+      await this.saveToIndexedDB();
+    } catch (error) {
+      console.warn('IndexedDB 동기화 실패:', error);
+    }
   }
 
   /**
@@ -424,8 +634,65 @@ class ReviewDB {
 
   /**
    * 특정 리뷰 ID로 전체 리뷰 조회
+   * @param {string} reviewId - 리뷰 ID (Supabase UUID 또는 IndexedDB reviewId)
+   * @returns {Promise<Object|null>} - 리뷰 데이터
    */
-  getTripReviewById(reviewId) {
+  async getTripReviewById(reviewId) {
+    if (!reviewId) {
+      return null;
+    }
+
+    // 1. Supabase에서 조회 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase
+          .from('trip_reviews')
+          .select('*')
+          .eq('id', reviewId)
+          .single();
+
+        if (!error && data) {
+          // userId 복원
+          let auth0UserId = null;
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('auth0_id')
+              .eq('id', data.user_id)
+              .single();
+            
+            if (profile) {
+              auth0UserId = profile.auth0_id;
+            }
+          } catch (e) {
+            console.warn('userId 복원 실패:', e);
+          }
+
+          // Supabase 데이터를 기존 형식으로 변환
+          return {
+            id: data.id,
+            user_id: auth0UserId,
+            overall_review_rating: data.rating,
+            overall_review_summary: data.summary || '',
+            overall_review_detail: data.detail || '',
+            trip_info_city: data.city,
+            trip_info_duration: null,
+            trip_info_visit_count: null,
+            trip_info_trip_type: null,
+            trip_info_arrival: null,
+            trip_info_departure: null,
+            submitted_at: data.created_at
+          };
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase 조회 실패, IndexedDB로 fallback:', error);
+      }
+    }
+
+    // 2. IndexedDB에서 조회 (fallback)
+    await this.initialize();
+    
     if (!this.isInitialized || !this.db) {
       throw new Error('데이터베이스가 초기화되지 않았습니다.');
     }
@@ -686,10 +953,33 @@ class ReviewDB {
   }
 
   /**
-   * 좋아요 개수 조회 (DB에서)
-   * 로그인 기능 추가 후 사용
+   * 좋아요 개수 조회
+   * @param {string} reviewId - 리뷰 ID
+   * @returns {Promise<number>} - 좋아요 개수
    */
   async getLikeCount(reviewId) {
+    if (!reviewId) {
+      return 0;
+    }
+
+    // 1. Supabase에서 조회 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const { count, error } = await supabase
+          .from('review_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('review_id', reviewId);
+
+        if (!error && count !== null) {
+          return count;
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase 좋아요 개수 조회 실패, IndexedDB로 fallback:', error);
+      }
+    }
+
+    // 2. IndexedDB에서 조회 (fallback)
     await this.initialize();
     
     if (!this.db) {
@@ -715,8 +1005,58 @@ class ReviewDB {
 
   /**
    * 리뷰의 좋아요 목록 가져오기
+   * @param {string} reviewId - 리뷰 ID
+   * @returns {Promise<Array>} - 좋아요 목록
    */
   async getLikesByReviewId(reviewId) {
+    if (!reviewId) {
+      return [];
+    }
+
+    // 1. Supabase에서 조회 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase
+          .from('review_likes')
+          .select('*')
+          .eq('review_id', reviewId);
+
+        if (!error && data) {
+          // Supabase 데이터를 기존 형식으로 변환
+          const likes = await Promise.all(data.map(async (item) => {
+            // userId 복원 (profiles 테이블에서 조회)
+            let auth0UserId = null;
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('auth0_id')
+                .eq('id', item.user_id)
+                .single();
+              
+              if (profile) {
+                auth0UserId = profile.auth0_id;
+              }
+            } catch (e) {
+              console.warn('userId 복원 실패:', e);
+            }
+
+            return {
+              id: item.id,
+              review_id: item.review_id,
+              user_id: auth0UserId,
+              liked_at: item.created_at
+            };
+          }));
+
+          return likes;
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase 좋아요 목록 조회 실패, IndexedDB로 fallback:', error);
+      }
+    }
+
+    // 2. IndexedDB에서 조회 (fallback)
     await this.initialize();
     
     if (!this.db) {
@@ -744,13 +1084,60 @@ class ReviewDB {
   }
 
   /**
-   * 좋아요 추가 (로그인 기능 추가 후 사용)
+   * 좋아요 추가
+   * @param {string} reviewId - 리뷰 ID
+   * @param {string} userId - 사용자 ID (Auth0 ID)
+   * @returns {Promise<string>} - 좋아요 ID
    */
   async addLike(reviewId, userId = null) {
+    if (!reviewId) {
+      throw new Error('리뷰 ID가 필요합니다.');
+    }
+
+    // 사용자 ID 가져오기 (Auth0 ID)
+    const auth0UserId = userId || (window.getUserId ? await window.getUserId() : null);
+    if (!auth0UserId) {
+      throw new Error('사용자 ID가 필요합니다. 로그인해주세요.');
+    }
+
+    // 1. Supabase에 저장 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const supabaseUserId = await getSupabaseUserId(auth0UserId);
+        
+        const { data, error } = await supabase
+          .from('review_likes')
+          .insert({
+            review_id: reviewId,
+            user_id: supabaseUserId
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          // 중복 좋아요 에러는 무시 (이미 좋아요를 누른 경우)
+          if (error.code === '23505') { // unique_violation
+            console.warn('이미 좋아요를 누른 리뷰입니다.');
+            return null;
+          }
+          throw error;
+        }
+
+        const likeId = data.id;
+        
+        // IndexedDB에도 백업 저장
+        await this.addLikeToIndexedDB(reviewId, auth0UserId, likeId);
+        
+        return likeId;
+      } catch (error) {
+        console.warn('⚠️ Supabase 좋아요 추가 실패, IndexedDB로 fallback:', error);
+        // Supabase 실패 시 IndexedDB로 계속 진행
+      }
+    }
+
+    // 2. IndexedDB에 저장 (fallback)
     await this.initialize();
-    
-    // auth.js에서 사용자 ID 가져오기 (전역 함수 사용)
-    const currentUserId = userId || (window.getUserId ? await window.getUserId() : null);
     
     const likeId = `like_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
@@ -758,29 +1145,103 @@ class ReviewDB {
     this.db.run(`
       INSERT INTO review_likes (id, review_id, user_id, liked_at)
       VALUES (?, ?, ?, ?)
-    `, [likeId, reviewId, currentUserId, now]);
+    `, [likeId, reviewId, auth0UserId, now]);
     
     await this.saveToIndexedDB();
     return likeId;
   }
 
   /**
-   * 좋아요 삭제 (로그인 기능 추가 후 사용)
+   * IndexedDB에 좋아요 백업 저장 (내부 함수)
+   */
+  async addLikeToIndexedDB(reviewId, auth0UserId, likeId) {
+    try {
+      await this.initialize();
+      if (!this.db) return;
+
+      const now = new Date().toISOString();
+      this.db.run(`
+        INSERT OR REPLACE INTO review_likes (id, review_id, user_id, liked_at)
+        VALUES (?, ?, ?, ?)
+      `, [likeId, reviewId, auth0UserId, now]);
+      
+      await this.saveToIndexedDB();
+    } catch (error) {
+      console.warn('IndexedDB 좋아요 백업 저장 실패:', error);
+    }
+  }
+
+  /**
+   * 좋아요 삭제
+   * @param {string} reviewId - 리뷰 ID
+   * @param {string} userId - 사용자 ID (Auth0 ID)
+   * @returns {Promise<void>}
    */
   async removeLike(reviewId, userId = null) {
+    if (!reviewId) {
+      throw new Error('리뷰 ID가 필요합니다.');
+    }
+
+    // 사용자 ID 가져오기 (Auth0 ID)
+    const auth0UserId = userId || (window.getUserId ? await window.getUserId() : null);
+    if (!auth0UserId) {
+      throw new Error('사용자 ID가 필요합니다. 로그인해주세요.');
+    }
+
+    // 1. Supabase에서 삭제 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const supabaseUserId = await getSupabaseUserId(auth0UserId);
+        
+        const { error } = await supabase
+          .from('review_likes')
+          .delete()
+          .eq('review_id', reviewId)
+          .eq('user_id', supabaseUserId);
+
+        if (error) throw error;
+        
+        // IndexedDB에서도 삭제
+        await this.removeLikeFromIndexedDB(reviewId, auth0UserId);
+        
+        return;
+      } catch (error) {
+        console.warn('⚠️ Supabase 좋아요 삭제 실패, IndexedDB로 fallback:', error);
+        // Supabase 실패 시 IndexedDB로 계속 진행
+      }
+    }
+
+    // 2. IndexedDB에서 삭제 (fallback)
     await this.initialize();
     
-    // auth.js에서 사용자 ID 가져오기 (전역 함수 사용)
-    const currentUserId = userId || (window.getUserId ? await window.getUserId() : null);
-    
-    if (currentUserId) {
+    if (auth0UserId) {
       this.db.run(`
         DELETE FROM review_likes 
         WHERE review_id = ? AND user_id = ?
-      `, [reviewId, currentUserId]);
+      `, [reviewId, auth0UserId]);
     }
     
     await this.saveToIndexedDB();
+  }
+
+  /**
+   * IndexedDB에서 좋아요 삭제 (내부 함수)
+   */
+  async removeLikeFromIndexedDB(reviewId, auth0UserId) {
+    try {
+      await this.initialize();
+      if (!this.db) return;
+
+      this.db.run(`
+        DELETE FROM review_likes 
+        WHERE review_id = ? AND user_id = ?
+      `, [reviewId, auth0UserId]);
+      
+      await this.saveToIndexedDB();
+    } catch (error) {
+      console.warn('IndexedDB 좋아요 삭제 실패:', error);
+    }
   }
 
   /**

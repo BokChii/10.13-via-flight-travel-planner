@@ -317,14 +317,81 @@ async function handleAuthStateChange(user) {
       email: user.email,
       name: name
     }));
+    
+    // Supabase 프로필 동기화 (비동기, 에러가 나도 계속 진행)
+    syncAuth0ToSupabase(user).catch(error => {
+      console.warn('Supabase 프로필 동기화 실패 (계속 진행):', error);
+    });
   } else {
     sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('supabase_user_id');
   }
 
   // 커스텀 이벤트 발생
   window.dispatchEvent(new CustomEvent('authStateChanged', {
     detail: { user }
   }));
+}
+
+/**
+ * Auth0 사용자 정보를 Supabase 프로필과 동기화
+ * @param {Object} auth0User - Auth0 사용자 객체
+ * @returns {Promise<string|null>} Supabase 프로필 ID (실패 시 null)
+ */
+async function syncAuth0ToSupabase(auth0User) {
+  if (!auth0User || !auth0User.sub) {
+    return null;
+  }
+
+  try {
+    // Supabase 클라이언트 동적 import (순환 참조 방지)
+    const { getSupabaseUserId, getSupabase } = await import('./supabaseClient.js');
+    
+    // Supabase 프로필 ID 가져오기 (없으면 생성)
+    const supabaseUserId = await getSupabaseUserId(auth0User.sub);
+    
+    // 프로필 정보 업데이트 (이메일, 닉네임 등)
+    const supabase = await getSupabase();
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    if (auth0User.email) {
+      updateData.email = auth0User.email;
+    }
+    
+    // 닉네임이 있으면 업데이트 (userProfile.js에서 가져온 닉네임)
+    try {
+      if (window.getCurrentUserNickname) {
+        const nickname = await window.getCurrentUserNickname();
+        if (nickname) {
+          updateData.nickname = nickname;
+        }
+      }
+    } catch (error) {
+      // 닉네임 가져오기 실패해도 계속 진행
+      console.warn('닉네임 가져오기 실패:', error);
+    }
+    
+    // 프로필 업데이트
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('auth0_id', auth0User.sub);
+    
+    if (updateError) {
+      console.warn('프로필 업데이트 실패:', updateError);
+    }
+    
+    // 세션 스토리지에 Supabase 사용자 ID 저장
+    sessionStorage.setItem('supabase_user_id', supabaseUserId);
+    
+    console.log('✅ Supabase 프로필 동기화 완료:', supabaseUserId);
+    return supabaseUserId;
+  } catch (error) {
+    console.error('❌ Supabase 프로필 동기화 실패:', error);
+    return null;
+  }
 }
 
 /**

@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="supabase-url" content="https://qghwyrdxxlsigtputuyj.supabase.co" />
+    <meta name="supabase-anon-key" content="YOUR_SUPABASE_ANON_KEY" />
     <title>여행 스타일 선택 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/airport-main.css" />
@@ -211,6 +213,7 @@
       </section>
     </main>
 
+    <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/router.js"></script>
     <script type="module" src="scripts/userProfile.js"></script>
     <script type="module" src="scripts/auth.js"></script>
@@ -655,7 +658,7 @@
           await window.reviewDB.initialize();
           
           // 정규화된 도시 이름으로 리뷰 조회
-          const reviews = window.reviewDB.getCityReviews(normalizedCity);
+          const reviews = await window.reviewDB.getCityReviews(normalizedCity);
 
           if (loadingEl) loadingEl.style.display = 'none';
 
@@ -821,7 +824,7 @@
       }
 
       // 정렬 적용 함수
-      function applySort() {
+      async function applySort() {
         const sortSelect = document.getElementById('review-sort-select');
         if (!sortSelect) return;
         
@@ -830,7 +833,7 @@
         
         // 원본 리뷰 가져오기 (DB에서 다시 조회하여 원본 데이터 확보)
         const normalizedCity = normalizeCityName(transferInfo.city);
-        const originalReviews = window.reviewDB.getCityReviews(normalizedCity);
+        const originalReviews = await window.reviewDB.getCityReviews(normalizedCity);
         
         // 정렬 적용
         const sortedReviews = sortReviews(originalReviews, currentSortType);
