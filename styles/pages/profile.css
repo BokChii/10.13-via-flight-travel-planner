@@ -145,6 +145,33 @@
   color: #666;
 }
 
+.review-item {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-item-content {
+  flex: 1;
+  cursor: pointer;
+}
+
+.btn-delete-review {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: 1rem;
+}
+
+.btn-delete-review:hover {
+  opacity: 1;
+}
+
 @media (max-width: 768px) {
   .profile-page .app-header {
     grid-template-columns: 1fr;

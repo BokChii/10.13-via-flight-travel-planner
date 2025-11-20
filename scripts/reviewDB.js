@@ -116,6 +116,12 @@ class ReviewDB {
         await this.saveToIndexedDB();
       }
       
+      // trip_info_visited_places 컬럼이 없으면 추가 (방문 장소 전체 리스트)
+      if (tableSql && !tableSql.includes('trip_info_visited_places')) {
+        this.db.run(`ALTER TABLE trip_reviews ADD COLUMN trip_info_visited_places TEXT`);
+        await this.saveToIndexedDB();
+      }
+      
       // review_likes 테이블이 존재하는지 확인
       const likesTableStmt = this.db.prepare(`
         SELECT name FROM sqlite_master 
@@ -181,6 +187,7 @@ class ReviewDB {
         trip_info_trip_type TEXT,
         trip_info_arrival TEXT,
         trip_info_departure TEXT,
+        trip_info_visited_places TEXT,
         submitted_at TEXT NOT NULL,
         updated_at TEXT
       )
@@ -269,6 +276,11 @@ class ReviewDB {
         const supabase = await getSupabase();
         const supabaseUserId = await getSupabaseUserId(auth0UserId);
         
+        // 방문 장소 정보를 JSON 문자열로 변환
+        const visitedPlacesJson = reviewData.tripInfo.allVisitedPlaces 
+          ? JSON.stringify(reviewData.tripInfo.allVisitedPlaces) 
+          : null;
+        
         // Supabase에 리뷰 저장
         const { data, error } = await supabase
           .from('trip_reviews')
@@ -277,7 +289,14 @@ class ReviewDB {
             city: reviewData.tripInfo.city,
             rating: reviewData.overallReview.rating,
             summary: reviewData.overallReview.summary || '',
-            detail: reviewData.overallReview.detail || ''
+            detail: reviewData.overallReview.detail || '',
+            // 추가 정보 (Supabase 스키마에 컬럼이 있다면 저장)
+            duration: reviewData.tripInfo.duration || null,
+            visit_count: reviewData.tripInfo.visitCount || null,
+            trip_type: reviewData.tripInfo.tripType || null,
+            arrival: reviewData.tripInfo.arrival || null,
+            departure: reviewData.tripInfo.departure || null,
+            visited_places: visitedPlacesJson ? JSON.parse(visitedPlacesJson) : null
           })
           .select('id')
           .single();
@@ -302,13 +321,17 @@ class ReviewDB {
     const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // 전체 리뷰 저장
+    const visitedPlacesJson = reviewData.tripInfo.allVisitedPlaces 
+      ? JSON.stringify(reviewData.tripInfo.allVisitedPlaces) 
+      : null;
+    
     this.db.run(`
       INSERT INTO trip_reviews (
         id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
         trip_info_city, trip_info_duration, trip_info_visit_count,
         trip_info_trip_type, trip_info_arrival, trip_info_departure,
-        submitted_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        trip_info_visited_places, submitted_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       reviewId,
       auth0UserId,
@@ -321,6 +344,7 @@ class ReviewDB {
       reviewData.tripInfo.tripType,
       reviewData.tripInfo.arrival,
       reviewData.tripInfo.departure,
+      visitedPlacesJson,
       now,
       now
     ]);
@@ -365,13 +389,17 @@ class ReviewDB {
       await this.initialize();
       
       // 전체 리뷰 저장
+      const visitedPlacesJson = reviewData.tripInfo.allVisitedPlaces 
+        ? JSON.stringify(reviewData.tripInfo.allVisitedPlaces) 
+        : null;
+      
       this.db.run(`
         INSERT OR REPLACE INTO trip_reviews (
           id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
           trip_info_city, trip_info_duration, trip_info_visit_count,
           trip_info_trip_type, trip_info_arrival, trip_info_departure,
-          submitted_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          trip_info_visited_places, submitted_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         reviewId,
         auth0UserId,
@@ -384,6 +412,7 @@ class ReviewDB {
         reviewData.tripInfo.tripType,
         reviewData.tripInfo.arrival,
         reviewData.tripInfo.departure,
+        visitedPlacesJson,
         now,
         now
       ]);
@@ -495,6 +524,14 @@ class ReviewDB {
               console.warn('userId 복원 실패:', e);
             }
 
+            // 방문 장소 정보 처리
+            let visitedPlaces = null;
+            if (item.visited_places) {
+              visitedPlaces = typeof item.visited_places === 'string'
+                ? item.visited_places
+                : JSON.stringify(item.visited_places);
+            }
+
             return {
               id: item.id,
               user_id: auth0UserId,
@@ -502,9 +539,12 @@ class ReviewDB {
               overall_review_summary: item.summary || '',
               overall_review_detail: item.detail || '',
               trip_info_city: item.city,
-              trip_info_duration: null, // Supabase 스키마에 없음
-              trip_info_visit_count: null, // Supabase 스키마에 없음
-              trip_info_trip_type: null, // Supabase 스키마에 없음
+              trip_info_duration: item.duration || null,
+              trip_info_visit_count: item.visit_count || null,
+              trip_info_trip_type: item.trip_type || null,
+              trip_info_arrival: item.arrival || null,
+              trip_info_departure: item.departure || null,
+              trip_info_visited_places: visitedPlaces,
               submitted_at: item.created_at
             };
           }));
@@ -571,8 +611,8 @@ class ReviewDB {
             id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
             trip_info_city, trip_info_duration, trip_info_visit_count,
             trip_info_trip_type, trip_info_arrival, trip_info_departure,
-            submitted_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            trip_info_visited_places, submitted_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           review.id,
           review.user_id,
@@ -585,6 +625,7 @@ class ReviewDB {
           review.trip_info_trip_type,
           null, // arrival
           null, // departure
+          review.trip_info_visited_places || null,
           review.submitted_at,
           review.submitted_at
         ]);
@@ -670,6 +711,18 @@ class ReviewDB {
           }
 
           // Supabase 데이터를 기존 형식으로 변환
+          // trip_info_visited_places는 JSONB 필드이거나 별도 컬럼일 수 있음
+          let visitedPlaces = null;
+          if (data.visited_places) {
+            visitedPlaces = typeof data.visited_places === 'string' 
+              ? data.visited_places 
+              : JSON.stringify(data.visited_places);
+          } else if (data.trip_info_visited_places) {
+            visitedPlaces = typeof data.trip_info_visited_places === 'string'
+              ? data.trip_info_visited_places
+              : JSON.stringify(data.trip_info_visited_places);
+          }
+          
           return {
             id: data.id,
             user_id: auth0UserId,
@@ -677,11 +730,12 @@ class ReviewDB {
             overall_review_summary: data.summary || '',
             overall_review_detail: data.detail || '',
             trip_info_city: data.city,
-            trip_info_duration: null,
-            trip_info_visit_count: null,
-            trip_info_trip_type: null,
-            trip_info_arrival: null,
-            trip_info_departure: null,
+            trip_info_duration: data.duration || null,
+            trip_info_visit_count: data.visit_count || null,
+            trip_info_trip_type: data.trip_type || null,
+            trip_info_arrival: data.arrival || null,
+            trip_info_departure: data.departure || null,
+            trip_info_visited_places: visitedPlaces,
             submitted_at: data.created_at
           };
         }
@@ -710,6 +764,7 @@ class ReviewDB {
         trip_info_trip_type,
         trip_info_arrival,
         trip_info_departure,
+        trip_info_visited_places,
         submitted_at
       FROM trip_reviews
       WHERE id = ?
@@ -1245,6 +1300,122 @@ class ReviewDB {
   }
 
   /**
+   * 리뷰 삭제
+   * @param {string} reviewId - 리뷰 ID
+   * @param {string} userId - 사용자 ID (Auth0 ID) - 본인 확인용
+   * @returns {Promise<void>}
+   */
+  async deleteTripReview(reviewId, userId = null) {
+    if (!reviewId) {
+      throw new Error('리뷰 ID가 필요합니다.');
+    }
+
+    // 사용자 ID 가져오기 (Auth0 ID)
+    const auth0UserId = userId || (window.getUserId ? await window.getUserId() : null);
+    if (!auth0UserId) {
+      throw new Error('사용자 ID가 필요합니다. 로그인해주세요.');
+    }
+
+    // 1. Supabase에서 삭제 시도 (UUID 형식인 경우)
+    if (this.useSupabase && reviewId.includes('-')) { // UUID 형식 체크
+      try {
+        const supabase = await getSupabase();
+        const supabaseUserId = await getSupabaseUserId(auth0UserId);
+        
+        // 본인 리뷰인지 확인
+        const { data: review, error: fetchError } = await supabase
+          .from('trip_reviews')
+          .select('user_id')
+          .eq('id', reviewId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        if (!review) {
+          throw new Error('리뷰를 찾을 수 없습니다.');
+        }
+        if (review.user_id !== supabaseUserId) {
+          throw new Error('본인의 리뷰만 삭제할 수 있습니다.');
+        }
+        
+        // 관련 좋아요도 삭제
+        await supabase
+          .from('review_likes')
+          .delete()
+          .eq('review_id', reviewId);
+        
+        // 리뷰 삭제
+        const { error } = await supabase
+          .from('trip_reviews')
+          .delete()
+          .eq('id', reviewId);
+        
+        if (error) throw error;
+        
+        // IndexedDB에서도 삭제
+        await this.deleteFromIndexedDB(reviewId);
+        
+        console.log('✅ 리뷰 삭제 완료 (Supabase):', reviewId);
+        return;
+      } catch (error) {
+        console.warn('⚠️ Supabase 리뷰 삭제 실패, IndexedDB로 fallback:', error);
+        // Supabase 실패 시 IndexedDB로 계속 진행
+      }
+    }
+
+    // 2. IndexedDB에서 삭제 (fallback)
+    await this.initialize();
+    
+    if (!this.isInitialized || !this.db) {
+      throw new Error('데이터베이스가 초기화되지 않았습니다.');
+    }
+    
+    // 본인 리뷰인지 확인
+    const review = await this.getTripReviewById(reviewId);
+    if (!review) {
+      throw new Error('리뷰를 찾을 수 없습니다.');
+    }
+    if (review.user_id !== auth0UserId) {
+      throw new Error('본인의 리뷰만 삭제할 수 있습니다.');
+    }
+    
+    // 관련 좋아요 삭제
+    this.db.run(`DELETE FROM review_likes WHERE review_id = ?`, [reviewId]);
+    
+    // 장소 리뷰 삭제
+    this.db.run(`DELETE FROM place_reviews WHERE trip_review_id = ?`, [reviewId]);
+    
+    // 리뷰 삭제
+    this.db.run(`DELETE FROM trip_reviews WHERE id = ?`, [reviewId]);
+    
+    await this.saveToIndexedDB();
+    
+    console.log('✅ 리뷰 삭제 완료 (IndexedDB):', reviewId);
+  }
+
+  /**
+   * IndexedDB에서 리뷰 삭제 (내부 함수)
+   */
+  async deleteFromIndexedDB(reviewId) {
+    try {
+      await this.initialize();
+      if (!this.db) return;
+
+      // 관련 좋아요 삭제
+      this.db.run(`DELETE FROM review_likes WHERE review_id = ?`, [reviewId]);
+      
+      // 장소 리뷰 삭제
+      this.db.run(`DELETE FROM place_reviews WHERE trip_review_id = ?`, [reviewId]);
+      
+      // 리뷰 삭제
+      this.db.run(`DELETE FROM trip_reviews WHERE id = ?`, [reviewId]);
+      
+      await this.saveToIndexedDB();
+    } catch (error) {
+      console.warn('IndexedDB 리뷰 삭제 실패:', error);
+    }
+  }
+
+  /**
    * 사용자 ID로 작성한 리뷰 조회
    */
   async getReviewsByUserId(userId) {
@@ -1357,6 +1528,14 @@ window.clearReviewDB = async function() {
       alert('❌ 리뷰 데이터베이스 초기화에 실패했습니다.');
     }
   }
+};
+
+// 전역 함수로 리뷰 삭제 함수 노출
+window.deleteTripReview = async function(reviewId, userId = null) {
+  if (!window.reviewDB) {
+    throw new Error('리뷰 DB가 초기화되지 않았습니다.');
+  }
+  return await window.reviewDB.deleteTripReview(reviewId, userId);
 };
 
 

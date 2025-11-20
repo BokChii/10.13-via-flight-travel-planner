@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="supabase-url" content="https://qghwyrdxxlsigtputuyj.supabase.co" />
-    <meta name="supabase-anon-key" content="YOUR_SUPABASE_ANON_KEY" />
+    <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnaHd5cmR4eGxzaWd0cHV0dXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MjIyNzIsImV4cCI6MjA3OTA5ODI3Mn0.8Ia_UCE-HYjZy2XX0VYEAKY2zGaN1QlvcTUlPPK8mxY" />
     <title>프로필 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/components/buttons.css" />
@@ -437,18 +437,79 @@
             const formattedDate = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
             
             return `
-              <div class="review-item" onclick="viewReviewDetail('${review.id}')">
-                <div class="review-item-header">
-                  <span class="review-rating">${stars} ${review.overall_review_rating || 0}.0</span>
-                  <span class="review-date">${formattedDate}</span>
+              <div class="review-item" data-review-id="${review.id}">
+                <div class="review-item-content" onclick="viewReviewDetail('${review.id}')">
+                  <div class="review-item-header">
+                    <span class="review-rating">${stars} ${review.overall_review_rating || 0}.0</span>
+                    <span class="review-date">${formattedDate}</span>
+                  </div>
+                  <div class="review-item-summary">${escapeHtml(review.overall_review_summary || '')}</div>
+                  <div class="review-item-city">${review.trip_info_city || ''}</div>
                 </div>
-                <div class="review-item-summary">${escapeHtml(review.overall_review_summary || '')}</div>
-                <div class="review-item-city">${review.trip_info_city || ''}</div>
+                <button class="btn-delete-review" onclick="event.stopPropagation(); deleteReviewConfirm('${review.id}', '${escapeHtml(review.overall_review_summary || '')}')" title="리뷰 삭제">
+                  🗑️
+                </button>
               </div>
             `;
           }).join('');
         } catch (error) {
           console.error('작성한 리뷰 로드 실패:', error);
+        }
+      }
+      
+      // 리뷰 삭제 확인
+      window.deleteReviewConfirm = function(reviewId, reviewSummary) {
+        const summaryText = reviewSummary.length > 30 ? reviewSummary.substring(0, 30) + '...' : reviewSummary;
+        if (confirm(`이 리뷰를 삭제하시겠습니까?\n\n"${summaryText}"\n\n이 작업은 되돌릴 수 없습니다.`)) {
+          deleteReview(reviewId);
+        }
+      };
+
+      // 리뷰 삭제
+      async function deleteReview(reviewId) {
+        try {
+          const userId = window.getUserId ? await window.getUserId() : null;
+          if (!userId) {
+            alert('로그인이 필요합니다.');
+            return;
+          }
+          
+          if (!window.deleteTripReview) {
+            alert('리뷰 삭제 기능을 사용할 수 없습니다.');
+            return;
+          }
+          
+          // 삭제 실행
+          await window.deleteTripReview(reviewId, userId);
+          
+          // 일정 목록 새로고침 (삭제 완료 후 즉시)
+          // 약간의 지연을 추가하여 DB가 완전히 업데이트되도록 함
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // 목록 새로고침
+          await loadMyReviews(userId);
+          
+          // 삭제된 리뷰가 여전히 목록에 있는지 확인하고 필터링
+          const container = document.getElementById('my-reviews-list');
+          if (container) {
+            // data-review-id 속성을 사용하여 삭제된 리뷰를 찾아서 제거
+            const deletedItem = container.querySelector(`[data-review-id="${reviewId}"]`);
+            if (deletedItem) {
+              deletedItem.remove();
+            }
+            
+            // 모든 리뷰가 삭제된 경우 빈 메시지 표시
+            const remainingItems = container.querySelectorAll('.review-item');
+            if (remainingItems.length === 0) {
+              container.innerHTML = '<p class="empty-message">작성한 리뷰가 없습니다.</p>';
+            }
+          }
+          
+          alert('✅ 리뷰가 삭제되었습니다.');
+          
+        } catch (error) {
+          console.error('리뷰 삭제 실패:', error);
+          alert('리뷰 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         }
       }
       

@@ -1207,7 +1207,26 @@
               visitCount: (scheduleData.airportPOIs?.length || 0) + (scheduleData.cityPOIs?.length || 0),
               tripType: scheduleData.type,
               arrival: transferInfo.arrival,
-              departure: transferInfo.departure
+              departure: transferInfo.departure,
+              // 방문 장소 전체 리스트 추가
+              airportPOIs: scheduleData.airportPOIs || [],
+              cityPOIs: scheduleData.cityPOIs || [],
+              allVisitedPlaces: [
+                ...(scheduleData.airportPOIs || []).map(poi => ({
+                  id: poi.id,
+                  name: poi.name,
+                  category: poi.category || '',
+                  categoryIcon: poi.categoryIcon || '📍',
+                  location: 'airport' // 공항 내부
+                })),
+                ...(scheduleData.cityPOIs || []).map(poi => ({
+                  id: poi.id || `city_${poi.name}`,
+                  name: poi.name,
+                  category: poi.category || '',
+                  categoryIcon: poi.categoryIcon || '📍',
+                  location: 'city' // 공항 외부
+                }))
+              ]
             },
             placeReviews: getSelectedPlaceReviews()
           };

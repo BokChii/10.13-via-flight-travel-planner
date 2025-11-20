@@ -74,6 +74,27 @@
           </div>
         </section>
 
+        <!-- 방문한 장소 전체 리스트 -->
+        <section class="review-visited-places-section" id="review-visited-places-section" style="display: none;">
+          <div class="review-visited-places-card">
+            <h2 class="section-title">🗺️ 방문한 장소 전체</h2>
+            <div class="visited-places-container">
+              <div class="visited-places-group" id="airport-places-group" style="display: none;">
+                <h3 class="visited-places-group-title">✈️ 공항 내부</h3>
+                <div class="visited-places-list" id="airport-places-list">
+                  <!-- 동적으로 생성됨 -->
+                </div>
+              </div>
+              <div class="visited-places-group" id="city-places-group" style="display: none;">
+                <h3 class="visited-places-group-title">🏙️ 공항 외부 (도시)</h3>
+                <div class="visited-places-list" id="city-places-list">
+                  <!-- 동적으로 생성됨 -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- 방문한 장소 리뷰 -->
         <section class="review-places-section" id="review-places-section" style="display: none;">
           <div class="review-places-card">
@@ -253,6 +274,59 @@
           </div>
           ` : ''}
         `;
+
+        // 방문한 장소 전체 리스트 표시
+        let allVisitedPlaces = [];
+        try {
+          if (review.trip_info_visited_places) {
+            allVisitedPlaces = typeof review.trip_info_visited_places === 'string' 
+              ? JSON.parse(review.trip_info_visited_places)
+              : review.trip_info_visited_places;
+            console.log('✅ 방문 장소 정보 로드:', allVisitedPlaces);
+          } else {
+            console.warn('⚠️ 방문 장소 정보가 없습니다. review:', review);
+          }
+        } catch (e) {
+          console.warn('방문 장소 정보 파싱 실패:', e, review.trip_info_visited_places);
+        }
+
+        if (allVisitedPlaces && allVisitedPlaces.length > 0) {
+          document.getElementById('review-visited-places-section').style.display = 'block';
+          
+          // 공항 내부와 외부로 분리
+          const airportPlaces = allVisitedPlaces.filter(place => place.location === 'airport');
+          const cityPlaces = allVisitedPlaces.filter(place => place.location === 'city');
+          
+          // 공항 내부 장소 표시
+          if (airportPlaces.length > 0) {
+            document.getElementById('airport-places-group').style.display = 'block';
+            const airportList = document.getElementById('airport-places-list');
+            airportList.innerHTML = airportPlaces.map(place => `
+              <div class="visited-place-item">
+                <span class="visited-place-icon">${place.categoryIcon || '📍'}</span>
+                <div class="visited-place-info">
+                  <span class="visited-place-name">${escapeHtml(place.name || '')}</span>
+                  ${place.category ? `<span class="visited-place-category">${escapeHtml(place.category)}</span>` : ''}
+                </div>
+              </div>
+            `).join('');
+          }
+          
+          // 공항 외부 장소 표시
+          if (cityPlaces.length > 0) {
+            document.getElementById('city-places-group').style.display = 'block';
+            const cityList = document.getElementById('city-places-list');
+            cityList.innerHTML = cityPlaces.map(place => `
+              <div class="visited-place-item">
+                <span class="visited-place-icon">${place.categoryIcon || '📍'}</span>
+                <div class="visited-place-info">
+                  <span class="visited-place-name">${escapeHtml(place.name || '')}</span>
+                  ${place.category ? `<span class="visited-place-category">${escapeHtml(place.category)}</span>` : ''}
+                </div>
+              </div>
+            `).join('');
+          }
+        }
 
         // 장소 리뷰
         if (placeReviews && placeReviews.length > 0) {
