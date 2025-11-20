@@ -276,12 +276,8 @@ class ReviewDB {
         const supabase = await getSupabase();
         const supabaseUserId = await getSupabaseUserId(auth0UserId);
         
-        // 방문 장소 정보를 JSON 문자열로 변환
-        const visitedPlacesJson = reviewData.tripInfo.allVisitedPlaces 
-          ? JSON.stringify(reviewData.tripInfo.allVisitedPlaces) 
-          : null;
-        
         // Supabase에 리뷰 저장
+        // visited_places는 JSONB 타입이므로 객체를 직접 저장
         const { data, error } = await supabase
           .from('trip_reviews')
           .insert({
@@ -290,13 +286,13 @@ class ReviewDB {
             rating: reviewData.overallReview.rating,
             summary: reviewData.overallReview.summary || '',
             detail: reviewData.overallReview.detail || '',
-            // 추가 정보 (Supabase 스키마에 컬럼이 있다면 저장)
+            // 추가 여행 정보
             duration: reviewData.tripInfo.duration || null,
             visit_count: reviewData.tripInfo.visitCount || null,
             trip_type: reviewData.tripInfo.tripType || null,
             arrival: reviewData.tripInfo.arrival || null,
             departure: reviewData.tripInfo.departure || null,
-            visited_places: visitedPlacesJson ? JSON.parse(visitedPlacesJson) : null
+            visited_places: reviewData.tripInfo.allVisitedPlaces || null
           })
           .select('id')
           .single();
@@ -524,7 +520,7 @@ class ReviewDB {
               console.warn('userId 복원 실패:', e);
             }
 
-            // 방문 장소 정보 처리
+            // 방문 장소 정보 처리 (JSONB는 객체로 반환됨)
             let visitedPlaces = null;
             if (item.visited_places) {
               visitedPlaces = typeof item.visited_places === 'string'
@@ -711,16 +707,13 @@ class ReviewDB {
           }
 
           // Supabase 데이터를 기존 형식으로 변환
-          // trip_info_visited_places는 JSONB 필드이거나 별도 컬럼일 수 있음
+          // visited_places는 JSONB 타입이므로 객체로 반환됨
           let visitedPlaces = null;
           if (data.visited_places) {
+            // JSONB는 이미 객체이므로 문자열로 변환 (IndexedDB 호환성)
             visitedPlaces = typeof data.visited_places === 'string' 
               ? data.visited_places 
               : JSON.stringify(data.visited_places);
-          } else if (data.trip_info_visited_places) {
-            visitedPlaces = typeof data.trip_info_visited_places === 'string'
-              ? data.trip_info_visited_places
-              : JSON.stringify(data.trip_info_visited_places);
           }
           
           return {
