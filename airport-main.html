@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="openai-api-key" content="YOUR_OPENAI_API_KEY" />
     <meta name="supabase-url" content="https://qghwyrdxxlsigtputuyj.supabase.co" />
     <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnaHd5cmR4eGxzaWd0cHV0dXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MjIyNzIsImV4cCI6MjA3OTA5ODI3Mn0.8Ia_UCE-HYjZy2XX0VYEAKY2zGaN1QlvcTUlPPK8mxY" />
     <title>여행 스타일 선택 - Via Flight</title>
@@ -151,8 +152,88 @@
               </div>
             </div>
           </button>
+
+          <button class="choice-card choice-card--ai" onclick="openAIChat()">
+            <div class="choice-icon">🤖</div>
+            <h3 class="choice-card-title">AI와 대화하기</h3>
+            <p class="choice-card-description">
+              AI 여행 플래너와 대화하며<br>
+              자동으로 맞춤 일정을 만들어드립니다
+            </p>
+            <div class="choice-features">
+              <span class="feature-tag">자동 추천</span>
+              <span class="feature-tag">맞춤 일정</span>
+              <span class="feature-tag">빠른 생성</span>
+              <span class="feature-tag">스마트</span>
+            </div>
+            <div class="choice-benefits">
+              <div class="benefit-item">
+                <span class="benefit-icon">✨</span>
+                <span>간단한 대화로 일정 생성</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✨</span>
+                <span>선호도 자동 파악</span>
+              </div>
+              <div class="benefit-item">
+                <span class="benefit-icon">✨</span>
+                <span>최적의 장소 추천</span>
+              </div>
+            </div>
+          </button>
         </div>
       </section>
+
+      <!-- AI Chat Modal -->
+      <div class="ai-chat-modal" id="ai-chat-modal" style="display: none;">
+        <div class="ai-chat-container">
+          <div class="ai-chat-header">
+            <div class="ai-chat-header-content">
+              <div class="ai-chat-avatar">🤖</div>
+              <div>
+                <h3>AI 여행 플래너</h3>
+                <p>원하시는 여행 스타일을 말씀해주세요!</p>
+              </div>
+            </div>
+            <button class="ai-chat-close" onclick="closeAIChat()">×</button>
+          </div>
+          
+          <div class="ai-chat-messages" id="ai-chat-messages">
+            <div class="ai-message">
+              <div class="message-avatar">🤖</div>
+              <div class="message-content">
+                <p>안녕하세요! 저는 AI 여행 플래너입니다. 🎉</p>
+                <p>환승 시간 동안 무엇을 하고 싶으신지 말씀해주시면, 최적의 일정을 자동으로 만들어드릴게요!</p>
+                <p><strong>예시:</strong></p>
+                <ul class="example-messages">
+                  <li>"싱가포르에서 4시간 동안 쇼핑하고 맛있는 음식 먹고 싶어"</li>
+                  <li>"공항에서 휴식하고 문화체험 하고 싶어"</li>
+                  <li>"도시 나가서 관광지 보고 로컬 맛집 가고 싶어"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ai-chat-input-container">
+            <div class="ai-chat-input-wrapper">
+              <input 
+                type="text" 
+                id="ai-chat-input" 
+                class="ai-chat-input" 
+                placeholder="원하시는 여행 스타일을 입력해주세요..."
+                onkeypress="handleAIChatKeyPress(event)"
+              />
+              <button class="ai-chat-send" onclick="sendAIMessage()" id="ai-chat-send-btn">
+                <span>전송</span>
+              </button>
+            </div>
+            <div class="ai-chat-loading" id="ai-chat-loading" style="display: none;">
+              <div class="loading-spinner"></div>
+              <span>AI가 일정을 생성하고 있습니다...</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Recommendations Section -->
       <section class="recommendations-section">
@@ -219,6 +300,14 @@
     <script type="module" src="scripts/auth.js"></script>
     <script src="scripts/sqliteClient.js"></script>
     <script type="module" src="scripts/reviewDB.js"></script>
+    <script type="module" src="scripts/airportPOIService.js"></script>
+    <script type="module" src="scripts/cityPOIService.js"></script>
+    <script type="module" src="scripts/poiServiceManager.js"></script>
+    <script type="module" src="scripts/aiPlannerService.js"></script>
+    <script type="module">
+      import { getOpenAIApiKey } from './scripts/config.js';
+      window.getOpenAIApiKey = getOpenAIApiKey;
+    </script>
     <script>
       // 전역 상태
       let transferInfo = null;
@@ -386,6 +475,173 @@
         setTimeout(() => {
           window.navigateTo('/airport-external', { userChoice: selectedChoice });
         }, 500);
+      }
+
+      // AI 채팅 열기
+      function openAIChat() {
+        const modal = document.getElementById('ai-chat-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          // 입력 필드에 포커스
+          setTimeout(() => {
+            const input = document.getElementById('ai-chat-input');
+            if (input) input.focus();
+          }, 100);
+        }
+      }
+
+      // AI 채팅 닫기
+      function closeAIChat() {
+        const modal = document.getElementById('ai-chat-modal');
+        if (modal) {
+          modal.style.display = 'none';
+        }
+      }
+
+      // AI 채팅 엔터 키 처리
+      function handleAIChatKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendAIMessage();
+        }
+      }
+
+      // AI 메시지 전송
+      async function sendAIMessage() {
+        const input = document.getElementById('ai-chat-input');
+        const sendBtn = document.getElementById('ai-chat-send-btn');
+        const loadingEl = document.getElementById('ai-chat-loading');
+        const messagesEl = document.getElementById('ai-chat-messages');
+        
+        if (!input || !input.value.trim()) return;
+        
+        const userMessage = input.value.trim();
+        input.value = '';
+        sendBtn.disabled = true;
+        
+        // 사용자 메시지 표시
+        const userMsgEl = document.createElement('div');
+        userMsgEl.className = 'user-message';
+        userMsgEl.innerHTML = `
+          <div class="message-content">
+            <p>${escapeHtml(userMessage)}</p>
+          </div>
+          <div class="message-avatar">👤</div>
+        `;
+        messagesEl.appendChild(userMsgEl);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        
+        // 로딩 표시
+        loadingEl.style.display = 'flex';
+        
+        try {
+          // AI 플래너 서비스 호출
+          if (!window.aiPlannerService) {
+            throw new Error('AI 플래너 서비스가 초기화되지 않았습니다.');
+          }
+          
+          const result = await window.aiPlannerService.generatePlanFromChat(userMessage, transferInfo);
+          
+          // AI 응답 표시
+          const aiMsgEl = document.createElement('div');
+          aiMsgEl.className = 'ai-message';
+          
+          // 마크다운을 HTML로 변환
+          const messageHtml = markdownToHtml(result.message);
+          
+          aiMsgEl.innerHTML = `
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+              ${messageHtml}
+              ${result.recommendations ? `
+                <div class="ai-recommendations">
+                  <p><strong>추천 일정:</strong></p>
+                  <ul>
+                    ${result.recommendations.map(rec => `<li>${escapeHtml(rec)}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `;
+          messagesEl.appendChild(aiMsgEl);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          
+          // 일정 생성 완료 시 자동으로 일정 페이지로 이동
+          if (result.planGenerated && result.planData) {
+            setTimeout(() => {
+              loadingEl.innerHTML = '<div class="loading-spinner"></div><span>일정을 생성하고 있습니다...</span>';
+              
+              // 일정 데이터를 sessionStorage에 저장
+              if (result.planData.airportPOIs && result.planData.airportPOIs.length > 0) {
+                // airportPOIData 형식으로 저장
+                const airportPOIData = {
+                  selectedPOIs: result.planData.airportPOIs.map(poi => poi.id),
+                  allPOIs: result.planData.airportPOIs,
+                  selectedTable: getTableNameFromCategories(result.planData.selectedCategories.airport),
+                  selectedTypes: result.planData.selectedCategories.airport
+                };
+                sessionStorage.setItem('airportPOIData', JSON.stringify(airportPOIData));
+                console.log('✅ 공항 POI 데이터 저장:', airportPOIData);
+              }
+              
+              if (result.planData.cityPOIs && result.planData.cityPOIs.length > 0) {
+                // cityPOIData 형식으로 저장
+                const cityPOIData = {
+                  selectedPOIs: result.planData.cityPOIs.map(poi => poi.id || poi.place_id),
+                  allPOIs: result.planData.cityPOIs,
+                  selectedCategories: result.planData.selectedCategories.city || []
+                };
+                sessionStorage.setItem('cityPOIData', JSON.stringify(cityPOIData));
+                console.log('✅ 도시 POI 데이터 저장:', cityPOIData);
+              }
+              
+              // 선택된 카테고리 정보도 저장
+              if (result.planData.selectedCategories) {
+                sessionStorage.setItem('aiSelectedCategories', JSON.stringify(result.planData.selectedCategories));
+              }
+              
+              // AI로 생성된 일정임을 표시
+              sessionStorage.setItem('aiGeneratedPlan', 'true');
+              
+              // 일정 생성 완료 메시지
+              setTimeout(() => {
+                const successMsg = document.createElement('div');
+                successMsg.className = 'ai-message';
+                successMsg.innerHTML = `
+                  <div class="message-avatar">🤖</div>
+                  <div class="message-content">
+                    <p>✅ 일정이 생성되었습니다!</p>
+                    <p>아래 버튼을 클릭하여 일정 페이지로 이동하세요.</p>
+                    <button class="ai-go-to-plan-btn" onclick="goToPlanPage('${result.planData.type}')">
+                      📅 일정 확인하기
+                    </button>
+                  </div>
+                `;
+                messagesEl.appendChild(successMsg);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              }, 1000);
+            }, 1500);
+          }
+          
+        } catch (error) {
+          console.error('AI 일정 생성 실패:', error);
+          
+          const errorMsg = document.createElement('div');
+          errorMsg.className = 'ai-message';
+          errorMsg.innerHTML = `
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+              <p>죄송합니다. 일정 생성 중 오류가 발생했습니다. 다시 시도해주세요.</p>
+              <p style="font-size: 0.9rem; color: #666; margin-top: 8px;">오류: ${escapeHtml(error.message)}</p>
+            </div>
+          `;
+          messagesEl.appendChild(errorMsg);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } finally {
+          loadingEl.style.display = 'none';
+          sendBtn.disabled = false;
+          input.focus();
+        }
       }
 
       // 뒤로가기
@@ -886,6 +1142,63 @@
         return div.innerHTML;
       }
 
+      // 마크다운을 HTML로 변환하는 함수
+      function markdownToHtml(text) {
+        if (!text) return '';
+        
+        // HTML 특수문자 이스케이프 (보안)
+        const div = document.createElement('div');
+        div.textContent = text;
+        let html = div.innerHTML;
+        
+        // **텍스트** → <strong>텍스트</strong>
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // *텍스트* → <em>텍스트</em> (단, ** 다음이 아닌 경우)
+        html = html.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+        
+        // \n\n → </p><p> (단락 구분)
+        const paragraphs = html.split(/\n\n+/).filter(p => p.trim());
+        if (paragraphs.length > 1) {
+          return paragraphs.map(p => {
+            // \n → <br> (줄바꿈)
+            p = p.replace(/\n/g, '<br>');
+            return `<p>${p}</p>`;
+          }).join('');
+        } else {
+          // 단락이 하나면 <p> 태그 없이 <br>만 사용
+          return html.replace(/\n/g, '<br>');
+        }
+      }
+
+      // 카테고리에서 테이블 이름 가져오기 (AI 일정 생성용)
+      function getTableNameFromCategories(categories) {
+        if (!categories || categories.length === 0) return 'shopping_options_db_frame';
+        
+        const categoryTableMap = {
+          shopping: 'shopping_options_db_frame',
+          food: 'meal_options_db_frame',
+          culture: 'airport_events_db_frame',
+          relax: 'rests_db_frame'
+        };
+        
+        return categoryTableMap[categories[0]] || 'shopping_options_db_frame';
+      }
+
+      // 일정 페이지로 이동하는 함수
+      function goToPlanPage(planType) {
+        // Router state 업데이트
+        if (window.updateAppState) {
+          window.updateAppState({ userChoice: planType });
+        }
+        
+        if (planType === 'airport-only') {
+          window.location.href = 'airport-only.html';
+        } else {
+          window.location.href = 'airport-external.html';
+        }
+      }
+
       // 리뷰 상세 보기
       function viewReviewDetail(reviewId) {
         // sessionStorage에 리뷰 ID 저장
@@ -948,7 +1261,14 @@
           // 사용자 ID 가져오기
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+            if (window.showModal) {
+              showModal({
+                message: '사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.',
+                type: 'error'
+              });
+            } else {
+              alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+            }
             return;
           }
           
@@ -995,9 +1315,17 @@
           
         } catch (e) {
           console.error('좋아요 토글 실패:', e);
-          alert('좋아요 기능을 사용할 수 없습니다. 다시 시도해주세요.');
+          if (window.showModal) {
+            showModal({
+              message: '좋아요 기능을 사용할 수 없습니다. 다시 시도해주세요.',
+              type: 'error'
+            });
+          } else {
+            alert('좋아요 기능을 사용할 수 없습니다. 다시 시도해주세요.');
+          }
         }
       }
     </script>
+    <script src="scripts/modal.js"></script>
   </body>
 </html>

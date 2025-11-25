@@ -997,6 +997,143 @@
   margin-top: 1.5rem;
 }
 
+/* 이미지 업로드 스타일 */
+.review-image-upload {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #dee2e6;
+  transition: all 0.2s;
+}
+
+.review-image-upload:hover {
+  border-color: var(--color-primary);
+  background: #f0f4f8;
+}
+
+.image-upload-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.image-upload-label:hover {
+  color: var(--color-primary);
+}
+
+.upload-icon {
+  font-size: 1.5rem;
+}
+
+.image-preview {
+  margin-top: 16px;
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove-image {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  color: #dc3545;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove-image:hover {
+  background: #dc3545;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* 장소별 이미지 업로드 */
+.place-review-image-upload {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
+}
+
+.image-upload-label-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.image-upload-label-small:hover {
+  color: var(--color-primary);
+}
+
+.place-image-preview {
+  margin-top: 12px;
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.place-image-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove-image-small {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  color: #dc3545;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove-image-small:hover {
+  background: #dc3545;
+  color: white;
+  transform: scale(1.1);
+}
+
 @media (max-width: 480px) {
   .summary-content {
     grid-template-columns: 1fr;
@@ -1021,5 +1158,13 @@
   .modal-content {
     margin: 1rem;
     max-width: calc(100% - 2rem);
+  }
+  
+  .image-preview img {
+    max-height: 300px;
+  }
+  
+  .place-image-preview img {
+    max-height: 150px;
   }
 }

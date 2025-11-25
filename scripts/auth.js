@@ -403,7 +403,20 @@ export async function requireAuth(message = '이 기능을 사용하려면 로�
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     // 사용자에게 로그인 안내
-    const shouldLogin = confirm(`${message}\n\nGoogle 계정으로 로그인하시겠습니까?`);
+    let shouldLogin = false;
+    
+    if (window.showConfirmModal) {
+      shouldLogin = await showConfirmModal({
+        message: `${message}\n\nGoogle 계정으로 로그인하시겠습니까?`,
+        title: '로그인 필요',
+        type: 'info',
+        confirmText: '로그인',
+        cancelText: '취소'
+      });
+    } else {
+      shouldLogin = confirm(`${message}\n\nGoogle 계정으로 로그인하시겠습니까?`);
+    }
+    
     if (shouldLogin) {
       await loginWithGoogle();
     }

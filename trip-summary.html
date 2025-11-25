@@ -171,6 +171,19 @@
                         maxlength="1000"></textarea>
               <span class="char-count"><span id="detail-char-count">0</span>/1000</span>
             </div>
+            
+            <!-- 전체 리뷰 사진 첨부 -->
+            <div class="review-image-upload">
+              <label class="image-upload-label" for="overall-review-image">
+                <input type="file" id="overall-review-image" accept="image/*" style="display: none;" />
+                <span class="upload-icon">📷</span>
+                <span>전체 리뷰 사진 추가 (선택)</span>
+              </label>
+              <div id="overall-review-image-preview" class="image-preview" style="display: none;">
+                <img id="overall-review-image-preview-img" alt="미리보기" />
+                <button type="button" class="btn-remove-image" onclick="removeOverallReviewImage()">×</button>
+              </div>
+            </div>
           </div>
 
           <!-- 개별 장소 리뷰 (선택) -->
@@ -267,6 +280,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="module" src="scripts/reviewDB.js"></script>
+    <script type="module" src="scripts/supabaseSetupChecker.js"></script>
     <script type="module" src="scripts/scheduleDB.js"></script>
     <script type="module" src="scripts/router.js"></script>
     <script type="module" src="scripts/userProfile.js"></script>
@@ -327,9 +341,30 @@
           }, 300);
           
           console.log('✅ trip-summary 초기화 완료');
+        
+        // Supabase 설정 확인 (선택사항, 개발 모드에서만)
+        if (window.checkSupabaseSetup && window.location.hostname === 'localhost') {
+          setTimeout(async () => {
+            try {
+              const results = await window.checkSupabaseSetup();
+              if (!results.allReady) {
+                console.warn('💡 Supabase 설정이 완료되지 않았습니다. SUPABASE_STORAGE_SETUP.md 파일을 참고하세요.');
+              }
+            } catch (error) {
+              console.warn('Supabase 설정 확인 실패:', error);
+            }
+          }, 2000);
+        }
         } catch (error) {
           console.error('❌ trip-summary 초기화 실패:', error);
-          alert('오류가 발생했습니다. 콘솔을 확인해주세요.');
+          if (window.showModal) {
+            showModal({
+              message: '오류가 발생했습니다. 콘솔을 확인해주세요.',
+              type: 'error'
+            });
+          } else {
+            alert('오류가 발생했습니다. 콘솔을 확인해주세요.');
+          }
         }
       });
 
@@ -1023,6 +1058,18 @@
                         rows="2"
                         maxlength="500"></textarea>
               <span class="char-count place-char-count" data-poi-id="${poi.id}"><span class="place-char-num">0</span>/500</span>
+              
+              <!-- 장소별 리뷰 사진 첨부 -->
+              <div class="place-review-image-upload">
+                <label class="image-upload-label-small" for="place-review-image-${poi.id}">
+                  <input type="file" class="place-review-image-input" id="place-review-image-${poi.id}" data-poi-id="${poi.id}" accept="image/*" style="display: none;" />
+                  <span>📷 사진 추가</span>
+                </label>
+                <div class="place-image-preview" data-poi-id="${poi.id}" style="display: none;">
+                  <img class="place-image-preview-img" data-poi-id="${poi.id}" alt="미리보기" />
+                  <button type="button" class="btn-remove-image-small" onclick="removePlaceReviewImage('${poi.id}')">×</button>
+                </div>
+              </div>
             </div>
           </div>
         `).join('');
@@ -1041,6 +1088,97 @@
             }
           });
         });
+        
+        // 장소별 이미지 업로드 이벤트 리스너 추가
+        container.querySelectorAll('.place-review-image-input').forEach(input => {
+          input.addEventListener('change', function(e) {
+            handlePlaceImageUpload(e, this.dataset.poiId);
+          });
+        });
+      }
+      
+      // 이미지 저장 객체
+      let reviewImages = {
+        overall: null, // File 객체
+        places: {} // { poiId: File }
+      };
+      
+      // 전체 리뷰 이미지 업로드 핸들러
+      document.getElementById('overall-review-image').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            if (window.showModal) {
+              showModal({
+                message: '이미지 크기는 5MB 이하여야 합니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('이미지 크기는 5MB 이하여야 합니다.');
+            }
+            e.target.value = '';
+            return;
+          }
+          reviewImages.overall = file;
+          // 미리보기 표시
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            document.getElementById('overall-review-image-preview-img').src = e.target.result;
+            document.getElementById('overall-review-image-preview').style.display = 'block';
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      
+      // 전체 리뷰 이미지 제거
+      function removeOverallReviewImage() {
+        reviewImages.overall = null;
+        document.getElementById('overall-review-image').value = '';
+        document.getElementById('overall-review-image-preview').style.display = 'none';
+      }
+      
+      // 장소별 이미지 업로드 핸들러
+      function handlePlaceImageUpload(e, poiId) {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            if (window.showModal) {
+              showModal({
+                message: '이미지 크기는 5MB 이하여야 합니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('이미지 크기는 5MB 이하여야 합니다.');
+            }
+            e.target.value = '';
+            return;
+          }
+          reviewImages.places[poiId] = file;
+          // 미리보기 표시
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const preview = document.querySelector(`.place-image-preview-img[data-poi-id="${poiId}"]`);
+            const previewContainer = document.querySelector(`.place-image-preview[data-poi-id="${poiId}"]`);
+            if (preview && previewContainer) {
+              preview.src = e.target.result;
+              previewContainer.style.display = 'block';
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+      
+      // 장소별 이미지 제거
+      function removePlaceReviewImage(poiId) {
+        delete reviewImages.places[poiId];
+        const input = document.getElementById(`place-review-image-${poiId}`);
+        if (input) {
+          input.value = '';
+        }
+        const previewContainer = document.querySelector(`.place-image-preview[data-poi-id="${poiId}"]`);
+        if (previewContainer) {
+          previewContainer.style.display = 'none';
+        }
       }
 
       // 장소별 별점 초기화
@@ -1166,20 +1304,41 @@
           // 전체 리뷰 검증
           const overallRating = parseInt(document.getElementById('overall-rating').dataset.rating || 0);
           if (overallRating === 0) {
-            alert('⭐ 전체 만족도를 선택해주세요.');
+            if (window.showModal) {
+              showModal({
+                message: '전체 만족도를 선택해주세요.',
+                type: 'warning'
+              });
+            } else {
+              alert('⭐ 전체 만족도를 선택해주세요.');
+            }
             return;
           }
 
           const summary = document.getElementById('trip-review-summary').value.trim();
           if (!summary) {
-            alert('📝 한 줄 후기를 작성해주세요.');
+            if (window.showModal) {
+              showModal({
+                message: '한 줄 후기를 작성해주세요.',
+                type: 'warning'
+              });
+            } else {
+              alert('📝 한 줄 후기를 작성해주세요.');
+            }
             return;
           }
 
           // 사용자 ID 가져오기
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+            if (window.showModal) {
+              showModal({
+                message: '사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.',
+                type: 'error'
+              });
+            } else {
+              alert('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+            }
             return;
           }
 
@@ -1193,13 +1352,78 @@
             normalized: normalizedCity
           });
 
+          // 이미지 업로드 (각 이미지를 개별적으로 처리하여 하나가 실패해도 나머지는 계속 시도)
+          let overallImageUrl = null;
+          const placeImageUrls = {};
+          let hasImageUploadError = false;
+          let imageUploadErrorMessage = '';
+          
+          const { uploadToStorage, getSupabaseUserId } = await import('./scripts/supabaseClient.js');
+          
+          // 전체 리뷰 이미지 업로드
+          if (reviewImages.overall) {
+            try {
+              const supabaseUserId = await getSupabaseUserId(userId);
+              const timestamp = Date.now();
+              const path = `reviews/${supabaseUserId}/overall_${timestamp}.jpg`;
+              overallImageUrl = await uploadToStorage('review-images', path, reviewImages.overall);
+              console.log('✅ 전체 리뷰 이미지 업로드 완료:', overallImageUrl);
+            } catch (error) {
+              console.error('전체 리뷰 이미지 업로드 실패:', error);
+              hasImageUploadError = true;
+              if (error.message && error.message.includes('버킷')) {
+                imageUploadErrorMessage = 'Supabase Storage 버킷이 생성되지 않았습니다.';
+              }
+            }
+          }
+          
+          // 장소별 이미지 업로드 (각각 개별 처리)
+          for (const [poiId, file] of Object.entries(reviewImages.places)) {
+            try {
+              const supabaseUserId = await getSupabaseUserId(userId);
+              const timestamp = Date.now();
+              const path = `reviews/${supabaseUserId}/place_${poiId}_${timestamp}.jpg`;
+              placeImageUrls[poiId] = await uploadToStorage('review-images', path, file);
+              console.log(`✅ 장소별 이미지 업로드 완료 (${poiId}):`, placeImageUrls[poiId]);
+            } catch (error) {
+              console.error(`장소별 이미지 업로드 실패 (${poiId}):`, error);
+              hasImageUploadError = true;
+              if (error.message && error.message.includes('버킷') && !imageUploadErrorMessage) {
+                imageUploadErrorMessage = 'Supabase Storage 버킷이 생성되지 않았습니다.';
+              }
+            }
+          }
+          
+          // 이미지 업로드 오류가 있었으면 사용자에게 안내
+          if (hasImageUploadError) {
+            if (imageUploadErrorMessage) {
+              console.warn('⚠️ 이미지 업로드 실패:', imageUploadErrorMessage);
+              console.warn('💡 해결 방법: SUPABASE_STORAGE_SETUP.md 파일을 참고하여 버킷을 생성해주세요.');
+            } else {
+              console.warn('⚠️ 일부 이미지 업로드에 실패했습니다.');
+            }
+          }
+          
+          // finalTripPlan에서 routeMapImageUrl 가져오기
+          const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
+          let routeMapImageUrl = null;
+          if (finalTripPlanStr) {
+            try {
+              const finalTripPlan = JSON.parse(finalTripPlanStr);
+              routeMapImageUrl = finalTripPlan.routeMapImageUrl || null;
+            } catch (e) {
+              console.warn('finalTripPlan 파싱 실패:', e);
+            }
+          }
+          
           // 리뷰 데이터 구성
           const reviewData = {
             userId: userId, // 사용자 ID 추가
             overallReview: {
               rating: overallRating,
               summary: summary,
-              detail: document.getElementById('trip-review-detail').value.trim()
+              detail: document.getElementById('trip-review-detail').value.trim(),
+              imageUrl: overallImageUrl // 추가
             },
             tripInfo: {
               city: normalizedCity, // 정규화된 도시 이름 사용
@@ -1228,14 +1452,54 @@
                 }))
               ]
             },
-            placeReviews: getSelectedPlaceReviews()
+            placeReviews: getSelectedPlaceReviews().map(pr => ({
+              ...pr,
+              imageUrl: placeImageUrls[pr.poiId] || null // 추가
+            })),
+            routeMapImageUrl: routeMapImageUrl // 추가
           };
 
           // 리뷰 저장
-          const reviewId = await window.reviewDB.saveTripReview(reviewData);
+          let reviewId;
+          let hasSupabaseSchemaError = false;
+          
+          try {
+            reviewId = await window.reviewDB.saveTripReview(reviewData);
+          } catch (error) {
+            // Supabase 스키마 오류인 경우
+            if (error.message && error.message.includes('column')) {
+              hasSupabaseSchemaError = true;
+              console.error('⚠️ Supabase 스키마 오류로 인한 저장 실패');
+              console.error('💡 해결 방법: supabase-schema-extension.sql 파일의 SQL을 Supabase SQL Editor에서 실행해주세요.');
+            }
+            throw error; // 다른 오류는 다시 throw
+          }
           
           // 성공 메시지
-          alert('✅ 리뷰가 저장되었습니다!\n\n다른 여행자들에게 도움이 될 거예요. 감사합니다!');
+          let successMessage = '✅ 리뷰가 저장되었습니다!\n\n다른 여행자들에게 도움이 될 거예요. 감사합니다!';
+          
+          // 추가 안내 메시지
+          if (hasImageUploadError) {
+            successMessage += '\n\n⚠️ 참고: 일부 이미지 업로드에 실패했습니다.';
+            if (imageUploadErrorMessage) {
+              successMessage += '\n' + imageUploadErrorMessage;
+              successMessage += '\nSUPABASE_STORAGE_SETUP.md 파일을 참고해주세요.';
+            }
+          }
+          
+          if (hasSupabaseSchemaError) {
+            successMessage += '\n\n⚠️ 참고: Supabase 스키마가 업데이트되지 않아 IndexedDB에만 저장되었습니다.';
+            successMessage += '\nsupabase-schema-extension.sql 파일의 SQL을 실행해주세요.';
+          }
+          
+          if (window.showModal) {
+            showModal({
+              message: successMessage.replace(/✅|❌/g, '').trim(),
+              type: 'success'
+            });
+          } else {
+            alert(successMessage);
+          }
           
           // 리뷰 섹션 숨기기 또는 완료 상태 표시
           const reviewSection = document.querySelector('.review-section');
@@ -1251,13 +1515,34 @@
 
         } catch (error) {
           console.error('리뷰 저장 실패:', error);
-          alert('❌ 리뷰 저장에 실패했습니다. 다시 시도해주세요.');
+          if (window.showModal) {
+            showModal({
+              message: '리뷰 저장에 실패했습니다. 다시 시도해주세요.',
+              type: 'error'
+            });
+          } else {
+            alert('❌ 리뷰 저장에 실패했습니다. 다시 시도해주세요.');
+          }
         }
       }
 
       // 리뷰 건너뛰기
-      function skipReview() {
-        if (confirm('리뷰 작성을 건너뛰시겠습니까?\n나중에 작성할 수 있습니다.')) {
+      async function skipReview() {
+        let shouldSkip = false;
+        
+        if (window.showConfirmModal) {
+          shouldSkip = await showConfirmModal({
+            message: '리뷰 작성을 건너뛰시겠습니까?\n나중에 작성할 수 있습니다.',
+            title: '리뷰 작성 건너뛰기',
+            type: 'info',
+            confirmText: '건너뛰기',
+            cancelText: '계속 작성'
+          });
+        } else {
+          shouldSkip = confirm('리뷰 작성을 건너뛰시겠습니까?\n나중에 작성할 수 있습니다.');
+        }
+        
+        if (shouldSkip) {
           const reviewSection = document.querySelector('.review-section');
           if (reviewSection) {
             reviewSection.style.display = 'none';
@@ -1297,11 +1582,25 @@
           // 링크 공유 로직
           const shareUrl = window.location.origin + window.location.pathname;
           navigator.clipboard.writeText(shareUrl).then(() => {
-            alert('링크가 클립보드에 복사되었습니다!');
+            if (window.showModal) {
+              showModal({
+                message: '링크가 클립보드에 복사되었습니다!',
+                type: 'success'
+              });
+            } else {
+              alert('링크가 클립보드에 복사되었습니다!');
+            }
           });
         } else if (type === 'image') {
           // 이미지 저장 로직
-          alert('이미지 저장 기능은 준비 중입니다.');
+          if (window.showModal) {
+            showModal({
+              message: '이미지 저장 기능은 준비 중입니다.',
+              type: 'info'
+            });
+          } else {
+            alert('이미지 저장 기능은 준비 중입니다.');
+          }
         }
       }
 
@@ -1310,7 +1609,14 @@
         try {
           const target = document.querySelector('.trip-summary-main');
           if (!target) {
-            alert('저장할 콘텐츠를 찾을 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '저장할 콘텐츠를 찾을 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('저장할 콘텐츠를 찾을 수 없습니다.');
+            }
             return;
           }
           const canvas = await html2canvas(target, {
@@ -1341,17 +1647,38 @@
           const city = scheduleData?.transferInfo?.city || '여행';
           const datePart = new Date().toISOString().split('T')[0];
           pdf.save(`전체일정_${city}_${datePart}.pdf`);
-          alert('✅ PDF가 다운로드되었습니다!');
+          if (window.showModal) {
+            showModal({
+              message: 'PDF가 다운로드되었습니다!',
+              type: 'success'
+            });
+          } else {
+            alert('✅ PDF가 다운로드되었습니다!');
+          }
         } catch (error) {
           console.error('PDF 저장 실패:', error);
-          alert('❌ PDF 저장에 실패했습니다.');
+          if (window.showModal) {
+            showModal({
+              message: 'PDF 저장에 실패했습니다.',
+              type: 'error'
+            });
+          } else {
+            alert('❌ PDF 저장에 실패했습니다.');
+          }
         }
       }
 
       function shareSummary() {
         try {
           if (!scheduleData) {
-            alert('공유할 일정 데이터가 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '공유할 일정 데이터가 없습니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('공유할 일정 데이터가 없습니다.');
+            }
             return;
           }
           const t = scheduleData.transferInfo || {};
@@ -1388,7 +1715,14 @@
           }
 
           navigator.clipboard.writeText(text).then(() => {
-            alert('✅ 일정이 클립보드에 복사되었습니다!');
+            if (window.showModal) {
+              showModal({
+                message: '일정이 클립보드에 복사되었습니다!',
+                type: 'success'
+              });
+            } else {
+              alert('✅ 일정이 클립보드에 복사되었습니다!');
+            }
           }).catch(() => {
             const ta = document.createElement('textarea');
             ta.value = text;
@@ -1396,11 +1730,25 @@
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-            alert('✅ 일정이 클립보드에 복사되었습니다!');
+            if (window.showModal) {
+              showModal({
+                message: '일정이 클립보드에 복사되었습니다!',
+                type: 'success'
+              });
+            } else {
+              alert('✅ 일정이 클립보드에 복사되었습니다!');
+            }
           });
         } catch (e) {
           console.error('일정 공유 실패:', e);
-          alert('❌ 일정 공유에 실패했습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '일정 공유에 실패했습니다.',
+              type: 'error'
+            });
+          } else {
+            alert('❌ 일정 공유에 실패했습니다.');
+          }
         }
       }
 
@@ -1409,10 +1757,30 @@
         try {
           const to = (document.getElementById('share-email-to')?.value || '').trim();
           const emailRx = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-          if (!emailRx.test(to)) { alert('받는 이메일이 유효하지 않습니다.'); return; }
+          if (!emailRx.test(to)) {
+            if (window.showModal) {
+              showModal({
+                message: '받는 이메일이 유효하지 않습니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('받는 이메일이 유효하지 않습니다.');
+            }
+            return;
+          }
 
           const target = document.querySelector('.trip-summary-main');
-          if (!target) { alert('전송할 콘텐츠를 찾을 수 없습니다.'); return; }
+          if (!target) {
+            if (window.showModal) {
+              showModal({
+                message: '전송할 콘텐츠를 찾을 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('전송할 콘텐츠를 찾을 수 없습니다.');
+            }
+            return;
+          }
 
           const canvas = await html2canvas(target, { useCORS: true, scale: 2, backgroundColor: '#ffffff' });
           const { jsPDF } = window.jspdf;
@@ -1440,7 +1808,17 @@
               }
             })
           });
-          if (res.ok) { alert('✅ 이메일로 전송되었습니다!'); return; }
+          if (res.ok) {
+            if (window.showModal) {
+              showModal({
+                message: '이메일로 전송되었습니다!',
+                type: 'success'
+              });
+            } else {
+              alert('✅ 이메일로 전송되었습니다!');
+            }
+            return;
+          }
 
           // Fallback: 브라우저에서 직접 Resend API 호출(로컬/정적 테스트용)
           if (window.RESEND_API_KEY) {
@@ -1518,26 +1896,54 @@
         try {
           const scheduleName = document.getElementById('schedule-name-input')?.value?.trim();
           if (!scheduleName) {
-            alert('일정 이름을 입력해주세요.');
+            if (window.showModal) {
+              showModal({
+                message: '일정 이름을 입력해주세요.',
+                type: 'warning'
+              });
+            } else {
+              alert('일정 이름을 입력해주세요.');
+            }
             return;
           }
 
           if (scheduleName.length > 50) {
-            alert('일정 이름은 50자 이하여야 합니다.');
+            if (window.showModal) {
+              showModal({
+                message: '일정 이름은 50자 이하여야 합니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('일정 이름은 50자 이하여야 합니다.');
+            }
             return;
           }
 
           // 사용자 ID 확인
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('로그인이 필요합니다.');
+            if (window.showModal) {
+              showModal({
+                message: '로그인이 필요합니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('로그인이 필요합니다.');
+            }
             return;
           }
 
           // finalTripPlan과 scheduleData 가져오기
           const finalTripPlanStr = sessionStorage.getItem('finalTripPlan');
           if (!finalTripPlanStr) {
-            alert('일정 데이터를 찾을 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '일정 데이터를 찾을 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('일정 데이터를 찾을 수 없습니다.');
+            }
             return;
           }
 
@@ -1545,7 +1951,14 @@
           
           // scheduleData는 전역 변수에서 가져오기
           if (!scheduleData) {
-            alert('일정 데이터를 찾을 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '일정 데이터를 찾을 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('일정 데이터를 찾을 수 없습니다.');
+            }
             return;
           }
 
@@ -1572,7 +1985,14 @@
           
         } catch (error) {
           console.error('일정 저장 실패:', error);
-          alert('❌ 일정 저장에 실패했습니다. 다시 시도해주세요.');
+          if (window.showModal) {
+            showModal({
+              message: '일정 저장에 실패했습니다. 다시 시도해주세요.',
+              type: 'error'
+            });
+          } else {
+            alert('❌ 일정 저장에 실패했습니다. 다시 시도해주세요.');
+          }
         }
       };
 
@@ -1596,5 +2016,6 @@
         }
       });
     </script>
+    <script src="scripts/modal.js"></script>
   </body>
 </html>

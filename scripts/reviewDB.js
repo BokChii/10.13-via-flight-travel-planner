@@ -122,6 +122,37 @@ class ReviewDB {
         await this.saveToIndexedDB();
       }
       
+      // overall_review_image_url 컬럼이 없으면 추가
+      if (tableSql && !tableSql.includes('overall_review_image_url')) {
+        this.db.run(`ALTER TABLE trip_reviews ADD COLUMN overall_review_image_url TEXT`);
+        await this.saveToIndexedDB();
+      }
+      
+      // route_map_image_url 컬럼이 없으면 추가
+      if (tableSql && !tableSql.includes('route_map_image_url')) {
+        this.db.run(`ALTER TABLE trip_reviews ADD COLUMN route_map_image_url TEXT`);
+        await this.saveToIndexedDB();
+      }
+      
+      // place_reviews 테이블의 image_url 컬럼 확인
+      const placeTableStmt = this.db.prepare(`
+        SELECT sql FROM sqlite_master 
+        WHERE type='table' AND name='place_reviews'
+      `);
+      
+      let placeTableSql = '';
+      if (placeTableStmt.step()) {
+        const placeResult = placeTableStmt.getAsObject();
+        placeTableSql = placeResult.sql || '';
+      }
+      placeTableStmt.free();
+      
+      // place_reviews 테이블의 image_url 컬럼이 없으면 추가
+      if (placeTableSql && !placeTableSql.includes('image_url')) {
+        this.db.run(`ALTER TABLE place_reviews ADD COLUMN image_url TEXT`);
+        await this.saveToIndexedDB();
+      }
+      
       // review_likes 테이블이 존재하는지 확인
       const likesTableStmt = this.db.prepare(`
         SELECT name FROM sqlite_master 
@@ -181,6 +212,7 @@ class ReviewDB {
         overall_review_rating INTEGER NOT NULL,
         overall_review_summary TEXT,
         overall_review_detail TEXT,
+        overall_review_image_url TEXT,
         trip_info_city TEXT NOT NULL,
         trip_info_duration INTEGER,
         trip_info_visit_count INTEGER,
@@ -188,6 +220,7 @@ class ReviewDB {
         trip_info_arrival TEXT,
         trip_info_departure TEXT,
         trip_info_visited_places TEXT,
+        route_map_image_url TEXT,
         submitted_at TEXT NOT NULL,
         updated_at TEXT
       )
@@ -205,6 +238,7 @@ class ReviewDB {
         poi_location TEXT,
         rating INTEGER NOT NULL,
         comment TEXT,
+        image_url TEXT,
         submitted_at TEXT NOT NULL,
         FOREIGN KEY (trip_review_id) REFERENCES trip_reviews(id) ON DELETE CASCADE
       )
@@ -292,7 +326,10 @@ class ReviewDB {
             trip_type: reviewData.tripInfo.tripType || null,
             arrival: reviewData.tripInfo.arrival || null,
             departure: reviewData.tripInfo.departure || null,
-            visited_places: reviewData.tripInfo.allVisitedPlaces || null
+            visited_places: reviewData.tripInfo.allVisitedPlaces || null,
+            // 이미지 URL 추가
+            overall_review_image_url: reviewData.overallReview.imageUrl || null,
+            route_map_image_url: reviewData.routeMapImageUrl || null
           })
           .select('id')
           .single();
@@ -301,12 +338,40 @@ class ReviewDB {
 
         const reviewId = data.id;
         
+        // 장소별 리뷰 저장 (이미지 URL 포함)
+        if (reviewData.placeReviews && reviewData.placeReviews.length > 0) {
+          const placeReviewsData = reviewData.placeReviews.map(placeReview => ({
+            trip_review_id: reviewId,
+            poi_id: placeReview.poiId,
+            poi_name: placeReview.poiName,
+            poi_category: placeReview.poiCategory || '',
+            poi_category_icon: placeReview.poiCategoryIcon || '',
+            poi_location: placeReview.poiLocation || '',
+            rating: placeReview.rating,
+            comment: placeReview.comment || '',
+            image_url: placeReview.imageUrl || null
+          }));
+          
+          const { error: placeError } = await supabase
+            .from('place_reviews')
+            .insert(placeReviewsData);
+          
+          if (placeError) {
+            console.warn('⚠️ 장소별 리뷰 저장 실패:', placeError);
+          }
+        }
+        
         // IndexedDB에도 백업 저장 (오프라인 지원 및 기존 코드 호환성)
         await this.saveToIndexedDBFallback(reviewData, reviewId, auth0UserId, now);
         
         console.log('✅ 리뷰 저장 완료 (Supabase):', reviewId);
         return reviewId;
       } catch (error) {
+        // Supabase 스키마 오류인 경우 더 명확한 메시지
+        if (error.message && error.message.includes('column') && error.message.includes('schema cache')) {
+          console.error('⚠️ Supabase 스키마 오류:', error.message);
+          console.error('💡 해결 방법: supabase-schema-extension.sql 파일의 SQL을 Supabase SQL Editor에서 실행해주세요.');
+        }
         console.warn('⚠️ Supabase 저장 실패, IndexedDB로 fallback:', error);
         // Supabase 실패 시 IndexedDB로 계속 진행
       }
@@ -324,16 +389,17 @@ class ReviewDB {
     this.db.run(`
       INSERT INTO trip_reviews (
         id, user_id, overall_review_rating, overall_review_summary, overall_review_detail,
-        trip_info_city, trip_info_duration, trip_info_visit_count,
+        overall_review_image_url, trip_info_city, trip_info_duration, trip_info_visit_count,
         trip_info_trip_type, trip_info_arrival, trip_info_departure,
-        trip_info_visited_places, submitted_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        trip_info_visited_places, route_map_image_url, submitted_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       reviewId,
       auth0UserId,
       reviewData.overallReview.rating,
       reviewData.overallReview.summary || '',
       reviewData.overallReview.detail || '',
+      reviewData.overallReview.imageUrl || null,
       reviewData.tripInfo.city,
       reviewData.tripInfo.duration,
       reviewData.tripInfo.visitCount,
@@ -341,6 +407,7 @@ class ReviewDB {
       reviewData.tripInfo.arrival,
       reviewData.tripInfo.departure,
       visitedPlacesJson,
+      reviewData.routeMapImageUrl || null,
       now,
       now
     ]);
@@ -353,8 +420,8 @@ class ReviewDB {
         this.db.run(`
           INSERT INTO place_reviews (
             id, trip_review_id, poi_id, poi_name, poi_category,
-            poi_category_icon, poi_location, rating, comment, submitted_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            poi_category_icon, poi_location, rating, comment, image_url, submitted_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           placeId,
           reviewId,
@@ -365,6 +432,7 @@ class ReviewDB {
           placeReview.poiLocation || '',
           placeReview.rating,
           placeReview.comment || '',
+          placeReview.imageUrl || null,
           now
         ]);
       }
@@ -421,8 +489,8 @@ class ReviewDB {
           this.db.run(`
             INSERT OR REPLACE INTO place_reviews (
               id, trip_review_id, poi_id, poi_name, poi_category,
-              poi_category_icon, poi_location, rating, comment, submitted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              poi_category_icon, poi_location, rating, comment, image_url, submitted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             placeId,
             reviewId,
@@ -433,6 +501,7 @@ class ReviewDB {
             placeReview.poiLocation || '',
             placeReview.rating,
             placeReview.comment || '',
+            placeReview.imageUrl || null,
             now
           ]);
         }
@@ -722,6 +791,7 @@ class ReviewDB {
             overall_review_rating: data.rating,
             overall_review_summary: data.summary || '',
             overall_review_detail: data.detail || '',
+            overall_review_image_url: data.overall_review_image_url || null,
             trip_info_city: data.city,
             trip_info_duration: data.duration || null,
             trip_info_visit_count: data.visit_count || null,
@@ -729,6 +799,7 @@ class ReviewDB {
             trip_info_arrival: data.arrival || null,
             trip_info_departure: data.departure || null,
             trip_info_visited_places: visitedPlaces,
+            route_map_image_url: data.route_map_image_url || null,
             submitted_at: data.created_at
           };
         }
@@ -751,6 +822,7 @@ class ReviewDB {
         overall_review_rating,
         overall_review_summary,
         overall_review_detail,
+        overall_review_image_url,
         trip_info_city,
         trip_info_duration,
         trip_info_visit_count,
@@ -758,6 +830,7 @@ class ReviewDB {
         trip_info_arrival,
         trip_info_departure,
         trip_info_visited_places,
+        route_map_image_url,
         submitted_at
       FROM trip_reviews
       WHERE id = ?
@@ -779,8 +852,49 @@ class ReviewDB {
 
   /**
    * 특정 여정 리뷰의 모든 장소 리뷰 조회
+   * @param {string} tripReviewId - 여정 리뷰 ID (Supabase UUID 또는 IndexedDB reviewId)
+   * @returns {Promise<Array>} - 장소 리뷰 배열
    */
-  getPlaceReviewsByTripId(tripReviewId) {
+  async getPlaceReviewsByTripId(tripReviewId) {
+    if (!tripReviewId) {
+      return [];
+    }
+
+    // 1. Supabase에서 조회 시도 (UUID 형식인 경우)
+    if (this.useSupabase && tripReviewId.includes('-')) {
+      try {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase
+          .from('place_reviews')
+          .select('*')
+          .eq('trip_review_id', tripReviewId)
+          .order('submitted_at', { ascending: true });
+
+        if (!error && data) {
+          // Supabase 데이터를 기존 형식으로 변환
+          const results = data.map(item => ({
+            id: item.id,
+            poi_id: item.poi_id,
+            poi_name: item.poi_name,
+            poi_category: item.poi_category || '',
+            poi_category_icon: item.poi_category_icon || '',
+            poi_location: item.poi_location || '',
+            rating: item.rating,
+            comment: item.comment || '',
+            image_url: item.image_url || null,
+            submitted_at: item.submitted_at
+          }));
+          console.log(`✅ 장소 리뷰 조회 완료 (Supabase): ${results.length}개`);
+          return results;
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase 장소 리뷰 조회 실패, IndexedDB로 fallback:', error);
+      }
+    }
+
+    // 2. IndexedDB에서 조회 (fallback)
+    await this.initialize();
+    
     if (!this.isInitialized || !this.db) {
       throw new Error('데이터베이스가 초기화되지 않았습니다.');
     }
@@ -795,6 +909,7 @@ class ReviewDB {
         poi_location,
         rating,
         comment,
+        image_url,
         submitted_at
       FROM place_reviews
       WHERE trip_review_id = ?
@@ -1510,15 +1625,45 @@ window.reviewDB = new ReviewDB();
 
 // 전역 함수로 초기화 함수 노출
 window.clearReviewDB = async function() {
-  if (confirm('리뷰 데이터베이스를 초기화하시겠습니까?\n\n모든 리뷰 데이터가 삭제되며 되돌릴 수 없습니다.')) {
+  let shouldClear = false;
+  
+  if (window.showConfirmModal) {
+    shouldClear = await showConfirmModal({
+      message: '리뷰 데이터베이스를 초기화하시겠습니까?\n\n모든 리뷰 데이터가 삭제되며 되돌릴 수 없습니다.',
+      title: '데이터베이스 초기화',
+      type: 'danger',
+      confirmText: '초기화',
+      cancelText: '취소'
+    });
+  } else {
+    shouldClear = confirm('리뷰 데이터베이스를 초기화하시겠습니까?\n\n모든 리뷰 데이터가 삭제되며 되돌릴 수 없습니다.');
+  }
+  
+  if (shouldClear) {
     try {
       await window.reviewDB.clearDatabase();
-      alert('✅ 리뷰 데이터베이스가 초기화되었습니다.');
-      // 페이지 새로고침
-      window.location.reload();
+      if (window.showModal) {
+        showModal({
+          message: '리뷰 데이터베이스가 초기화되었습니다.',
+          type: 'success',
+          onConfirm: () => {
+            window.location.reload();
+          }
+        });
+      } else {
+        alert('✅ 리뷰 데이터베이스가 초기화되었습니다.');
+        window.location.reload();
+      }
     } catch (error) {
       console.error('리뷰 DB 초기화 실패:', error);
-      alert('❌ 리뷰 데이터베이스 초기화에 실패했습니다.');
+      if (window.showModal) {
+        showModal({
+          message: '리뷰 데이터베이스 초기화에 실패했습니다.',
+          type: 'error'
+        });
+      } else {
+        alert('❌ 리뷰 데이터베이스 초기화에 실패했습니다.');
+      }
     }
   }
 };

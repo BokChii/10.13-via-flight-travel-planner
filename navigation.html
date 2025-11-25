@@ -184,6 +184,69 @@
     <script>
       // 페이지 로드 시 저장된 일정 불러오기
       document.addEventListener('DOMContentLoaded', function() {
+        // 리뷰에서 가져온 일정 확인
+        const importedTripStr = sessionStorage.getItem('importedTrip');
+        if (importedTripStr) {
+          try {
+            const importedTrip = JSON.parse(importedTripStr);
+            
+            // 폼에 데이터 입력
+            const originInput = document.getElementById('origin-input');
+            const destinationInput = document.getElementById('destination-input');
+            const waypointList = document.getElementById('waypoint-list');
+            const waypointInput = document.getElementById('waypoint-input');
+            
+            if (originInput) {
+              originInput.value = importedTrip.origin || '공항';
+            }
+            if (destinationInput) {
+              destinationInput.value = importedTrip.destination || '공항';
+            }
+            
+            // waypoints 추가
+            if (importedTrip.waypoints && importedTrip.waypoints.length > 0 && waypointList) {
+              importedTrip.waypoints.forEach((waypoint, index) => {
+                const li = document.createElement('li');
+                li.className = 'waypoint-item';
+                li.innerHTML = `
+                  <span>${waypoint.name || waypoint.address || `경유지 ${index + 1}`}</span>
+                  <button type="button" class="btn btn--small btn--ghost remove-waypoint">제거</button>
+                `;
+                waypointList.appendChild(li);
+                
+                // 제거 버튼 이벤트
+                const removeBtn = li.querySelector('.remove-waypoint');
+                if (removeBtn) {
+                  removeBtn.addEventListener('click', function() {
+                    li.remove();
+                    // waypoint 변경 시 경로 다시 계산 트리거
+                    const form = document.getElementById('route-form');
+                    if (form) {
+                      form.dispatchEvent(new Event('change'));
+                    }
+                  });
+                }
+              });
+            }
+            
+            // sessionStorage에서 제거
+            sessionStorage.removeItem('importedTrip');
+            
+            // 안내 메시지
+            setTimeout(() => {
+              if (window.showToast) {
+                window.showToast({ 
+                  message: '리뷰에서 일정을 가져왔습니다. 경로 찾기를 클릭하여 경로를 확인하세요.', 
+                  type: 'info' 
+                });
+              }
+            }, 500);
+          } catch (error) {
+            console.error('가져온 일정 처리 실패:', error);
+            sessionStorage.removeItem('importedTrip');
+          }
+        }
+        
         loadSavedSchedule();
         
         // "환승 여행 종료하기" 버튼 이벤트 리스너 추가
@@ -196,76 +259,148 @@
       });
 
       // 환승 여행 종료 함수
-      function endTransferTrip() {
-        // 1. 도시 탐방 일정 가져오기 (airport-external에서 저장한 cityPlan)
-        const cityPlanStr = sessionStorage.getItem('cityPlan');
-        const plannerResult = sessionStorage.getItem('plannerResult');
-        const currentState = window.getState ? window.getState() : null;
+      async function endTransferTrip() {
+        // 로딩 표시
+        const endTripButton = document.getElementById('end-trip');
+        const originalText = endTripButton?.textContent;
+        if (endTripButton) {
+          endTripButton.disabled = true;
+          endTripButton.textContent = '지도 저장 중...';
+        }
         
-        // 2. 최종 일정 데이터 구성
-        let finalTripPlan = null;
-        
-        // 3. navigation.html에서 계산된 실제 경로 정보 추출
-        let actualTimeline = null;
         try {
-          // main.js에서 export된 getState를 window를 통해 접근
-          // main.js가 이미 state를 초기화했을 경우 sessionStorage에서 routePlan을 가져오기
-          const routePlanStr = sessionStorage.getItem('routePlan');
-          console.log('📍 sessionStorage에서 routePlan 검색:', routePlanStr ? '찾음' : '없음');
+          // 1. 도시 탐방 일정 가져오기 (airport-external에서 저장한 cityPlan)
+          const cityPlanStr = sessionStorage.getItem('cityPlan');
+          const plannerResult = sessionStorage.getItem('plannerResult');
+          const currentState = window.getState ? window.getState() : null;
           
-          if (routePlanStr) {
-            const routePlan = JSON.parse(routePlanStr);
-            console.log('📋 routePlan 구조:', routePlan);
-            console.log('📋 segments 개수:', routePlan.segments?.length);
+          // 2. 최종 일정 데이터 구성
+          let finalTripPlan = null;
+          
+          // 3. navigation.html에서 계산된 실제 경로 정보 추출
+          let actualTimeline = null;
+          try {
+            // main.js에서 export된 getState를 window를 통해 접근
+            // main.js가 이미 state를 초기화했을 경우 sessionStorage에서 routePlan을 가져오기
+            const routePlanStr = sessionStorage.getItem('routePlan');
+            console.log('📍 sessionStorage에서 routePlan 검색:', routePlanStr ? '찾음' : '없음');
             
-            if (routePlan.segments) {
-              actualTimeline = routePlan.segments.map(segment => ({
-                fromLabel: segment.fromLabel,
-                toLabel: segment.toLabel,
-                durationText: segment.durationText,
-                distanceText: segment.distanceText,
-                duration: segment.duration,
-                distance: segment.distance,
-                legs: segment.legs?.map(leg => ({
-                  modeLabel: leg.modeLabel,
-                  durationText: leg.durationText,
-                  distanceText: leg.distanceText
-                }))
-              }));
+            if (routePlanStr) {
+              const routePlan = JSON.parse(routePlanStr);
+              console.log('📋 routePlan 구조:', routePlan);
+              console.log('📋 segments 개수:', routePlan.segments?.length);
               
-              console.log('✅ 실제 타임라인 추출 완료:', actualTimeline.length, '개 세그먼트');
+              if (routePlan.segments) {
+                actualTimeline = routePlan.segments.map(segment => ({
+                  fromLabel: segment.fromLabel,
+                  toLabel: segment.toLabel,
+                  durationText: segment.durationText,
+                  distanceText: segment.distanceText,
+                  duration: segment.duration,
+                  distance: segment.distance,
+                  legs: segment.legs?.map(leg => ({
+                    modeLabel: leg.modeLabel,
+                    durationText: leg.durationText,
+                    distanceText: leg.distanceText
+                  }))
+                }));
+                
+                console.log('✅ 실제 타임라인 추출 완료:', actualTimeline.length, '개 세그먼트');
+              }
             }
+          } catch (error) {
+            console.warn('⚠️ 실제 타임라인 추출 실패:', error.message);
           }
+          
+          // 4. 지도 스크린샷 생성 및 업로드
+          let routeMapImageUrl = null;
+          try {
+            const mapElement = document.getElementById('map');
+            if (mapElement && mapElement.offsetWidth > 0 && mapElement.offsetHeight > 0) {
+              const { captureMapScreenshot, uploadToStorage, getSupabaseUserId } = await import('./scripts/supabaseClient.js');
+              const userId = window.getUserId ? await window.getUserId() : null;
+              
+              if (userId) {
+                if (endTripButton) {
+                  endTripButton.textContent = '지도 캡처 중...';
+                }
+                
+                // 지도 스크린샷 생성
+                const blob = await captureMapScreenshot(mapElement);
+                
+                if (endTripButton) {
+                  endTripButton.textContent = '지도 업로드 중...';
+                }
+                
+                // Supabase Storage에 업로드
+                const supabaseUserId = await getSupabaseUserId(userId);
+                const timestamp = Date.now();
+                const path = `routes/${supabaseUserId}/${timestamp}.png`;
+                routeMapImageUrl = await uploadToStorage('route-maps', path, blob);
+                console.log('✅ 지도 스크린샷 저장 완료:', routeMapImageUrl);
+              }
+            } else {
+              console.warn('⚠️ 지도 요소를 찾을 수 없거나 크기가 0입니다.');
+            }
+          } catch (error) {
+            console.warn('⚠️ 지도 스크린샷 생성 실패:', error);
+            // 지도 스크린샷 실패해도 일정 저장은 계속 진행
+          }
+          
+          if (cityPlanStr) {
+            const cityPlan = JSON.parse(cityPlanStr);
+            finalTripPlan = {
+              plannerResult: cityPlan,
+              actualTimeline: actualTimeline,
+              routeMapImageUrl: routeMapImageUrl,
+              completedAt: new Date().toISOString()
+            };
+            console.log('✅ finalTripPlan 생성 (cityPlan), actualTimeline:', actualTimeline ? `${actualTimeline.length}개 세그먼트` : '없음');
+          } else if (plannerResult) {
+            finalTripPlan = {
+              plannerResult: JSON.parse(plannerResult),
+              actualTimeline: actualTimeline,
+              routeMapImageUrl: routeMapImageUrl,
+              completedAt: new Date().toISOString()
+            };
+            console.log('✅ finalTripPlan 생성 (plannerResult), actualTimeline:', actualTimeline ? `${actualTimeline.length}개 세그먼트` : '없음');
+          } else {
+            if (window.showModal) {
+              showModal({
+                message: '일정 데이터를 찾을 수 없습니다. 처음부터 다시 시작해주세요.',
+                type: 'error'
+              });
+            } else {
+              alert('일정 데이터를 찾을 수 없습니다. 처음부터 다시 시작해주세요.');
+            }
+            if (endTripButton) {
+              endTripButton.disabled = false;
+              endTripButton.textContent = originalText;
+            }
+            window.location.href = 'index.html';
+            return;
+          }
+          
+          // sessionStorage에 저장
+          sessionStorage.setItem('finalTripPlan', JSON.stringify(finalTripPlan));
+          
+          // 5. trip-summary.html로 이동
+          window.location.href = 'trip-summary.html';
         } catch (error) {
-          console.warn('⚠️ 실제 타임라인 추출 실패:', error.message);
+          console.error('❌ 환승 여행 종료 처리 실패:', error);
+          if (window.showModal) {
+            showModal({
+              message: '일정 저장 중 오류가 발생했습니다. 다시 시도해주세요.',
+              type: 'error'
+            });
+          } else {
+            alert('일정 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+          }
+          if (endTripButton) {
+            endTripButton.disabled = false;
+            endTripButton.textContent = originalText;
+          }
         }
-        
-        if (cityPlanStr) {
-          const cityPlan = JSON.parse(cityPlanStr);
-          finalTripPlan = {
-            plannerResult: cityPlan,
-            actualTimeline: actualTimeline,
-            completedAt: new Date().toISOString()
-          };
-          console.log('✅ finalTripPlan 생성 (cityPlan), actualTimeline:', actualTimeline ? `${actualTimeline.length}개 세그먼트` : '없음');
-        } else if (plannerResult) {
-          finalTripPlan = {
-            plannerResult: JSON.parse(plannerResult),
-            actualTimeline: actualTimeline,
-            completedAt: new Date().toISOString()
-          };
-          console.log('✅ finalTripPlan 생성 (plannerResult), actualTimeline:', actualTimeline ? `${actualTimeline.length}개 세그먼트` : '없음');
-        } else {
-          alert('일정 데이터를 찾을 수 없습니다. 처음부터 다시 시작해주세요.');
-          window.location.href = 'index.html';
-          return;
-        }
-        
-        // sessionStorage에 저장
-        sessionStorage.setItem('finalTripPlan', JSON.stringify(finalTripPlan));
-        
-        // 5. trip-summary.html로 이동
-        window.location.href = 'trip-summary.html';
       }
 
       function loadSavedSchedule() {
@@ -322,5 +457,6 @@
         return null;
       }
     </script>
+    <script src="scripts/modal.js"></script>
   </body>
 </html>

@@ -205,9 +205,111 @@ export async function testSupabaseConnection() {
 // 전역으로 노출
 window.testSupabaseConnection = testSupabaseConnection;
 
+/**
+ * html2canvas 라이브러리 로드
+ */
+async function loadHtml2Canvas() {
+  return new Promise((resolve, reject) => {
+    if (window.html2canvas) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('html2canvas 로드 실패'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Supabase Storage에 파일 업로드
+ * @param {string} bucket - 버킷 이름
+ * @param {string} path - 파일 경로 (예: 'reviews/user123/review456.jpg')
+ * @param {File|Blob} file - 업로드할 파일
+ * @returns {Promise<string>} - 공개 URL
+ */
+export async function uploadToStorage(bucket, path, file) {
+  const supabase = await getSupabase();
+  
+  try {
+    // 파일 업로드
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      // 버킷이 없는 경우 더 명확한 오류 메시지
+      if (error.message && error.message.includes('Bucket not found')) {
+        const errorMsg = `Storage 버킷 '${bucket}'이(가) 생성되지 않았습니다. Supabase 대시보드에서 버킷을 생성해주세요. 자세한 내용은 SUPABASE_STORAGE_SETUP.md 파일을 참고하세요.`;
+        console.error('Storage 업로드 실패:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      console.error('Storage 업로드 실패:', error);
+      throw error;
+    }
+    
+    // 공개 URL 반환
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+    
+    console.log('✅ 파일 업로드 완료:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Storage 업로드 실패:', error);
+    throw error;
+  }
+}
+
+/**
+ * 지도 스크린샷을 Blob으로 변환
+ * @param {HTMLElement} mapElement - 지도 DOM 요소
+ * @returns {Promise<Blob>} - 이미지 Blob
+ */
+export async function captureMapScreenshot(mapElement) {
+  if (!mapElement) {
+    throw new Error('지도 요소를 찾을 수 없습니다.');
+  }
+  
+  // html2canvas 로드
+  if (!window.html2canvas) {
+    await loadHtml2Canvas();
+  }
+  
+  // 스크린샷 생성
+  const canvas = await window.html2canvas(mapElement, {
+    backgroundColor: '#ffffff',
+    scale: 1,
+    logging: false,
+    useCORS: true,
+    allowTaint: false
+  });
+  
+  // Blob으로 변환
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Blob 변환 실패'));
+      }
+    }, 'image/png', 0.9);
+  });
+}
+
+// 전역으로 노출
+window.uploadToStorage = uploadToStorage;
+window.captureMapScreenshot = captureMapScreenshot;
+
 export default {
   initSupabase,
   getSupabase,
   getSupabaseUserId,
-  setSupabaseUserContext
+  setSupabaseUserContext,
+  uploadToStorage,
+  captureMapScreenshot
 };

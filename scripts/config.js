@@ -14,7 +14,11 @@ export function getGoogleMapsApiKey() {
 export function getOpenAIApiKey() {
   const metaTag = document.querySelector(`meta[name="${META_OPENAI_KEY}"]`);
   const value = metaTag?.content?.trim();
-  return value || "";
+  // 플레이스홀더 값이면 빈 문자열 반환
+  if (value === 'YOUR_OPENAI_API_KEY' || !value) {
+    return "";
+  }
+  return value;
 }
 
 // ===== 통합된 설정값들 =====

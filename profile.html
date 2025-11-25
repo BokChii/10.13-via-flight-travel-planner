@@ -152,7 +152,14 @@
         try {
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('사용자 정보를 가져올 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '사용자 정보를 가져올 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('사용자 정보를 가져올 수 없습니다.');
+            }
             return;
           }
           
@@ -194,19 +201,40 @@
       async function saveNickname() {
         const newNickname = document.getElementById('nickname-input').value.trim();
         if (!newNickname) {
-          alert('닉네임을 입력해주세요.');
+          if (window.showModal) {
+            showModal({
+              message: '닉네임을 입력해주세요.',
+              type: 'warning'
+            });
+          } else {
+            alert('닉네임을 입력해주세요.');
+          }
           return;
         }
         
         if (newNickname.length > 20) {
-          alert('닉네임은 20자 이하여야 합니다.');
+          if (window.showModal) {
+            showModal({
+              message: '닉네임은 20자 이하여야 합니다.',
+              type: 'warning'
+            });
+          } else {
+            alert('닉네임은 20자 이하여야 합니다.');
+          }
           return;
         }
         
         try {
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('사용자 정보를 가져올 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '사용자 정보를 가져올 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('사용자 정보를 가져올 수 없습니다.');
+            }
             return;
           }
           
@@ -226,10 +254,24 @@
             }
           }
           
-          alert('✅ 닉네임이 변경되었습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '닉네임이 변경되었습니다.',
+              type: 'success'
+            });
+          } else {
+            alert('✅ 닉네임이 변경되었습니다.');
+          }
         } catch (error) {
           console.error('닉네임 저장 실패:', error);
-          alert('닉네임 저장에 실패했습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '닉네임 저장에 실패했습니다.',
+              type: 'error'
+            });
+          } else {
+            alert('닉네임 저장에 실패했습니다.');
+          }
         }
       }
       
@@ -312,7 +354,14 @@
           
           if (!schedule) {
             console.error('일정을 찾을 수 없습니다. scheduleId:', scheduleId);
-            alert('일정을 찾을 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '일정을 찾을 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('일정을 찾을 수 없습니다.');
+            }
             return;
           }
 
@@ -347,14 +396,35 @@
           
         } catch (error) {
           console.error('일정 불러오기 실패:', error);
-          alert('일정을 불러오는 중 오류가 발생했습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '일정을 불러오는 중 오류가 발생했습니다.',
+              type: 'error'
+            });
+          } else {
+            alert('일정을 불러오는 중 오류가 발생했습니다.');
+          }
         }
       };
 
       // 일정 삭제 확인
-      window.deleteScheduleConfirm = function(scheduleId, scheduleName) {
-        if (confirm(`"${scheduleName}" 일정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
-          deleteSchedule(scheduleId);
+      window.deleteScheduleConfirm = async function(scheduleId, scheduleName) {
+        if (window.showConfirmModal) {
+          const confirmed = await showConfirmModal({
+            message: `"${scheduleName}" 일정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
+            title: '일정 삭제',
+            type: 'danger',
+            confirmText: '삭제',
+            cancelText: '취소'
+          });
+          
+          if (confirmed) {
+            deleteSchedule(scheduleId);
+          }
+        } else {
+          if (confirm(`"${scheduleName}" 일정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+            deleteSchedule(scheduleId);
+          }
         }
       };
 
@@ -364,7 +434,14 @@
           // scheduleDB.js의 deleteSchedule 함수 사용 (이름 충돌 방지)
           const scheduleDBDelete = window.deleteSchedule;
           if (!scheduleDBDelete) {
-            alert('일정 삭제 기능을 사용할 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '일정 삭제 기능을 사용할 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('일정 삭제 기능을 사용할 수 없습니다.');
+            }
             return;
           }
           
@@ -403,11 +480,25 @@
             }
           }
           
-          alert('✅ 일정이 삭제되었습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '일정이 삭제되었습니다.',
+              type: 'success'
+            });
+          } else {
+            alert('✅ 일정이 삭제되었습니다.');
+          }
           
         } catch (error) {
           console.error('일정 삭제 실패:', error);
-          alert('일정 삭제에 실패했습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '일정 삭제에 실패했습니다.',
+              type: 'error'
+            });
+          } else {
+            alert('일정 삭제에 실패했습니다.');
+          }
         }
       }
       
@@ -458,10 +549,25 @@
       }
       
       // 리뷰 삭제 확인
-      window.deleteReviewConfirm = function(reviewId, reviewSummary) {
+      window.deleteReviewConfirm = async function(reviewId, reviewSummary) {
         const summaryText = reviewSummary.length > 30 ? reviewSummary.substring(0, 30) + '...' : reviewSummary;
-        if (confirm(`이 리뷰를 삭제하시겠습니까?\n\n"${summaryText}"\n\n이 작업은 되돌릴 수 없습니다.`)) {
-          deleteReview(reviewId);
+        
+        if (window.showConfirmModal) {
+          const confirmed = await showConfirmModal({
+            message: `이 리뷰를 삭제하시겠습니까?\n\n"${summaryText}"\n\n이 작업은 되돌릴 수 없습니다.`,
+            title: '리뷰 삭제',
+            type: 'danger',
+            confirmText: '삭제',
+            cancelText: '취소'
+          });
+          
+          if (confirmed) {
+            deleteReview(reviewId);
+          }
+        } else {
+          if (confirm(`이 리뷰를 삭제하시겠습니까?\n\n"${summaryText}"\n\n이 작업은 되돌릴 수 없습니다.`)) {
+            deleteReview(reviewId);
+          }
         }
       };
 
@@ -470,12 +576,26 @@
         try {
           const userId = window.getUserId ? await window.getUserId() : null;
           if (!userId) {
-            alert('로그인이 필요합니다.');
+            if (window.showModal) {
+              showModal({
+                message: '로그인이 필요합니다.',
+                type: 'warning'
+              });
+            } else {
+              alert('로그인이 필요합니다.');
+            }
             return;
           }
           
           if (!window.deleteTripReview) {
-            alert('리뷰 삭제 기능을 사용할 수 없습니다.');
+            if (window.showModal) {
+              showModal({
+                message: '리뷰 삭제 기능을 사용할 수 없습니다.',
+                type: 'error'
+              });
+            } else {
+              alert('리뷰 삭제 기능을 사용할 수 없습니다.');
+            }
             return;
           }
           
@@ -505,11 +625,25 @@
             }
           }
           
-          alert('✅ 리뷰가 삭제되었습니다.');
+          if (window.showModal) {
+            showModal({
+              message: '리뷰가 삭제되었습니다.',
+              type: 'success'
+            });
+          } else {
+            alert('✅ 리뷰가 삭제되었습니다.');
+          }
           
         } catch (error) {
           console.error('리뷰 삭제 실패:', error);
-          alert('리뷰 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          if (window.showModal) {
+            showModal({
+              message: '리뷰 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'),
+              type: 'error'
+            });
+          } else {
+            alert('리뷰 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          }
         }
       }
       
@@ -577,6 +711,7 @@
     
     <!-- router.js는 initProfilePage가 정의된 후에 로드 -->
     <script type="module" src="scripts/router.js"></script>
+    <script src="scripts/modal.js"></script>
   </body>
 </html>
 

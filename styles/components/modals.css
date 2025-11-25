@@ -370,3 +370,191 @@
     width: 100%;
   }
 }
+
+/* 커스텀 알림 모달 스타일 */
+.custom-alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.custom-alert-content {
+  background: white;
+  padding: 2.5rem 3rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
+}
+
+.custom-alert-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
+.custom-alert-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 1rem;
+}
+
+.custom-alert-message {
+  font-size: 1rem;
+  color: #666;
+  margin: 0 0 2rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.custom-alert-button {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  min-width: 100px;
+}
+
+.custom-alert-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.custom-alert-button:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .custom-alert-content {
+    padding: 2rem 1.5rem;
+    max-width: 90%;
+  }
+  
+  .custom-alert-icon {
+    font-size: 2.5rem;
+  }
+  
+  .custom-alert-title {
+    font-size: 1.1rem;
+  }
+  
+  .custom-alert-message {
+    font-size: 0.9rem;
+  }
+  
+  .custom-alert-button {
+    padding: 0.65rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 커스텀 확인 모달 스타일 */
+.custom-confirm-content {
+  background: white;
+  padding: 2.5rem 3rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
+}
+
+.custom-confirm-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
+.custom-confirm-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.custom-confirm-message {
+  font-size: 1rem;
+  color: #666;
+  margin: 0 0 2rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.custom-confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.custom-confirm-button {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  min-width: 100px;
+}
+
+.custom-confirm-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.custom-confirm-button:active {
+  transform: translateY(0);
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .custom-confirm-content {
+    padding: 2rem 1.5rem;
+    max-width: 90%;
+  }
+  
+  .custom-confirm-buttons {
+    flex-direction: column;
+  }
+  
+  .custom-confirm-button {
+    width: 100%;
+  }
+}

@@ -228,6 +228,14 @@ htmlFilesToCopy.forEach(htmlFile => {
     // 파일을 읽어서 Supabase meta 태그 주입 후 저장
     let htmlContent = fs.readFileSync(srcPath, 'utf8');
     
+    // OpenAI API 키 주입 (airport-main.html인 경우)
+    if (htmlFile === 'airport-main.html') {
+      htmlContent = htmlContent.replace(
+        /(<meta name="openai-api-key" content=")([^"]*)(" \/>)/,
+        openaiKey ? `$1${openaiKey}$3` : '$1YOUR_OPENAI_API_KEY$3'
+      );
+    }
+    
     // Supabase meta 태그 주입
     htmlContent = injectSupabaseMeta(htmlContent);
     

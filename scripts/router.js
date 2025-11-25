@@ -328,6 +328,14 @@ window.initAirportMainPage = () => {
 window.initAirportOnlyPage = () => {
   console.log('Airport Only Page 초기화');
   const state = window.viaFlightRouter.getState();
+  
+  // AI로 생성된 일정인 경우 리다이렉트하지 않음
+  const aiGenerated = sessionStorage.getItem('aiGeneratedPlan');
+  if (aiGenerated === 'true') {
+    console.log('AI 생성 일정으로 접근 - 리다이렉트 건너뛰기');
+    return;
+  }
+  
   if (!state.transferInfo || state.userChoice !== 'airport-only') {
     console.warn('잘못된 접근입니다. Airport Main 페이지로 이동합니다.');
     window.viaFlightRouter.navigate('/airport-main');
@@ -338,6 +346,14 @@ window.initAirportOnlyPage = () => {
 window.initAirportExternalPage = () => {
   console.log('Airport External Page 초기화');
   const state = window.viaFlightRouter.getState();
+  
+  // AI로 생성된 일정인 경우 리다이렉트하지 않음
+  const aiGenerated = sessionStorage.getItem('aiGeneratedPlan');
+  if (aiGenerated === 'true') {
+    console.log('AI 생성 일정으로 접근 - 리다이렉트 건너뛰기');
+    return;
+  }
+  
   if (!state.transferInfo || state.userChoice !== 'airport-external') {
     console.warn('잘못된 접근입니다. Airport Main 페이지로 이동합니다.');
     window.viaFlightRouter.navigate('/airport-main');
