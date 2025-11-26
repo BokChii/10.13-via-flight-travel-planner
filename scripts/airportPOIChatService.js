@@ -157,18 +157,46 @@ ${poiSummary}
         })
         .filter(Boolean);
 
+      // 동일한 이름을 가진 POI 중복 제거 (같은 브랜드 여러 위치 제거)
+      const uniqueRecommendedPOIs = this.removeDuplicatePOIsByName(recommendedPOIs);
+
       console.log('✅ [AI 채팅] POI 검색 완료', {
         query: userQuery,
-        foundCount: recommendedPOIs.length,
-        totalPOIs: poiArray.length
+        foundCount: uniqueRecommendedPOIs.length,
+        totalPOIs: poiArray.length,
+        beforeDedup: recommendedPOIs.length,
+        afterDedup: uniqueRecommendedPOIs.length
       });
 
-      return recommendedPOIs;
+      return uniqueRecommendedPOIs;
 
     } catch (error) {
       console.error('❌ [AI 채팅] POI 검색 실패:', error);
       throw error;
     }
+  }
+
+  /**
+   * 이름 기준으로 중복 POI 제거 (동일 브랜드 여러 위치 제거)
+   * @param {Array} pois - POI 배열
+   * @returns {Array} 중복 제거된 POI 배열
+   */
+  removeDuplicatePOIsByName(pois) {
+    const seen = new Map();
+    const uniquePOIs = [];
+    
+    for (const poi of pois) {
+      // 이름을 정규화 (공백 제거, 소문자 변환)
+      const normalizedName = (poi.name || '').trim().toLowerCase();
+      
+      // 같은 이름이 아직 없으면 추가 (첫 번째 것만 유지)
+      if (!seen.has(normalizedName)) {
+        seen.set(normalizedName, true);
+        uniquePOIs.push(poi);
+      }
+    }
+    
+    return uniquePOIs;
   }
 
   /**

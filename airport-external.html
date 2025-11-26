@@ -954,6 +954,11 @@
           return;
         }
         
+        // POI 객체를 allPOIsMap에 추가/업데이트 (AI 추천 POI가 다른 테이블에서 로드된 경우 대비)
+        if (poi.id) {
+          allPOIsMap.set(poi.id, poi);
+        }
+        
         const panel = document.getElementById('poi-detail-panel');
         if (!panel) {
           console.error('showPOIDetailSingle: poi-detail-panel 요소를 찾을 수 없습니다.');
@@ -998,6 +1003,11 @@
           selectButton.addEventListener('click', function selectButtonHandler() {
             // 리스너 제거 후 실행
             selectButton.removeEventListener('click', selectButtonHandler);
+            // POI가 allPOIsMap에 있는지 확인하고 없으면 추가
+            if (!allPOIsMap.has(poiId)) {
+              allPOIsMap.set(poiId, poi);
+              console.log('✅ [POI Detail] POI를 allPOIsMap에 추가:', { id: poiId, name: poi.name });
+            }
             selectPOISingle(poiId);
           });
         }
@@ -2775,6 +2785,12 @@
         }
 
         function selectPOIFromAI(poi) {
+          // POI 객체를 allPOIsMap에 먼저 추가/업데이트 (다른 테이블에서 로드된 POI일 수 있음)
+          if (poi && poi.id) {
+            allPOIsMap.set(poi.id, poi);
+            console.log('✅ [AI 채팅] POI를 allPOIsMap에 추가:', { id: poi.id, name: poi.name });
+          }
+          
           // 기존 selectPOISingle 함수 재사용
           if (typeof selectPOISingle === 'function') {
             selectPOISingle(poi.id);
