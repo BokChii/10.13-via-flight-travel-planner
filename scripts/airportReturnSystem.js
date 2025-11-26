@@ -35,11 +35,23 @@ export async function calculateRealTimeReturnInfo(state, progress) {
   // 실시간 공항까지 소요시간 계산
   const airportTravelTime = await calculateRealTimeToAirport(state, progress);
   
+  // Phase 2: 재경로로 인한 추가 소요 시간 반영
+  const rerouteAdditionalMinutes = state.navigation?.rerouteAdditionalMinutes || 0;
+  const adjustedAirportTravelTime = airportTravelTime + rerouteAdditionalMinutes;
+  
+  if (rerouteAdditionalMinutes > 0) {
+    console.log('⏱️ [Critical Warning] 재경로 추가 시간 반영', {
+      originalTime: airportTravelTime,
+      additionalMinutes: rerouteAdditionalMinutes,
+      adjustedTime: adjustedAirportTravelTime
+    });
+  }
+  
   // 출국 버퍼 시간을 0분으로 하드코딩
   const returnBufferMinutes = 0;
   
-  // 실제 여유 시간 계산
-  const actualSlackMinutes = remainingMinutes - airportTravelTime - returnBufferMinutes;
+  // 실제 여유 시간 계산 (재경로 추가 시간 반영)
+  const actualSlackMinutes = remainingMinutes - adjustedAirportTravelTime - returnBufferMinutes;
 
   // 알림 레벨 결정
   const alertLevel = determineAlertLevel(actualSlackMinutes);
@@ -51,6 +63,8 @@ export async function calculateRealTimeReturnInfo(state, progress) {
     alertLevel,
     remainingMinutes: Math.round(remainingMinutes),
     airportTravelTime: Math.round(airportTravelTime),
+    adjustedAirportTravelTime: Math.round(adjustedAirportTravelTime), // 재경로 반영된 시간
+    rerouteAdditionalMinutes: rerouteAdditionalMinutes, // 추가 소요 시간
     actualSlackMinutes: Math.round(actualSlackMinutes),
     returnBufferMinutes,
     shouldShowAlert,

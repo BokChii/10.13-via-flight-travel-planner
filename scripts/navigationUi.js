@@ -25,6 +25,7 @@ export function getCurrentWaypointContext(progress, routePlan) {
 
 // 새로운 실시간 공항 복귀 시스템 import
 import { calculateRealTimeReturnInfo, convertToLegacyFormat } from './airportReturnSystem.js';
+import { NAVIGATION_STATUS } from './config.js';
 
 
 
@@ -47,6 +48,26 @@ export async function renderNavigationStatus(container, navigation, routePlan, p
     return;
   }
 
+  // Phase 1: 네비게이션 상태 표시 추가 (중복 제거)
+  if (navigation?.status && navigation.status !== NAVIGATION_STATUS.NORMAL) {
+    const statusIndicator = createRouteStatusIndicator(navigation);
+    if (statusIndicator) {
+      container.append(statusIndicator);
+      // 배너 표시 확인 (디버깅용)
+      if (navigation.status === NAVIGATION_STATUS.DEVIATED) {
+        console.log('✅ [배너] 경로 이탈 배너 표시 완료', {
+          status: navigation.status,
+          message: navigation.routeDeviation?.message
+        });
+      }
+    } else {
+      console.warn('⚠️ [배너] 배너 생성 실패', {
+        status: navigation.status,
+        hasRouteDeviation: !!navigation.routeDeviation
+      });
+    }
+  }
+
   // 새로운 실시간 복귀 시간 정보 추가 (기존 시스템과 호환)
   const returnTimeInfo = await calculateEnhancedReturnTimeInfo(routePlan, navigation, progress, tripMeta);
   if (returnTimeInfo) {
@@ -57,10 +78,6 @@ export async function renderNavigationStatus(container, navigation, routePlan, p
   const header = document.createElement("h3");
   header.className = "navigation-status__title";
   header.textContent = "내비게이션 진행 중";
-
-  // 네비게이션 상태 인디케이터 추가
-  const statusIndicator = createNavigationStatusIndicator(returnTimeInfo, progress);
-  container.append(statusIndicator);
 
   const startTime = navigation.startedAt ? new Date(navigation.startedAt) : null;
   const startedText = startTime ? startTime.toLocaleTimeString() : "방금";
@@ -340,6 +357,82 @@ function createNavigationStatusIndicator(returnTimeInfo, progress) {
   
   content.append(title, description, action);
   indicator.append(icon, content);
+  
+  return indicator;
+}
+
+/**
+ * 경로 상태 인디케이터 생성 (Phase 1)
+ * @param {Object} navigation - 네비게이션 상태
+ * @returns {HTMLElement|null} 상태 인디케이터 요소 또는 null
+ */
+function createRouteStatusIndicator(navigation) {
+  if (!navigation?.status || navigation.status === NAVIGATION_STATUS.NORMAL) {
+    return null; // 정상 상태면 표시 안 함
+  }
+
+  const indicator = document.createElement('div');
+  indicator.className = 'navigation-status-indicator';
+  
+  let statusClass, statusIcon, statusText, statusMessage;
+  
+  switch (navigation.status) {
+    case NAVIGATION_STATUS.DEVIATED:
+      statusClass = 'status-deviated';
+      statusIcon = '⚠️';
+      statusText = '경로 이탈';
+      // 메시지가 있으면 사용, 없으면 기본 메시지
+      const deviationMessage = navigation.routeDeviation?.message;
+      if (deviationMessage) {
+        statusMessage = deviationMessage;
+      } else {
+        const distance = navigation.routeDeviation?.distance;
+        const isDeviated = navigation.routeDeviation?.isDeviated;
+        if (distance) {
+          if (isDeviated) {
+            statusMessage = `경로에서 ${Math.round(distance)}m 벗어났습니다. 원래 경로로 돌아가세요.`;
+          } else {
+            statusMessage = `경로에서 ${Math.round(distance)}m 벗어났습니다. (확인 중...)`;
+          }
+        } else {
+          statusMessage = '경로에서 벗어났습니다. 원래 경로로 돌아가세요.';
+        }
+      }
+      break;
+      
+    case NAVIGATION_STATUS.LOW_ACCURACY:
+      statusClass = 'status-low-accuracy';
+      statusIcon = '📍';
+      statusText = '위치 확인 중';
+      statusMessage = navigation.gpsAccuracy?.message || 'GPS 정확도가 낮습니다.';
+      break;
+      
+    case NAVIGATION_STATUS.REROUTING:
+      statusClass = 'status-rerouting';
+      statusIcon = '🔄';
+      statusText = '재경로 계산 중';
+      statusMessage = '새로운 경로를 계산하고 있습니다...';
+      break;
+      
+    case NAVIGATION_STATUS.ERROR:
+      statusClass = 'status-error';
+      statusIcon = '❌';
+      statusText = '오류';
+      statusMessage = navigation.error || '네비게이션 오류가 발생했습니다.';
+      break;
+      
+    default:
+      return null;
+  }
+  
+  indicator.className = `navigation-status-indicator navigation-status-indicator--${statusClass}`;
+  indicator.innerHTML = `
+    <div class="status-icon">${statusIcon}</div>
+    <div class="status-content">
+      <div class="status-title">${statusText}</div>
+      <div class="status-message">${statusMessage}</div>
+    </div>
+  `;
   
   return indicator;
 }

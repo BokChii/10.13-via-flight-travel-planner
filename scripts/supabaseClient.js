@@ -42,12 +42,14 @@ function getSupabaseConfig() {
   const keyMeta = document.querySelector('meta[name="supabase-anon-key"]');
   
   const url = urlMeta?.getAttribute('content') || 
-              window.SUPABASE_URL || 
-              'https://qghwyrdxxlsigtputuyj.supabase.co';
+              window.SUPABASE_URL;
   
   const anonKey = keyMeta?.getAttribute('content') || 
-                  window.SUPABASE_ANON_KEY || 
-                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnaHd5cmR4eGxzaWd0cHV0dXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MjIyNzIsImV4cCI6MjA3OTA5ODI3Mn0.8Ia_UCE-HYjZy2XX0VYEAKY2zGaN1QlvcTUlPPK8mxY';
+                  window.SUPABASE_ANON_KEY;
+  
+  if (!url || !anonKey) {
+    console.warn('⚠️ Supabase 설정이 없습니다. meta 태그 또는 환경 변수를 확인해주세요.');
+  }
   
   return { url, anonKey };
 }

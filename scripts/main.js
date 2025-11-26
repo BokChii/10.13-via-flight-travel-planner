@@ -1,5 +1,5 @@
 ﻿import { getElements, renderWaypoints, hasClosedWaypoints } from "./ui.js";
-import { getState, subscribe, updateState, resetState } from "./state.js";
+import { getState, subscribe, updateState, updateStateSilent, resetState } from "./state.js";
 import { renderSummary } from "./summary.js";
 import { renderNavigationStatus } from "./navigationUi.js";
 import { loadGoogleMapsSdk, requestDirections } from "./api.js";
@@ -26,6 +26,9 @@ import { getCurrentLocationContext, generateLocationDescription } from "./locati
 import { getCurrentWaypointContext } from "./navigationUi.js";
 import { detectEmergencySituation, activateEmergencyMode, calculateAirportReturnRoute, showAirportReturnModal } from "./emergencyMode.js";
 import { calculateRealTimeReturnInfo, generateAirportReturnMessage } from "./airportReturnSystem.js";
+import { routeDeviationDetector } from "./routeDeviationDetector.js";
+import { NAVIGATION_STATUS, REROUTE_CONFIG, ROUTE_DEVIATION_CONFIG } from "./config.js";
+import { rerouteCalculator } from "./rerouteCalculator.js";
 
 import { attachPlannerServices } from "./planner.js";
 import { isValidPlan, safeParseFromStorage } from "./validation.js";
@@ -46,6 +49,7 @@ const RETURN_ETA_WARNING_THRESHOLD_MINUTES = 30;
 let googleMaps;
 let mapInstance;
 let placesService;
+let pendingRerouteSuggestion = null; // 재경로 제안 상태
 let stopNavigationTracking = null;
 let lastHighlightedSegment = null;
 let lastToastTimestamp = 0;
@@ -162,10 +166,181 @@ async function bootstrap() {
   assertElements(elements);
 
   subscribe(async (latestState) => {
+    console.log('🔄 [Subscribe] 상태 업데이트', {
+      navigationActive: latestState.navigation.active,
+      hasCurrentPosition: !!latestState.navigation.currentPosition,
+      hasRoutePlan: !!latestState.routePlan
+    });
+
     manageNavigationTracking(latestState);
     const progress = computeProgress(latestState);
+    
+    console.log('📊 [Subscribe] computeProgress 결과', {
+      hasProgress: !!progress,
+      hasDeviation: !!progress?.deviation,
+      hasGpsAccuracy: !!progress?.gpsAccuracy
+    });
+    
+    // 배너 표시 상태 확인 (디버깅용)
+    if (latestState.navigation.status === NAVIGATION_STATUS.DEVIATED) {
+      console.log('🚨 [배너] 이탈 상태 감지, 배너 표시 예정', {
+        status: latestState.navigation.status,
+        hasRouteDeviation: !!latestState.navigation.routeDeviation,
+        deviationMessage: latestState.navigation.routeDeviation?.message
+      });
+    }
+    
+    // Phase 1: 경로 이탈 및 GPS 정확도 상태 업데이트 (무한 루프 방지)
+    // deviation이 null이 아니거나, 거리가 임계값을 넘으면 처리
+    if (progress?.deviation || progress?.gpsAccuracy || (progress && progress.distanceToLegMeters > ROUTE_DEVIATION_CONFIG.DEVIATION_THRESHOLD_METERS)) {
+      // 상태가 실제로 변경되었을 때만 업데이트 (무한 루프 방지)
+      const currentDeviation = latestState.navigation.routeDeviation;
+      const currentGpsAccuracy = latestState.navigation.gpsAccuracy;
+      const currentStatus = latestState.navigation.status;
+      
+      // 변경 여부 확인 (메시지 변경도 감지)
+      const deviationChanged = progress.deviation && (
+        !currentDeviation ||
+        currentDeviation.isDeviated !== progress.deviation.isDeviated ||
+        currentDeviation.recovered !== progress.deviation.recovered ||
+        currentDeviation.distance !== progress.deviation.distance ||
+        currentDeviation.message !== progress.deviation.message
+      );
+      
+      const accuracyChanged = progress.gpsAccuracy && (
+        !currentGpsAccuracy ||
+        currentGpsAccuracy.level !== progress.gpsAccuracy.level ||
+        currentGpsAccuracy.accuracy !== progress.gpsAccuracy.accuracy
+      );
+      
+      // 상태 변경 계산
+      let newStatus = currentStatus;
+      if (progress.deviation) {
+        // 거리가 임계값을 넘으면 DEVIATED 상태로 (isDeviated가 false여도 확인 중 상태로 표시)
+        if (progress.deviation.distance > ROUTE_DEVIATION_CONFIG.DEVIATION_THRESHOLD_METERS) {
+          newStatus = NAVIGATION_STATUS.DEVIATED;
+        } else if (progress.deviation.isDeviated) {
+          newStatus = NAVIGATION_STATUS.DEVIATED;
+        } else if (progress.deviation.recovered) {
+          newStatus = NAVIGATION_STATUS.NORMAL;
+        } else {
+          // 이탈 상태가 아니면 정상으로
+          if (currentStatus === NAVIGATION_STATUS.DEVIATED) {
+            newStatus = NAVIGATION_STATUS.NORMAL;
+          }
+        }
+      }
+      
+      if (progress.gpsAccuracy && newStatus !== NAVIGATION_STATUS.DEVIATED) {
+        if (progress.gpsAccuracy.level === 'very_low' || progress.gpsAccuracy.level === 'low') {
+          if (newStatus === NAVIGATION_STATUS.NORMAL) {
+            newStatus = NAVIGATION_STATUS.LOW_ACCURACY;
+          }
+        } else if (progress.gpsAccuracy.level === 'good') {
+          if (newStatus === NAVIGATION_STATUS.LOW_ACCURACY) {
+            newStatus = NAVIGATION_STATUS.NORMAL;
+          }
+        }
+      }
+      
+      const statusChanged = newStatus !== currentStatus;
+      
+      // 실제로 변경이 있을 때만 업데이트 (updateStateSilent 사용하여 무한 루프 방지)
+      if (deviationChanged || accuracyChanged || statusChanged) {
+        updateStateSilent((draft) => {
+          if (progress.deviation) {
+            draft.navigation.routeDeviation = progress.deviation;
+          }
+          if (progress.gpsAccuracy) {
+            draft.navigation.gpsAccuracy = progress.gpsAccuracy;
+          }
+          if (statusChanged) {
+            draft.navigation.status = newStatus;
+          }
+        });
+        
+        // latestState도 업데이트하여 UI에 반영 (동기화)
+        if (progress.deviation) {
+          latestState.navigation.routeDeviation = progress.deviation;
+        }
+        if (progress.gpsAccuracy) {
+          latestState.navigation.gpsAccuracy = progress.gpsAccuracy;
+        }
+        if (statusChanged) {
+          latestState.navigation.status = newStatus;
+        }
+      }
+    }
+    
     applyNavigationHighlight(latestState, progress);
     maybeAnnounceNextStep(latestState, progress);
+    
+    // Phase 1: 경로 이탈 알림
+    if (progress?.deviation?.shouldAlert && progress.deviation.isDeviated) {
+      showToast({
+        message: progress.deviation.message,
+        type: 'warning',
+        timeout: 5000
+      });
+    }
+    
+    // Phase 1: GPS 정확도 경고
+    if (progress?.gpsAccuracy?.shouldWarn) {
+      showToast({
+        message: progress.gpsAccuracy.message,
+        type: 'warning',
+        timeout: 4000
+      });
+    }
+    
+    // Phase 1: 경로 복귀 알림
+    if (progress?.deviation?.recovered) {
+      showToast({
+        message: progress.deviation.message,
+        type: 'success',
+        timeout: 3000
+      });
+      // 복귀 시 재경로 제안 상태 초기화
+      pendingRerouteSuggestion = null;
+    }
+    
+    // Phase 2: 자동 재경로 제안
+    // 배너는 이미 표시되고 있으므로, 재경로 제안만 처리
+    if (latestState.navigation.active && progress?.deviation && progress?.deviation.isDeviated) {
+      const shouldSuggest = rerouteCalculator.shouldSuggestReroute(
+        progress.deviation,
+        latestState.navigation.currentPosition
+      );
+      
+      console.log('🔍 [재경로] 제안 조건 확인', {
+        isDeviated: progress.deviation.isDeviated,
+        shouldSuggest: shouldSuggest,
+        hasPendingSuggestion: !!pendingRerouteSuggestion,
+        deviationDuration: progress.deviation.duration
+      });
+      
+      if (shouldSuggest && !pendingRerouteSuggestion) {
+        console.log('💡 [재경로] 제안 모달 표시 준비', {
+          deviation: progress.deviation,
+          position: latestState.navigation.currentPosition
+        });
+        pendingRerouteSuggestion = {
+          deviation: progress.deviation,
+          position: latestState.navigation.currentPosition,
+          suggestedAt: Date.now()
+        };
+        
+        // 재경로 제안 모달 표시
+        showRerouteSuggestionModal(latestState, progress);
+      }
+    } else if (!progress?.deviation?.isDeviated) {
+      // 이탈 상태가 아니면 재경로 제안 상태 초기화
+      if (pendingRerouteSuggestion) {
+        console.log('🔄 [재경로] 이탈 상태 해제, 제안 상태 초기화');
+        pendingRerouteSuggestion = null;
+      }
+    }
+    
     await syncUi(elements, latestState, progress);
     await maybeNotifyReturnDeadline(latestState, progress);
     updateReturnDeadlineTimer(latestState);
@@ -470,7 +645,11 @@ async function syncUi({
   }
 
   document.body.classList.toggle("navigation-active", latestState.navigation.active);
-  updateNavigationOverlay(navigationOverlay, latestState, progress);
+  
+  // navigationOverlay null 체크 추가 (기존 서비스 호환성 유지)
+  if (navigationOverlay) {
+    updateNavigationOverlay(navigationOverlay, latestState, progress);
+  }
 
   // PC용 네비게이션 종료 버튼 관리
   updateNavigationExitButton(latestState.navigation.active);
@@ -497,6 +676,204 @@ function showClosedWaypointsWarning(closedWaypoints) {
   });
   
   console.warn('영업 종료 경유지로 인해 경로 찾기가 차단됨:', closedWaypoints);
+}
+
+/**
+ * 재경로 제안 모달 표시 (Phase 2)
+ */
+async function showRerouteSuggestionModal(state, progress) {
+  console.log('📢 [재경로] 제안 모달 표시 시작');
+  
+  if (!window.showConfirmModal) {
+    console.error('❌ [재경로] showConfirmModal이 정의되지 않았습니다.');
+    return;
+  }
+
+  const distance = progress.deviation?.distance || 0;
+  const message = `경로에서 ${Math.round(distance)}m 벗어났습니다.\n\n` +
+                 `새로운 경로를 계산하시겠습니까?`;
+
+  console.log('💬 [재경로] 모달 메시지', { distance: Math.round(distance), message });
+
+  const confirmed = await window.showConfirmModal({
+    message: message,
+    title: '재경로 계산',
+    type: 'warning',
+    confirmText: '재경로 계산',
+    cancelText: '취소'
+  });
+
+  console.log('👤 [재경로] 사용자 응답', { confirmed });
+
+  if (confirmed) {
+    console.log('✅ [재경로] 사용자가 재경로 계산 승인');
+    await applyReroute(state, progress);
+  } else {
+    console.log('❌ [재경로] 사용자가 재경로 계산 취소');
+    // 사용자가 취소한 경우 제안 상태 초기화 (다시 제안 가능하도록)
+    pendingRerouteSuggestion = null;
+    rerouteCalculator.rerouteAttempts = Math.max(0, rerouteCalculator.rerouteAttempts - 1);
+    console.log('🔄 [재경로] 제안 상태 초기화 완료', {
+      newAttempts: rerouteCalculator.rerouteAttempts
+    });
+  }
+}
+
+/**
+ * 재경로 적용 (Phase 2)
+ */
+async function applyReroute(state, progress) {
+  console.log('🚀 [재경로] 적용 시작', {
+    hasGoogleMaps: !!googleMaps,
+    hasCurrentPosition: !!state.navigation.currentPosition,
+    hasRoutePlan: !!state.routePlan
+  });
+
+  if (!googleMaps || !state.navigation.currentPosition || !state.routePlan) {
+    console.error('❌ [재경로] 적용 실패: 필요한 정보 부족', {
+      googleMaps: !!googleMaps,
+      currentPosition: !!state.navigation.currentPosition,
+      routePlan: !!state.routePlan
+    });
+    showToast({
+      message: '재경로 계산에 필요한 정보가 부족합니다.',
+      type: 'error'
+    });
+    return;
+  }
+
+  try {
+    // 재경로 계산
+    console.log('⏳ [재경로] 재경로 계산 호출');
+    const rerouteInfo = await rerouteCalculator.calculateReroute(
+      googleMaps,
+      state.navigation.currentPosition,
+      state.routePlan,
+      progress,
+      state
+    );
+
+    if (!rerouteInfo) {
+      console.error('❌ [재경로] 재경로 계산 결과 없음');
+      throw new Error('재경로 계산 결과를 받을 수 없습니다.');
+    }
+
+    console.log('✅ [재경로] 재경로 계산 완료, 새 경로 계획 생성 시작');
+
+    // 새 경로 계획 생성
+    const newRoutePlan = rerouteCalculator.applyReroute(rerouteInfo, state, googleMaps);
+
+    console.log('✅ [재경로] 새 경로 계획 생성 완료, 경로 렌더링 시작');
+    console.log('🗺️ [재경로] 렌더링 데이터 확인', {
+      hasNewRoute: !!rerouteInfo.newRoute,
+      newRouteType: rerouteInfo.newRoute?.constructor?.name,
+      hasRoutes: !!rerouteInfo.newRoute?.routes,
+      routesLength: rerouteInfo.newRoute?.routes?.length || 0
+    });
+
+    // 경로 렌더링 - DirectionsResult 객체를 직접 사용
+    const stops = buildStopList(state);
+    const colors = getRouteColors(1); // 재경로는 단일 세그먼트
+    const labeledStops = stops.map((stop, index) => ({
+      ...stop,
+      markerLabel: markerLabelForIndex(index, stops.length),
+    }));
+
+    // rerouteInfo.newRoute는 DirectionsResult 형식이므로 직접 사용
+    console.log('🎨 [재경로] 경로 렌더링 시작', {
+      segmentsCount: 1,
+      stopsCount: labeledStops.length,
+      hasDirectionsResult: !!rerouteInfo.newRoute
+    });
+
+    renderRoute(googleMaps, {
+      segments: [rerouteInfo.newRoute], // DirectionsResult 객체를 배열로 감싸서 전달
+      stops: labeledStops,
+      colors: colors
+    });
+
+    console.log('✅ [재경로] 경로 렌더링 완료');
+
+    // Critical Warning: 추가 소요 시간 계산
+    console.log('⏱️ [재경로] 추가 소요 시간 계산 시작');
+    const additionalMinutes = rerouteCalculator.calculateAdditionalTime(
+      state.routePlan,
+      rerouteInfo
+    );
+
+    console.log('💾 [재경로] 상태 업데이트 시작', { additionalMinutes });
+
+    // 상태 업데이트 (추가 소요 시간 포함)
+    updateState((draft) => {
+      draft.routePlan = newRoutePlan;
+      draft.navigation.status = NAVIGATION_STATUS.NORMAL; // 재경로 적용 후 정상 상태로
+      draft.navigation.routeDeviation = null; // 이탈 정보 초기화 (배너 사라짐)
+      draft.navigation.rerouteAdditionalMinutes = additionalMinutes; // 추가 소요 시간 저장
+    });
+
+    // 이탈 감지기 상태도 초기화
+    routeDeviationDetector.reset();
+    console.log('🔄 [재경로] 이탈 감지기 상태 초기화 완료');
+
+    console.log('✅ [재경로] 상태 업데이트 완료', {
+      newStatus: NAVIGATION_STATUS.NORMAL,
+      additionalMinutes,
+      routeDeviationCleared: true
+    });
+
+    if (additionalMinutes > 0) {
+      console.log('📢 [재경로] 추가 소요 시간 알림 표시', { additionalMinutes });
+      showToast({
+        message: `재경로가 적용되었습니다. 예상 추가 소요 시간: 약 ${additionalMinutes}분`,
+        type: 'info',
+        timeout: 5000
+      });
+    } else {
+      console.log('📢 [재경로] 적용 완료 알림 표시');
+      showToast({
+        message: '재경로가 적용되었습니다.',
+        type: 'success',
+        timeout: 3000
+      });
+    }
+
+    // 재경로 제안 상태 초기화
+    pendingRerouteSuggestion = null;
+    
+    // 재경로 적용 후 새 경로에 맞춰 프로그레스 바 업데이트
+    console.log('🔄 [재경로] 새 경로에 맞춰 프로그레스 바 업데이트 시작');
+    const updatedState = getState();
+    const newProgress = computeProgress(updatedState);
+    
+    if (newProgress) {
+      console.log('📊 [재경로] 새 프로그레스 계산 완료', {
+        progressRatio: newProgress.progressRatio,
+        remainingMeters: newProgress.remainingMeters,
+        closestSegmentIndex: newProgress.closestSegmentIndex
+      });
+      
+      // UI 업데이트 (프로그레스 바 포함)
+      const elements = getElements();
+      await syncUi(elements, updatedState, newProgress);
+      console.log('✅ [재경로] 프로그레스 바 업데이트 완료');
+    } else {
+      console.warn('⚠️ [재경로] 새 프로그레스 계산 실패 - subscribe에서 자동 업데이트됨');
+    }
+    
+    console.log('🎉 [재경로] 적용 완료!');
+
+  } catch (error) {
+    console.error('❌ [재경로] 적용 실패:', error);
+    showToast({
+      message: error.message || '재경로 계산에 실패했습니다. 다시 시도해주세요.',
+      type: 'error',
+      timeout: 5000
+    });
+    
+    // 재경로 제안 상태 초기화 (다시 제안 가능하도록)
+    pendingRerouteSuggestion = null;
+    console.log('🔄 [재경로] 제안 상태 초기화 (재시도 가능)');
+  }
 }
 
 async function calculateRoute() {
@@ -570,14 +947,23 @@ function manageNavigationTracking(state) {
     }
   } else {
     if (stopNavigationTracking) {
+      // 네비게이션 종료 시 재경로 계산기 상태 초기화
+      console.log('🛑 [재경로] 네비게이션 종료, 재경로 계산기 상태 초기화');
+      rerouteCalculator.reset();
+      pendingRerouteSuggestion = null;
       stopNavigationTracking();
       stopNavigationTracking = null;
     }
+    // Phase 1: 네비게이션 종료 시 이탈 감지기 리셋
+    routeDeviationDetector.reset();
     updateUserLocation(null);
     if (state.navigation.currentPosition || state.navigation.lastUpdatedAt) {
       updateState((draft) => {
         draft.navigation.currentPosition = null;
         draft.navigation.lastUpdatedAt = null;
+        draft.navigation.routeDeviation = null;
+        draft.navigation.gpsAccuracy = null;
+        draft.navigation.status = NAVIGATION_STATUS.NORMAL;
       });
     }
   }
@@ -776,8 +1162,61 @@ async function handleImportTrip(event) {
 }
 
 function computeProgress(state) {
-  if (!state.routePlan || !state.navigation.currentPosition) return null;
-  return calculateNavigationProgress(state.routePlan, state.navigation.currentPosition);
+  console.log('🔍 [진행률 계산] 시작', {
+    hasRoutePlan: !!state.routePlan,
+    hasCurrentPosition: !!state.navigation.currentPosition,
+    navigationActive: state.navigation.active,
+    hasSegments: !!state.routePlan?.segments?.length
+  });
+
+  if (!state.routePlan || !state.navigation.currentPosition) {
+    console.log('❌ [진행률 계산] 조건 불만족: routePlan 또는 currentPosition 없음');
+    return null;
+  }
+  
+  const progress = calculateNavigationProgress(state.routePlan, state.navigation.currentPosition);
+  console.log('📍 [진행률 계산] calculateNavigationProgress 결과', {
+    hasProgress: !!progress,
+    distanceToLegMeters: progress?.distanceToLegMeters,
+    closestSegmentIndex: progress?.closestSegmentIndex
+  });
+  
+  // Phase 1: 경로 이탈 감지 및 GPS 정확도 평가
+  if (state.navigation.active && progress && state.navigation.currentPosition) {
+    console.log('✅ [진행률 계산] 이탈 감지 조건 만족, 감지 시작');
+    
+    // 경로 이탈 감지
+    const deviation = routeDeviationDetector.detectDeviation(progress, state.navigation.currentPosition);
+    console.log('⚠️ [진행률 계산] 이탈 감지 결과', {
+      hasDeviation: !!deviation,
+      isDeviated: deviation?.isDeviated,
+      distance: deviation?.distance,
+      duration: deviation?.duration
+    });
+    
+    // GPS 정확도 평가
+    const gpsAccuracy = routeDeviationDetector.evaluateGPSAccuracy(state.navigation.currentPosition);
+    console.log('📍 [진행률 계산] GPS 정확도 평가 결과', {
+      hasGpsAccuracy: !!gpsAccuracy,
+      level: gpsAccuracy?.level,
+      accuracy: gpsAccuracy?.accuracy
+    });
+    
+    // 이탈 및 정확도 정보를 progress에 포함
+    return {
+      ...progress,
+      deviation,      // 이탈 정보 포함
+      gpsAccuracy    // GPS 정확도 정보 포함
+    };
+  } else {
+    console.log('❌ [진행률 계산] 이탈 감지 조건 불만족', {
+      navigationActive: state.navigation.active,
+      hasProgress: !!progress,
+      hasCurrentPosition: !!state.navigation.currentPosition
+    });
+  }
+  
+  return progress;
 }
 
 function resetNavigationDraft(draft) {

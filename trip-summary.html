@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="google-maps-api-key" content="YOUR_GOOGLE_MAPS_API_KEY" />
     <title>여행 일정 요약 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/trip-summary.css" />
@@ -15,11 +15,11 @@
   <body class="app trip-summary-page">
     <header class="app-header">
       <div>
-        <h1>Via Flight</h1>
-        <p class="tagline">여행 일정 요약</p>
-        <nav class="breadcrumb">
+      <h1>Via Flight</h1>
+      <p class="tagline">여행 일정 요약</p>
+      <nav class="breadcrumb">
           <a href="index.html" class="breadcrumb__link">← 홈으로</a>
-        </nav>
+      </nav>
       </div>
       
       <!-- 인증 UI -->
@@ -363,7 +363,7 @@
               type: 'error'
             });
           } else {
-            alert('오류가 발생했습니다. 콘솔을 확인해주세요.');
+          alert('오류가 발생했습니다. 콘솔을 확인해주세요.');
           }
         }
       });
@@ -1310,7 +1310,7 @@
                 type: 'warning'
               });
             } else {
-              alert('⭐ 전체 만족도를 선택해주세요.');
+            alert('⭐ 전체 만족도를 선택해주세요.');
             }
             return;
           }
@@ -1323,7 +1323,7 @@
                 type: 'warning'
               });
             } else {
-              alert('📝 한 줄 후기를 작성해주세요.');
+            alert('📝 한 줄 후기를 작성해주세요.');
             }
             return;
           }
@@ -1415,7 +1415,7 @@
               console.warn('finalTripPlan 파싱 실패:', e);
             }
           }
-          
+
           // 리뷰 데이터 구성
           const reviewData = {
             userId: userId, // 사용자 ID 추가
@@ -1521,7 +1521,7 @@
               type: 'error'
             });
           } else {
-            alert('❌ 리뷰 저장에 실패했습니다. 다시 시도해주세요.');
+          alert('❌ 리뷰 저장에 실패했습니다. 다시 시도해주세요.');
           }
         }
       }
@@ -1588,7 +1588,7 @@
                 type: 'success'
               });
             } else {
-              alert('링크가 클립보드에 복사되었습니다!');
+            alert('링크가 클립보드에 복사되었습니다!');
             }
           });
         } else if (type === 'image') {
@@ -1599,7 +1599,7 @@
               type: 'info'
             });
           } else {
-            alert('이미지 저장 기능은 준비 중입니다.');
+          alert('이미지 저장 기능은 준비 중입니다.');
           }
         }
       }
@@ -1615,7 +1615,7 @@
                 type: 'error'
               });
             } else {
-              alert('저장할 콘텐츠를 찾을 수 없습니다.');
+            alert('저장할 콘텐츠를 찾을 수 없습니다.');
             }
             return;
           }
@@ -1653,7 +1653,7 @@
               type: 'success'
             });
           } else {
-            alert('✅ PDF가 다운로드되었습니다!');
+          alert('✅ PDF가 다운로드되었습니다!');
           }
         } catch (error) {
           console.error('PDF 저장 실패:', error);
@@ -1663,7 +1663,7 @@
               type: 'error'
             });
           } else {
-            alert('❌ PDF 저장에 실패했습니다.');
+          alert('❌ PDF 저장에 실패했습니다.');
           }
         }
       }
@@ -1677,7 +1677,7 @@
                 type: 'warning'
               });
             } else {
-              alert('공유할 일정 데이터가 없습니다.');
+            alert('공유할 일정 데이터가 없습니다.');
             }
             return;
           }
@@ -1721,7 +1721,7 @@
                 type: 'success'
               });
             } else {
-              alert('✅ 일정이 클립보드에 복사되었습니다!');
+            alert('✅ 일정이 클립보드에 복사되었습니다!');
             }
           }).catch(() => {
             const ta = document.createElement('textarea');
@@ -1736,7 +1736,7 @@
                 type: 'success'
               });
             } else {
-              alert('✅ 일정이 클립보드에 복사되었습니다!');
+            alert('✅ 일정이 클립보드에 복사되었습니다!');
             }
           });
         } catch (e) {
@@ -1747,7 +1747,7 @@
               type: 'error'
             });
           } else {
-            alert('❌ 일정 공유에 실패했습니다.');
+          alert('❌ 일정 공유에 실패했습니다.');
           }
         }
       }

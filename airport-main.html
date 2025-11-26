@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="google-maps-api-key" content="YOUR_GOOGLE_MAPS_API_KEY" />
     <meta name="openai-api-key" content="YOUR_OPENAI_API_KEY" />
-    <meta name="supabase-url" content="https://qghwyrdxxlsigtputuyj.supabase.co" />
-    <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnaHd5cmR4eGxzaWd0cHV0dXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MjIyNzIsImV4cCI6MjA3OTA5ODI3Mn0.8Ia_UCE-HYjZy2XX0VYEAKY2zGaN1QlvcTUlPPK8mxY" />
+    <meta name="supabase-url" content="YOUR_SUPABASE_URL" />
+    <meta name="supabase-anon-key" content="YOUR_SUPABASE_ANON_KEY" />
     <title>여행 스타일 선택 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/pages/airport-main.css" />
@@ -17,11 +17,11 @@
   <body class="app airport-main-page">
     <header class="app-header">
       <div>
-        <h1>Via Flight</h1>
-        <p class="tagline">어떤 여행을 원하시나요?</p>
-        <nav class="breadcrumb">
-          <a href="transfer-info.html" class="breadcrumb__link">← 환승 정보 수정</a>
-        </nav>
+      <h1>Via Flight</h1>
+      <p class="tagline">어떤 여행을 원하시나요?</p>
+      <nav class="breadcrumb">
+        <a href="transfer-info.html" class="breadcrumb__link">← 환승 정보 수정</a>
+      </nav>
       </div>
       
       <!-- 인증 UI -->
@@ -912,7 +912,7 @@
 
           // 리뷰 DB 초기화
           await window.reviewDB.initialize();
-          
+
           // 정규화된 도시 이름으로 리뷰 조회
           const reviews = await window.reviewDB.getCityReviews(normalizedCity);
 
@@ -1000,7 +1000,7 @@
                 </div>
                 <div class="review-header-right">
                   <span class="review-author">✍️ ${escapeHtml(authorName)}</span>
-                  <span class="review-date">${formattedDate}</span>
+                <span class="review-date">${formattedDate}</span>
                 </div>
               </div>
               <div class="review-summary">${escapeHtml(review.overall_review_summary || '')}</div>

@@ -380,7 +380,7 @@ class ReviewDB {
     // 2. IndexedDB에 저장 (fallback 또는 Supabase 비활성화 시)
     await this.initialize();
     const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // 전체 리뷰 저장
     const visitedPlacesJson = reviewData.tripInfo.allVisitedPlaces 
       ? JSON.stringify(reviewData.tripInfo.allVisitedPlaces) 

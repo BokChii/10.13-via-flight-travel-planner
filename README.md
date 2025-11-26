@@ -147,13 +147,33 @@ npm start
 
 이 프로젝트는 GitHub Pages를 통해 자동 배포됩니다.
 
+### GitHub Secrets 설정
+
+배포 전에 GitHub 저장소의 Secrets에 다음 환경 변수를 설정해야 합니다:
+
+1. GitHub 저장소로 이동
+2. **Settings** > **Secrets and variables** > **Actions** 클릭
+3. **New repository secret** 버튼 클릭
+4. 다음 Secrets를 추가:
+
+| Secret 이름 | 설명 | 필수 여부 |
+|------------|------|----------|
+| `GOOGLE_MAPS_API_KEY` | Google Maps API 키 | ✅ 필수 |
+| `OPENAI_API_KEY` | OpenAI API 키 | ✅ 필수 |
+| `SUPABASE_URL` | Supabase 프로젝트 URL | ✅ 필수 |
+| `SUPABASE_ANON_KEY` | Supabase Anon Key | ✅ 필수 |
+| `RESEND_API_KEY` | Resend 이메일 API 키 | ⚠️ 선택 |
+| `EMAIL_FROM` | 발신자 이메일 주소 | ⚠️ 선택 |
+
 ### 배포 프로세스
 
 1. `main` 브랜치에 푸시하면 자동으로 배포됩니다
 2. GitHub Actions 워크플로우가 환경 변수를 주입하고 빌드합니다
-3. 빌드된 파일이 `gh-pages` 브랜치에 푸시됩니다
+3. 빌드된 파일이 GitHub Pages에 배포됩니다
 
-**배포 URL**: https://bokchii.github.io/10.13-via-flight-travel-planner/
+**참고**: 
+- GitHub Pages 설정에서 Source를 **GitHub Actions**로 설정해야 합니다
+- Settings > Pages > Source: **GitHub Actions** 선택
 
 ### 수동 배포
 
@@ -161,8 +181,7 @@ npm start
 # 환경 변수 주입
 npm run prepare
 
-# 빌드된 파일을 dist/ 디렉토리에 생성
-# (필요시 빌드 스크립트 추가)
+# 빌드된 파일이 dist/ 디렉토리에 생성됩니다
 ```
 
 ## 🐛 트러블슈팅

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="google-maps-api-key" content="AIzaSyCGuiWVQgNS8egFImIxqQjA1LFI47TBmw8" />
+    <meta name="google-maps-api-key" content="YOUR_GOOGLE_MAPS_API_KEY" />
     <meta name="openai-api-key" content="YOUR_OPENAI_API_KEY" />
     <title>공항 내부+외부 여행 일정 - Via Flight</title>
     <link rel="stylesheet" href="styles/main.css" />
@@ -12,16 +12,17 @@
     <link rel="stylesheet" href="styles/components/buttons.css" />
     <link rel="stylesheet" href="styles/components/cards.css" />
     <link rel="stylesheet" href="styles/components/forms.css" />
+    <link rel="stylesheet" href="styles/components/ai-chat.css" />
     <link rel="stylesheet" href="styles/components/steps.css" />
   </head>
   <body class="app airport-external-page">
     <header class="app-header">
       <div>
-        <h1>Via Flight</h1>
-        <p class="tagline">공항 밖 여행 일정 만들기</p>
-        <nav class="breadcrumb">
-          <a href="airport-main.html" class="breadcrumb__link">← 여행 스타일 다시 선택</a>
-        </nav>
+      <h1>Via Flight</h1>
+      <p class="tagline">공항 밖 여행 일정 만들기</p>
+      <nav class="breadcrumb">
+        <a href="airport-main.html" class="breadcrumb__link">← 여행 스타일 다시 선택</a>
+      </nav>
       </div>
       
       <!-- 인증 UI -->
@@ -155,6 +156,30 @@
                     <p>좌측에서 장소를 선택하면 상세 정보가 표시됩니다.</p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- AI 채팅창 (우측 고정) -->
+            <div class="ai-chat-container" id="ai-chat-container">
+              <div class="ai-chat-header">
+                <h3>🤖 AI 장소 추천</h3>
+                <button class="ai-chat-toggle" id="ai-chat-toggle" aria-label="채팅창 접기/펼치기">접기</button>
+              </div>
+              <div class="ai-chat-messages" id="ai-chat-messages">
+                <div class="ai-message ai-message--system">
+                  <p>안녕하세요! 찾고 싶은 장소를 말씀해주세요.</p>
+                  <p class="ai-examples">예: "튀김 요리 식당", "쉴 수 있는 곳", "면세점" 등</p>
+                </div>
+              </div>
+              <div class="ai-chat-input-container">
+                <input 
+                  type="text" 
+                  class="ai-chat-input" 
+                  id="ai-chat-input" 
+                  placeholder="장소를 검색해보세요..."
+                  aria-label="AI 장소 검색 입력"
+                />
+                <button class="ai-chat-send" id="ai-chat-send" aria-label="검색 전송">전송</button>
               </div>
             </div>
 
@@ -469,6 +494,11 @@
         loadTransferInfo();
         updateSummary();
         initializePreferences();
+        
+        // AI 채팅창 초기화 (POI 데이터 로드 후)
+        setTimeout(() => {
+          initAIChat();
+        }, 500);
         
         // AI로 생성된 일정이 있는지 확인
         const aiGenerated = sessionStorage.getItem('aiGeneratedPlan');
@@ -1383,7 +1413,7 @@
                 type: 'warning'
               });
             } else {
-              alert('최대 3개의 카테고리만 선택할 수 있습니다.');
+            alert('최대 3개의 카테고리만 선택할 수 있습니다.');
             }
             return;
           }
@@ -1786,7 +1816,7 @@
               type: 'success'
             });
           } else {
-            alert('✅ PDF가 다운로드되었습니다!');
+          alert('✅ PDF가 다운로드되었습니다!');
           }
         } catch (error) {
           console.error('PDF 생성 실패:', error);
@@ -1796,7 +1826,7 @@
               type: 'error'
             });
           } else {
-            alert('❌ PDF 생성에 실패했습니다.');
+          alert('❌ PDF 생성에 실패했습니다.');
           }
         }
       }
@@ -1829,7 +1859,7 @@
               type: 'success'
             });
           } else {
-            alert('✅ 일정이 클립보드에 복사되었습니다!\n공유할 곳에 붙여넣기(Ctrl+V) 하세요.');
+          alert('✅ 일정이 클립보드에 복사되었습니다!\n공유할 곳에 붙여넣기(Ctrl+V) 하세요.');
           }
         }).catch((error) => {
           console.error('클립보드 복사 실패:', error);
@@ -1839,7 +1869,7 @@
               type: 'error'
             });
           } else {
-            alert('❌ 일정 공유에 실패했습니다.');
+          alert('❌ 일정 공유에 실패했습니다.');
           }
         });
       }
@@ -1897,7 +1927,7 @@
               type: 'error'
             });
           } else {
-            alert('일정 생성에 실패했습니다. 다시 시도해주세요.');
+          alert('일정 생성에 실패했습니다. 다시 시도해주세요.');
           }
         } finally {
           // 로딩 오버레이 숨김
@@ -2500,7 +2530,7 @@
               type: 'error'
             });
           } else {
-            alert('도시 탐방 일정이 생성되지 않았습니다. 다시 시도해주세요.');
+          alert('도시 탐방 일정이 생성되지 않았습니다. 다시 시도해주세요.');
           }
           return;
         }
@@ -2551,6 +2581,196 @@
         currentStep = 'city-poi-selection';
         document.getElementById('full-schedule-step').style.display = 'none';
         document.getElementById('city-poi-step').style.display = 'block';
+      }
+
+      // AI 채팅창 초기화
+      async function initAIChat() {
+        const chatContainer = document.getElementById('ai-chat-container');
+        const chatMessages = document.getElementById('ai-chat-messages');
+        const chatInput = document.getElementById('ai-chat-input');
+        const chatSend = document.getElementById('ai-chat-send');
+        const chatToggle = document.getElementById('ai-chat-toggle');
+
+        if (!chatContainer || !chatMessages || !chatInput || !chatSend) {
+          console.warn('AI 채팅창 요소를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 전송 버튼 클릭
+        chatSend.addEventListener('click', async () => {
+          await handleAIChatSend();
+        });
+
+        // Enter 키 입력
+        chatInput.addEventListener('keypress', async (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            await handleAIChatSend();
+          }
+        });
+
+        // 접기/펼치기
+        if (chatToggle) {
+          let isCollapsed = false;
+          
+          // 토글 버튼 클릭
+          chatToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // 헤더 클릭 이벤트와 충돌 방지
+            toggleChat();
+          });
+          
+          // 헤더 클릭으로도 접기/펼치기 가능
+          const chatHeader = chatContainer.querySelector('.ai-chat-header');
+          if (chatHeader) {
+            chatHeader.addEventListener('click', (e) => {
+              // 토글 버튼이 아닌 헤더 영역 클릭 시에만
+              if (!chatToggle.contains(e.target)) {
+                toggleChat();
+              }
+            });
+          }
+          
+          function toggleChat() {
+            isCollapsed = !isCollapsed;
+            chatContainer.classList.toggle('collapsed');
+            chatToggle.textContent = isCollapsed ? '펼치기' : '접기';
+          }
+        }
+
+        async function handleAIChatSend() {
+          const query = chatInput.value.trim();
+          if (!query) return;
+
+          // 사용자 메시지 표시
+          addChatMessage('user', query);
+          chatInput.value = '';
+          chatSend.disabled = true;
+
+          // 로딩 메시지 표시
+          const loadingDiv = document.createElement('div');
+          loadingDiv.className = 'ai-chat-loading';
+          loadingDiv.textContent = '검색 중...';
+          chatMessages.appendChild(loadingDiv);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          try {
+            // AI 검색 서비스 import
+            const { airportPOIChatService } = await import('./scripts/airportPOIChatService.js');
+            
+            // 현재 POI 데이터 가져오기 (allPOIsMap 또는 allPOIs)
+            const currentPOIs = allPOIsMap.size > 0 ? allPOIsMap : allPOIs;
+            
+            if (currentPOIs.size === 0 && currentPOIs.length === 0) {
+              addChatMessage('assistant', '아직 장소 데이터가 로드되지 않았습니다. 카테고리를 먼저 선택해주세요.');
+              return;
+            }
+
+            const recommendedPOIs = await airportPOIChatService.searchPOIsByNaturalLanguage(
+              query,
+              currentPOIs,
+              '공항'
+            );
+
+            // 로딩 메시지 제거
+            loadingDiv.remove();
+
+            if (recommendedPOIs.length === 0) {
+              addChatMessage('assistant', '죄송합니다. 검색 결과를 찾을 수 없습니다. 다른 키워드로 검색해보세요.');
+            } else {
+              // 추천 POI 표시
+              addChatMessage('assistant', `다음 ${recommendedPOIs.length}개의 장소를 추천합니다:`, recommendedPOIs);
+            }
+          } catch (error) {
+            console.error('AI 검색 오류:', error);
+            loadingDiv.remove();
+            
+            let errorMessage = '검색 중 오류가 발생했습니다.';
+            if (error.message && error.message.includes('API 키')) {
+              errorMessage = 'OpenAI API 키가 설정되지 않았습니다. 설정을 확인해주세요.';
+            }
+            addChatMessage('assistant', errorMessage);
+          } finally {
+            chatSend.disabled = false;
+          }
+        }
+
+        function addChatMessage(role, message, recommendedPOIs = []) {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `ai-message ai-message--${role}`;
+          
+          if (role === 'assistant' && recommendedPOIs.length > 0) {
+            // 추천 POI 카드들 추가
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            recommendedPOIs.forEach(poi => {
+              const poiCard = createPOIRecommendationCard(poi);
+              messageDiv.appendChild(poiCard);
+            });
+          } else {
+            messageDiv.innerHTML = `<p>${message}</p>`;
+          }
+
+          chatMessages.appendChild(messageDiv);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function createPOIRecommendationCard(poi) {
+          const card = document.createElement('div');
+          card.className = 'ai-poi-recommendation';
+          
+          // poi.id를 안전하게 이스케이프
+          const safeId = String(poi.id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          
+          card.innerHTML = `
+            <h4>${poi.name || '이름 없음'}</h4>
+            ${poi.aiReason ? `<p class="ai-poi-reason">💡 ${poi.aiReason}</p>` : ''}
+            <div class="ai-poi-info">
+              ${poi.category ? `<span>카테고리: ${poi.category}</span>` : ''}
+              ${poi.location ? `<span>📍 ${poi.location}</span>` : ''}
+            </div>
+            <button class="ai-poi-select-btn" data-poi-id="${safeId}">선택</button>
+          `;
+
+          // 선택 버튼 클릭 이벤트
+          const selectBtn = card.querySelector('.ai-poi-select-btn');
+          selectBtn.addEventListener('click', () => {
+            selectPOIFromAI(poi);
+          });
+
+          return card;
+        }
+
+        function selectPOIFromAI(poi) {
+          // 기존 selectPOISingle 함수 재사용
+          if (typeof selectPOISingle === 'function') {
+            selectPOISingle(poi.id);
+            // POI 상세 정보도 표시
+            if (typeof showPOIDetailSingle === 'function') {
+              showPOIDetailSingle(poi);
+            }
+          } else {
+            // 폴백: 직접 선택 로직 실행
+            if (!selectedPOIs.includes(poi.id)) {
+              selectedPOIs.push(poi.id);
+              updateSelectedPOIsList();
+              if (typeof updatePreferencesPOINextButton === 'function') {
+                updatePreferencesPOINextButton();
+              }
+              if (typeof showPOIDetailSingle === 'function') {
+                showPOIDetailSingle(poi);
+              }
+              // Toast 메시지
+              if (typeof showToast === 'function') {
+                showToast({ message: `${poi.name}이(가) 리스트에 추가되었습니다.`, type: 'success' });
+              } else {
+                console.log(`${poi.name}이(가) 리스트에 추가되었습니다.`);
+              }
+            } else {
+              if (typeof showToast === 'function') {
+                showToast({ message: `이미 선택한 장소입니다: ${poi.name}`, type: 'warning' });
+              }
+            }
+          }
+        }
       }
 
       // 카테고리 라벨 가져오기 (공항용)

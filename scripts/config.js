@@ -92,6 +92,46 @@ export const DEFAULT_BUFFER_TIMES = {
   ENTRY_BUFFER_MINUTES: 30,
 };
 
+// 경로 이탈 감지 설정 (Phase 1)
+export const ROUTE_DEVIATION_CONFIG = {
+  // 이탈 임계값 (미터)
+  DEVIATION_THRESHOLD_METERS: 200,
+  
+  // 이탈 지속 시간 (초) - 이 시간 이상 지속되면 이탈로 판단
+  DEVIATION_DURATION_SECONDS: 5,
+  
+  // 복귀 확인 시간 (초) - 이 시간 동안 경로 내에 있어야 복귀로 판단
+  RECOVERY_DURATION_SECONDS: 3,
+  
+  // GPS 정확도 임계값 (미터)
+  LOW_ACCURACY_THRESHOLD_METERS: 50,
+  VERY_LOW_ACCURACY_THRESHOLD_METERS: 100,
+  
+  // 알림 쿨다운 (밀리초)
+  DEVIATION_ALERT_COOLDOWN_MS: 30_000, // 30초
+};
+
+// 자동 재경로 계산 설정 (Phase 2)
+export const REROUTE_CONFIG = {
+  // 재경로 제안 조건: 이탈 지속 시간 (초)
+  REROUTE_SUGGESTION_DURATION_SECONDS: 10, // 10초 이상 이탈 시 재경로 제안
+  
+  // 재경로 계산 재시도 제한
+  MAX_REROUTE_ATTEMPTS: 3,
+  
+  // 재경로 계산 쿨다운 (밀리초) - 같은 위치에서 반복 계산 방지
+  REROUTE_COOLDOWN_MS: 60_000, // 60초
+};
+
+// 네비게이션 상태 타입 (Phase 1)
+export const NAVIGATION_STATUS = {
+  NORMAL: 'normal',
+  DEVIATED: 'deviated',
+  REROUTING: 'rerouting',
+  LOW_ACCURACY: 'low_accuracy',
+  ERROR: 'error'
+};
+
 // ===== 공통 유틸리티 함수들 =====
 
 /**
