@@ -225,8 +225,14 @@ htmlFilesToCopy.forEach(htmlFile => {
   const srcPath = path.join(projectRoot, htmlFile);
   const destPath = path.join(distDir, htmlFile);
   if (fs.existsSync(srcPath)) {
-    // 파일을 읽어서 Supabase meta 태그 주입 후 저장
+    // 파일을 읽어서 API 키 및 Supabase meta 태그 주입 후 저장
     let htmlContent = fs.readFileSync(srcPath, 'utf8');
+    
+    // Google Maps API 키 주입 (모든 파일)
+    htmlContent = htmlContent.replace(
+      /(<meta name="google-maps-api-key" content=")([^"]*)(" \/>)/,
+      `$1${apiKey}$3`
+    );
     
     // OpenAI API 키 주입 (airport-main.html인 경우)
     if (htmlFile === 'airport-main.html') {

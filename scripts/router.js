@@ -375,7 +375,23 @@ window.initNavigationPage = () => {
 
 // 페이지 로드 시 자동 초기화
 document.addEventListener('DOMContentLoaded', function() {
-  const currentPage = window.location.pathname.split('/').pop();
+  let currentPage = window.location.pathname.split('/').pop();
+  
+  // 빈 문자열이거나 경로만 있는 경우 index.html로 처리
+  if (!currentPage || currentPage === '') {
+    currentPage = 'index.html';
+  }
+  
+  // .html 확장자가 없는 경우 라우터의 routes 맵에서 찾기
+  if (!currentPage.endsWith('.html')) {
+    const route = window.viaFlightRouter?.routes[`/${currentPage}`];
+    if (route) {
+      currentPage = route;
+    } else {
+      // 기본적으로 .html 추가 시도
+      currentPage = `${currentPage}.html`;
+    }
+  }
   
   switch (currentPage) {
     case 'index.html':
