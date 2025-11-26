@@ -2657,17 +2657,52 @@
             // AI 검색 서비스 import
             const { airportPOIChatService } = await import('./scripts/airportPOIChatService.js');
             
-            // 현재 POI 데이터 가져오기 (allPOIsMap 또는 allPOIs)
-            const currentPOIs = allPOIsMap.size > 0 ? allPOIsMap : allPOIs;
+            // 모든 테이블의 POI를 로드하여 검색 (면세점, 식당, 휴식공간 등 모든 카테고리 포함)
+            let allPOIsForSearch = new Map();
             
-            if (currentPOIs.size === 0 && currentPOIs.length === 0) {
-              addChatMessage('assistant', '아직 장소 데이터가 로드되지 않았습니다. 카테고리를 먼저 선택해주세요.');
+            // 현재 allPOIsMap에 있는 POI 추가
+            if (allPOIsMap.size > 0) {
+              allPOIsMap.forEach((poi, id) => {
+                allPOIsForSearch.set(id, poi);
+              });
+            }
+            
+            // 모든 테이블에서 POI 로드 (사용자가 어떤 질의를 할지 모르므로 모든 카테고리 포함)
+            const allTables = ['meal_options_db_frame', 'shopping_options_db_frame', 'rests_db_frame', 'airport_events_db_frame'];
+            
+            try {
+              await window.sqliteClient.initialize();
+              
+              for (const table of allTables) {
+                try {
+                  const pois = await window.sqliteClient.getTablePOIs(table, null); // 모든 카테고리
+                  pois.forEach(poi => {
+                    // 중복 방지: 같은 ID가 없을 때만 추가
+                    if (!allPOIsForSearch.has(poi.id)) {
+                      allPOIsForSearch.set(poi.id, poi);
+                    }
+                  });
+                } catch (tableError) {
+                  console.warn(`[AI 채팅] 테이블 ${table} 로드 실패:`, tableError);
+                  // 일부 테이블 로드 실패해도 계속 진행
+                }
+              }
+              
+              console.log(`✅ [AI 채팅] 모든 테이블에서 POI 로드 완료: ${allPOIsForSearch.size}개`);
+            } catch (loadError) {
+              console.warn('[AI 채팅] 전체 POI 로드 실패, 현재 로드된 POI만 사용:', loadError);
+              // 실패해도 현재 로드된 POI로 검색 계속 진행
+            }
+            
+            if (allPOIsForSearch.size === 0) {
+              loadingDiv.remove();
+              addChatMessage('assistant', '아직 장소 데이터가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
               return;
             }
 
             const recommendedPOIs = await airportPOIChatService.searchPOIsByNaturalLanguage(
               query,
-              currentPOIs,
+              allPOIsForSearch,
               '공항'
             );
 
