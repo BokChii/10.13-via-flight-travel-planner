@@ -91,11 +91,20 @@ function injectSupabaseMeta(html) {
       injected = injected.replace(urlMetaPattern, urlMetaTag);
       console.log('[inject-env] ✅ Supabase URL meta 태그 업데이트 완료');
     } else {
-      // head 태그 안에 추가 (google-maps-api-key 다음에)
-      injected = injected.replace(
-        /(<meta name="google-maps-api-key" content="[^"]*" \/>)/,
-        `$1\n    <meta name="supabase-url" content="${supabaseUrl}" />`
-      );
+      // google-maps-api-key 다음에 추가 시도
+      const googleMapsPattern = /(<meta name="google-maps-api-key" content="[^"]*" \/>)/;
+      if (googleMapsPattern.test(injected)) {
+        injected = injected.replace(
+          googleMapsPattern,
+          `$1\n    ${urlMetaTag}`
+        );
+      } else {
+        // google-maps-api-key도 없으면 head 태그 안에 추가
+        injected = injected.replace(
+          /(<head[^>]*>)/,
+          `$1\n    ${urlMetaTag}`
+        );
+      }
     }
   }
   
@@ -109,18 +118,45 @@ function injectSupabaseMeta(html) {
       injected = injected.replace(keyMetaPattern, keyMetaTag);
       console.log('[inject-env] ✅ Supabase anon key meta 태그 업데이트 완료');
     } else {
-      // supabase-url 다음에 추가
+      // supabase-url 다음에 추가 시도
       if (supabaseUrl) {
-        injected = injected.replace(
-          /(<meta name="supabase-url" content="[^"]*" \/>)/,
-          `$1\n    <meta name="supabase-anon-key" content="${supabaseAnonKey}" />`
-        );
+        const supabaseUrlPattern = /(<meta name="supabase-url" content="[^"]*" \/>)/;
+        if (supabaseUrlPattern.test(injected)) {
+          injected = injected.replace(
+            supabaseUrlPattern,
+            `$1\n    ${keyMetaTag}`
+          );
+        } else {
+          // supabase-url도 없으면 google-maps-api-key 다음에 추가
+          const googleMapsPattern = /(<meta name="google-maps-api-key" content="[^"]*" \/>)/;
+          if (googleMapsPattern.test(injected)) {
+            injected = injected.replace(
+              googleMapsPattern,
+              `$1\n    ${keyMetaTag}`
+            );
+          } else {
+            // 아무것도 없으면 head 태그 안에 추가
+            injected = injected.replace(
+              /(<head[^>]*>)/,
+              `$1\n    ${keyMetaTag}`
+            );
+          }
+        }
       } else {
         // supabase-url이 없으면 google-maps-api-key 다음에 추가
-        injected = injected.replace(
-          /(<meta name="google-maps-api-key" content="[^"]*" \/>)/,
-          `$1\n    <meta name="supabase-anon-key" content="${supabaseAnonKey}" />`
-        );
+        const googleMapsPattern = /(<meta name="google-maps-api-key" content="[^"]*" \/>)/;
+        if (googleMapsPattern.test(injected)) {
+          injected = injected.replace(
+            googleMapsPattern,
+            `$1\n    ${keyMetaTag}`
+          );
+        } else {
+          // google-maps-api-key도 없으면 head 태그 안에 추가
+          injected = injected.replace(
+            /(<head[^>]*>)/,
+            `$1\n    ${keyMetaTag}`
+          );
+        }
       }
     }
   }
