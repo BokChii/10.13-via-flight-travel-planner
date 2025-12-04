@@ -644,6 +644,11 @@ async function syncUi({
   startNavigation.textContent = latestState.navigation.active ? "내비게이션 진행 중" : "내비게이션 시작";
   exitNavigation.hidden = !latestState.navigation.active;
   
+  // navigationStatus 컨테이너 표시 제어 (네비게이션 활성화 시에만 표시)
+  if (navigationStatus) {
+    navigationStatus.hidden = !latestState.navigation.active;
+  }
+  
   // 공항 복귀 버튼 표시 로직 (네비게이션 활성화 시에만 표시)
   if (emergencyReturn) {
     emergencyReturn.hidden = !latestState.navigation.active;
