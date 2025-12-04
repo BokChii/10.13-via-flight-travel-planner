@@ -123,6 +123,15 @@ export const REROUTE_CONFIG = {
   REROUTE_COOLDOWN_MS: 60_000, // 60초
 };
 
+// 경유지 도착 감지 설정
+export const WAYPOINT_ARRIVAL_CONFIG = {
+  // 경유지 도착 감지 거리 임계값 (미터) - 이 거리 이내에 있으면 도착으로 판단
+  ARRIVAL_DISTANCE_THRESHOLD_METERS: 50,
+  
+  // 경유지 도착 알림 쿨다운 (밀리초) - 같은 경유지에 대한 중복 알림 방지
+  ARRIVAL_ALERT_COOLDOWN_MS: 60_000, // 60초
+};
+
 // 네비게이션 상태 타입 (Phase 1)
 export const NAVIGATION_STATUS = {
   NORMAL: 'normal',

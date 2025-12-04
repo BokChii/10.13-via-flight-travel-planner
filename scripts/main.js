@@ -27,7 +27,7 @@ import { getCurrentWaypointContext } from "./navigationUi.js";
 import { detectEmergencySituation, activateEmergencyMode, calculateAirportReturnRoute, showAirportReturnModal } from "./emergencyMode.js";
 import { calculateRealTimeReturnInfo, generateAirportReturnMessage } from "./airportReturnSystem.js";
 import { routeDeviationDetector } from "./routeDeviationDetector.js";
-import { NAVIGATION_STATUS, REROUTE_CONFIG, ROUTE_DEVIATION_CONFIG } from "./config.js";
+import { NAVIGATION_STATUS, REROUTE_CONFIG, ROUTE_DEVIATION_CONFIG, WAYPOINT_ARRIVAL_CONFIG } from "./config.js";
 import { rerouteCalculator } from "./rerouteCalculator.js";
 
 import { attachPlannerServices } from "./planner.js";
@@ -61,6 +61,8 @@ let returnDeadlineTimerId = null;
 let departureCountdownTimer = null; // 카운트다운 타이머 추적용
 let lastWaypointsState = null;
 let lastTripMetaState = null;
+let lastArrivedSegmentIndex = null; // 경유지 도착 감지용: 마지막으로 도착한 세그먼트 인덱스
+let lastWaypointArrivalCheckTime = 0; // 경유지 도착 체크 쿨다운용
 
 
 
@@ -274,6 +276,9 @@ async function bootstrap() {
     
     applyNavigationHighlight(latestState, progress);
     maybeAnnounceNextStep(latestState, progress);
+    
+    // 경유지 도착 감지 및 처리
+    checkWaypointArrival(latestState, progress);
     
     // Phase 1: 경로 이탈 알림
     if (progress?.deviation?.shouldAlert && progress.deviation.isDeviated) {
@@ -720,6 +725,105 @@ async function showRerouteSuggestionModal(state, progress) {
 }
 
 /**
+ * 경유지 도착 감지
+ * @param {Object} state - 현재 상태
+ * @param {Object} progress - 진행률 정보
+ */
+function checkWaypointArrival(state, progress) {
+  if (!state.navigation.active || !progress || !state.routePlan) {
+    return;
+  }
+
+  // 쿨다운 체크 (너무 자주 체크하지 않도록)
+  const now = Date.now();
+  if (now - lastWaypointArrivalCheckTime < 2000) { // 2초마다 체크
+    return;
+  }
+  lastWaypointArrivalCheckTime = now;
+
+  const currentSegment = state.routePlan.segments?.[progress.closestSegmentIndex];
+  if (!currentSegment) {
+    return;
+  }
+
+  // 현재 세그먼트의 마지막 leg인지 확인
+  const isLastLeg = progress.closestLegIndex === (currentSegment.legs?.length ?? 0) - 1;
+  
+  // 경유지 근처에 도착했는지 확인 (거리 임계값 이내)
+  const isNearWaypoint = progress.distanceToLegMeters <= WAYPOINT_ARRIVAL_CONFIG.ARRIVAL_DISTANCE_THRESHOLD_METERS;
+  
+  // 이전에 도착한 세그먼트가 아니고, 마지막 leg에 근접했으면
+  if (isLastLeg && isNearWaypoint && 
+      lastArrivedSegmentIndex !== progress.closestSegmentIndex) {
+    
+    console.log('🎯 [경유지 도착] 경유지 도착 감지', {
+      segmentIndex: progress.closestSegmentIndex,
+      waypointName: currentSegment.toLabel || currentSegment.destinationName || '경유지',
+      distanceToLegMeters: progress.distanceToLegMeters
+    });
+    
+    // 경유지 도착 모달 표시
+    showWaypointArrivalModal(state, progress, currentSegment);
+    
+    // 도착한 세그먼트 인덱스 저장 (중복 알림 방지)
+    lastArrivedSegmentIndex = progress.closestSegmentIndex;
+  }
+}
+
+/**
+ * 경유지 도착 모달 표시
+ * @param {Object} state - 현재 상태
+ * @param {Object} progress - 진행률 정보
+ * @param {Object} segment - 도착한 세그먼트
+ */
+async function showWaypointArrivalModal(state, progress, segment) {
+  console.log('📢 [경유지 도착] 모달 표시 시작');
+  
+  if (!window.showConfirmModal) {
+    console.error('❌ [경유지 도착] showConfirmModal이 정의되지 않았습니다.');
+    // 모달이 없으면 토스트로 대체
+    const waypointName = segment.toLabel || segment.destinationName || '경유지';
+    showToast({
+      message: `${waypointName}에 도착했습니다.`,
+      type: 'success',
+      timeout: 5000
+    });
+    return;
+  }
+
+  const waypointName = segment.toLabel || segment.destinationName || '경유지';
+  const distance = Math.round(progress.distanceToLegMeters || 0);
+  const message = `${waypointName}에 도착했습니다.\n\n` +
+                 `다음 경유지로 이동하시겠습니까?`;
+
+  console.log('💬 [경유지 도착] 모달 메시지', { waypointName, distance, message });
+
+  const confirmed = await window.showConfirmModal({
+    message: message,
+    title: '경유지 도착',
+    type: 'success',
+    confirmText: '다음 경유지로',
+    cancelText: '확인'
+  });
+
+  console.log('👤 [경유지 도착] 사용자 응답', { confirmed });
+
+  if (confirmed) {
+    console.log('✅ [경유지 도착] 사용자가 다음 경유지로 이동 확인');
+    // 다음 경유지로 자동 전환은 progress.closestSegmentIndex가 자동으로 업데이트되므로
+    // 별도 처리가 필요 없음 (이미 다음 안내가 업데이트됨)
+    showToast({
+      message: `${waypointName}에서 다음 경유지로 이동합니다.`,
+      type: 'info',
+      timeout: 3000
+    });
+  } else {
+    console.log('ℹ️ [경유지 도착] 사용자가 확인만 선택');
+    // 확인만 선택한 경우에도 다음 안내는 자동으로 업데이트됨
+  }
+}
+
+/**
  * 재경로 적용 (Phase 2)
  */
 async function applyReroute(state, progress) {
@@ -806,6 +910,8 @@ async function applyReroute(state, progress) {
     // 상태 업데이트 (추가 소요 시간 포함)
     updateState((draft) => {
       draft.routePlan = newRoutePlan;
+      // 재경로의 원본 segments 저장 (폴리라인 경로 이탈 감지용)
+      draft.routePlan.originalSegments = [rerouteInfo.newRoute];
       draft.navigation.status = NAVIGATION_STATUS.NORMAL; // 재경로 적용 후 정상 상태로
       draft.navigation.routeDeviation = null; // 이탈 정보 초기화 (배너 사라짐)
       draft.navigation.rerouteAdditionalMinutes = additionalMinutes; // 추가 소요 시간 저장
@@ -813,7 +919,10 @@ async function applyReroute(state, progress) {
 
     // 이탈 감지기 상태도 초기화
     routeDeviationDetector.reset();
-    console.log('🔄 [재경로] 이탈 감지기 상태 초기화 완료');
+    // 경유지 도착 감지 상태 초기화
+    lastArrivedSegmentIndex = null;
+    lastWaypointArrivalCheckTime = 0;
+    console.log('🔄 [재경로] 이탈 감지기 및 경유지 도착 감지 상태 초기화 완료');
 
     console.log('✅ [재경로] 상태 업데이트 완료', {
       newStatus: NAVIGATION_STATUS.NORMAL,
@@ -916,7 +1025,13 @@ async function calculateRoute() {
 
     updateState((draft) => {
       draft.routePlan = buildRoutePlan({ segments, stops: labeledStops, colors });
+      // 원본 DirectionsResult segments 저장 (폴리라인 경로 이탈 감지용)
+      draft.routePlan.originalSegments = segments;
     });
+    
+    // 경로 재계산 시 경유지 도착 감지 상태 초기화
+    lastArrivedSegmentIndex = null;
+    lastWaypointArrivalCheckTime = 0;
   } catch (error) {
     console.error(error);
     alert("경로를 불러오지 못했습니다. 다시 시도해주세요.");
@@ -957,6 +1072,9 @@ function manageNavigationTracking(state) {
     // Phase 1: 네비게이션 종료 시 이탈 감지기 리셋
     routeDeviationDetector.reset();
     updateUserLocation(null);
+    // 경유지 도착 감지 상태 초기화
+    lastArrivedSegmentIndex = null;
+    lastWaypointArrivalCheckTime = 0;
     if (state.navigation.currentPosition || state.navigation.lastUpdatedAt) {
       updateState((draft) => {
         draft.navigation.currentPosition = null;
@@ -1174,7 +1292,11 @@ function computeProgress(state) {
     return null;
   }
   
-  const progress = calculateNavigationProgress(state.routePlan, state.navigation.currentPosition);
+  const progress = calculateNavigationProgress(
+    state.routePlan, 
+    state.navigation.currentPosition,
+    state.routePlan?.originalSegments // 원본 DirectionsResult segments 전달
+  );
   console.log('📍 [진행률 계산] calculateNavigationProgress 결과', {
     hasProgress: !!progress,
     distanceToLegMeters: progress?.distanceToLegMeters,
@@ -1226,6 +1348,9 @@ function resetNavigationDraft(draft) {
   draft.navigation.lastUpdatedAt = null;
   draft.navigation.error = null;
   lastToastTimestamp = 0;
+  // 경유지 도착 감지 상태 초기화
+  lastArrivedSegmentIndex = null;
+  lastWaypointArrivalCheckTime = 0;
   resetReturnDeadlineAlerts();
 }
 
