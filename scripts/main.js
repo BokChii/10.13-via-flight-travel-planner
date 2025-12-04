@@ -33,6 +33,7 @@ import { rerouteCalculator } from "./rerouteCalculator.js";
 import { attachPlannerServices } from "./planner.js";
 import { isValidPlan, safeParseFromStorage } from "./validation.js";
 import { handleError, ErrorCodes, createError } from "./errorHandler.js";
+import { haversineDistanceMeters } from "./distance.js";
 
 const config = {
   googleMapsApiKey: getGoogleMapsApiKey(),
@@ -746,7 +747,13 @@ function checkWaypointArrival(state, progress) {
   }
   lastWaypointArrivalCheckTime = now;
 
-  const currentSegment = state.routePlan.segments?.[progress.closestSegmentIndex];
+  const routePlan = state.routePlan;
+  const segments = routePlan.segments || [];
+  const totalSegments = segments.length;
+  
+  // 현재 세그먼트 정보
+  const currentSegmentIndex = progress.closestSegmentIndex;
+  const currentSegment = segments[currentSegmentIndex];
   if (!currentSegment) {
     return;
   }
@@ -754,24 +761,67 @@ function checkWaypointArrival(state, progress) {
   // 현재 세그먼트의 마지막 leg인지 확인
   const isLastLeg = progress.closestLegIndex === (currentSegment.legs?.length ?? 0) - 1;
   
-  // 경유지 근처에 도착했는지 확인 (거리 임계값 이내)
-  const isNearWaypoint = progress.distanceToLegMeters <= WAYPOINT_ARRIVAL_CONFIG.ARRIVAL_DISTANCE_THRESHOLD_METERS;
+  // 현재 위치
+  const currentPosition = state.navigation.currentPosition;
+  if (!currentPosition) {
+    return;
+  }
   
-  // 이전에 도착한 세그먼트가 아니고, 마지막 leg에 근접했으면
-  if (isLastLeg && isNearWaypoint && 
-      lastArrivedSegmentIndex !== progress.closestSegmentIndex) {
+  // 현재 세그먼트의 마지막 leg의 destination 위치 가져오기
+  const lastLeg = currentSegment.legs?.[currentSegment.legs.length - 1];
+  const segmentDestinationLocation = lastLeg?.destinationLocation;
+  
+  if (!segmentDestinationLocation) {
+    return;
+  }
+  
+  // 현재 위치에서 세그먼트 목적지까지의 실제 거리 계산
+  const distanceToSegmentDestination = haversineDistanceMeters(
+    { lat: currentPosition.lat, lng: currentPosition.lng },
+    { lat: segmentDestinationLocation.lat, lng: segmentDestinationLocation.lng }
+  );
+  
+  // 경유지 근처에 도착했는지 확인 (거리 임계값 이내)
+  const isNearWaypoint = distanceToSegmentDestination <= WAYPOINT_ARRIVAL_CONFIG.ARRIVAL_DISTANCE_THRESHOLD_METERS;
+  
+  // 최종 목적지 도착 확인
+  const isFinalDestination = currentSegmentIndex === totalSegments - 1;
+  
+  // 최종 목적지 도착 처리 (진행률 95% 이상 + 실제 거리 50m 이내)
+  if (isFinalDestination && 
+      progress.progressRatio >= 0.95 && 
+      isNearWaypoint && 
+      lastArrivedSegmentIndex !== currentSegmentIndex) {
+    
+    console.log('🎉 [여행 완료] 최종 목적지 도착', {
+      segmentIndex: currentSegmentIndex,
+      destinationName: currentSegment.toLabel || currentSegment.destinationName || '목적지',
+      progressRatio: progress.progressRatio,
+      distanceToDestination: distanceToSegmentDestination
+    });
+    
+    showJourneyCompleteModal(state, progress, currentSegment);
+    lastArrivedSegmentIndex = currentSegmentIndex;
+    return;
+  }
+  
+  // 경유지 도착 처리 (최종 목적지가 아니고, 마지막 leg에 실제로 도착했을 때)
+  if (!isFinalDestination && 
+      isLastLeg && 
+      isNearWaypoint && 
+      lastArrivedSegmentIndex !== currentSegmentIndex) {
     
     console.log('🎯 [경유지 도착] 경유지 도착 감지', {
-      segmentIndex: progress.closestSegmentIndex,
+      segmentIndex: currentSegmentIndex,
       waypointName: currentSegment.toLabel || currentSegment.destinationName || '경유지',
-      distanceToLegMeters: progress.distanceToLegMeters
+      distanceToDestination: distanceToSegmentDestination
     });
     
     // 경유지 도착 모달 표시
     showWaypointArrivalModal(state, progress, currentSegment);
     
     // 도착한 세그먼트 인덱스 저장 (중복 알림 방지)
-    lastArrivedSegmentIndex = progress.closestSegmentIndex;
+    lastArrivedSegmentIndex = currentSegmentIndex;
   }
 }
 
@@ -797,11 +847,10 @@ async function showWaypointArrivalModal(state, progress, segment) {
   }
 
   const waypointName = segment.toLabel || segment.destinationName || '경유지';
-  const distance = Math.round(progress.distanceToLegMeters || 0);
   const message = `${waypointName}에 도착했습니다.\n\n` +
                  `다음 경유지로 이동하시겠습니까?`;
 
-  console.log('💬 [경유지 도착] 모달 메시지', { waypointName, distance, message });
+  console.log('💬 [경유지 도착] 모달 메시지', { waypointName, message });
 
   const confirmed = await window.showConfirmModal({
     message: message,
@@ -825,6 +874,50 @@ async function showWaypointArrivalModal(state, progress, segment) {
   } else {
     console.log('ℹ️ [경유지 도착] 사용자가 확인만 선택');
     // 확인만 선택한 경우에도 다음 안내는 자동으로 업데이트됨
+  }
+}
+
+/**
+ * 전체 여행 완료 모달 표시
+ * @param {Object} state - 현재 상태
+ * @param {Object} progress - 진행률 정보
+ * @param {Object} segment - 도착한 세그먼트
+ */
+async function showJourneyCompleteModal(state, progress, segment) {
+  console.log('🎉 [여행 완료] 모달 표시 시작');
+  
+  const destinationName = segment.toLabel || segment.destinationName || '목적지';
+  const message = `축하합니다! 🎉\n\n` +
+                 `${destinationName}에 도착했습니다.\n\n` +
+                 `전체 여행을 성공적으로 완료하셨습니다.`;
+  
+  if (!window.showConfirmModal) {
+    showToast({
+      message: `${destinationName}에 도착했습니다. 전체 여행을 완료하셨습니다! 🎉`,
+      type: 'success',
+      timeout: 8000
+    });
+    return;
+  }
+  
+  const confirmed = await window.showConfirmModal({
+    message: message,
+    title: '여행 완료',
+    type: 'success',
+    confirmText: '확인',
+    cancelText: null, // 취소 버튼 숨김
+    showCancel: false
+  });
+  
+  console.log('👤 [여행 완료] 사용자 응답', { confirmed });
+  
+  // 확인 후 네비게이션 종료 제안
+  if (confirmed) {
+    showToast({
+      message: '네비게이션을 종료하시겠습니까?',
+      type: 'info',
+      timeout: 5000
+    });
   }
 }
 
