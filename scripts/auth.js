@@ -350,21 +350,8 @@ async function syncAuth0ToSupabase(auth0User) {
     // Supabase 프로필 ID 가져오기 (없으면 생성)
     const supabaseUserId = await getSupabaseUserId(auth0User.sub);
     
-    // Supabase가 초기화되지 않았거나 프로필 조회/생성 실패한 경우
-    if (!supabaseUserId) {
-      console.warn('⚠️ Supabase 프로필 동기화를 건너뜁니다. (Supabase 미초기화 또는 설정 오류)');
-      return null;
-    }
-    
     // 프로필 정보 업데이트 (이메일, 닉네임 등)
     const supabase = await getSupabase();
-    
-    // Supabase가 초기화되지 않은 경우
-    if (!supabase) {
-      console.warn('⚠️ Supabase가 초기화되지 않았습니다. 프로필 업데이트를 건너뜁니다.');
-      return null;
-    }
-    
     const updateData = {
       updated_at: new Date().toISOString()
     };

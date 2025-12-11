@@ -12,23 +12,25 @@ let isSupabaseLoading = false;
  * Supabase JS 라이브러리 로드
  */
 async function loadSupabaseSDK() {
-  // 이미 로드되어 있는지 확인
-  if (window.supabaseModule) {
-    return window.supabaseModule;
-  }
+  return new Promise((resolve, reject) => {
+    // 이미 로드되어 있는지 확인
+    if (window.supabase) {
+      resolve();
+      return;
+    }
 
-  try {
-    // 동적 import만 사용 (스크립트 태그 방식 제거)
-    const supabaseModule = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-    
-    // 전역으로 캐시 (다음 호출 시 재사용)
-    window.supabaseModule = supabaseModule;
-    
-    return supabaseModule;
-  } catch (error) {
-    console.error('Supabase SDK 로드 실패:', error);
-    throw new Error('Supabase SDK 로드 실패: ' + error.message);
-  }
+    // CDN에서 Supabase JS 로드
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    script.type = 'module';
+    script.onload = () => {
+      resolve();
+    };
+    script.onerror = () => {
+      reject(new Error('Supabase SDK 로드 실패'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
 /**
@@ -45,15 +47,8 @@ function getSupabaseConfig() {
   const anonKey = keyMeta?.getAttribute('content') || 
                   window.SUPABASE_ANON_KEY;
   
-  // 유효성 검사
-  if (!url || url === 'YOUR_SUPABASE_URL' || !url.startsWith('http')) {
-    console.warn('⚠️ Supabase URL이 유효하지 않습니다:', url);
-    return { url: null, anonKey: null };
-  }
-  
-  if (!anonKey || anonKey === 'YOUR_SUPABASE_ANON_KEY' || anonKey.length < 20) {
-    console.warn('⚠️ Supabase Anon Key가 유효하지 않습니다.');
-    return { url: null, anonKey: null };
+  if (!url || !anonKey) {
+    console.warn('⚠️ Supabase 설정이 없습니다. meta 태그 또는 환경 변수를 확인해주세요.');
   }
   
   return { url, anonKey };
@@ -74,10 +69,6 @@ export async function initSupabase() {
         if (supabaseClient) {
           clearInterval(checkInterval);
           resolve(supabaseClient);
-        } else if (!isSupabaseLoading) {
-          // 로딩 실패 시 null 반환
-          clearInterval(checkInterval);
-          resolve(null);
         }
       }, 100);
     });
@@ -86,22 +77,14 @@ export async function initSupabase() {
   isSupabaseLoading = true;
 
   try {
-    // 설정 가져오기 (먼저 검증)
-    const { url, anonKey } = getSupabaseConfig();
-    
-    if (!url || !anonKey) {
-      throw new Error('Supabase URL 또는 Anon Key가 설정되지 않았습니다. meta 태그를 확인해주세요.');
-    }
-    
     // Supabase SDK 로드
-    const supabaseModule = await loadSupabaseSDK();
+    await loadSupabaseSDK();
     
-    if (!supabaseModule || !supabaseModule.createClient) {
-      throw new Error('Supabase SDK에서 createClient를 가져올 수 없습니다.');
-    }
+    // 동적 import로 createClient 가져오기
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     
-    // createClient 가져오기
-    const { createClient } = supabaseModule;
+    // 설정 가져오기
+    const { url, anonKey } = getSupabaseConfig();
     
     // 클라이언트 생성
     supabaseClient = createClient(url, anonKey);
@@ -110,8 +93,6 @@ export async function initSupabase() {
     return supabaseClient;
   } catch (error) {
     console.error('❌ Supabase 초기화 실패:', error);
-    supabaseClient = null;
-    isSupabaseLoading = false; // 에러 발생 시 플래그 리셋
     throw error;
   } finally {
     isSupabaseLoading = false;
@@ -123,13 +104,7 @@ export async function initSupabase() {
  */
 export async function getSupabase() {
   if (!supabaseClient) {
-    try {
-      await initSupabase();
-    } catch (error) {
-      // 초기화 실패 시 null 반환 (앱이 계속 작동하도록)
-      console.warn('⚠️ Supabase를 사용할 수 없습니다:', error.message);
-      return null;
-    }
+    await initSupabase();
   }
   return supabaseClient;
 }
@@ -145,12 +120,6 @@ export async function getSupabaseUserId(auth0UserId) {
   }
 
   const supabase = await getSupabase();
-  
-  // Supabase가 초기화되지 않은 경우
-  if (!supabase) {
-    console.warn('⚠️ Supabase가 초기화되지 않았습니다. 프로필 조회를 건너뜁니다.');
-    return null;
-  }
   
   // 기존 프로필 조회
   const { data: existingProfile, error: selectError } = await supabase
