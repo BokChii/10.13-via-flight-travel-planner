@@ -76,7 +76,7 @@ class AIPlannerService {
       const planData = await this.createPlanFromRecommendations(recommendations, transferInfo, intent);
       
       // AI 응답 메시지 생성 (사용자 질문에 맞춘 맞춤 메시지)
-      const responseMessage = this.buildResponseMessage(userMessage, intent, recommendations, planData, transferInfo);
+      const responseMessage = this.buildResponseMessage(userMessage, intent, recommendations, planData);
       
       // 대화 히스토리에 AI 응답 추가
       this.conversationHistory.push({
@@ -142,7 +142,7 @@ class AIPlannerService {
       if (intent.isTravelRelated === false) {
         return {
           isTravelRelated: false,
-          message: intent.message || '죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다. 공항 내부 장소 추천이나 환승 일정에 대해 물어보시면 도와드리겠습니다!',
+          message: intent.message || '죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다. 공항 내부 장소 추천이나 환승 일정에 대해 물어보시면 도와드리겠습니다! 😊',
           tripType: null,
           preferences: null
         };
@@ -572,7 +572,7 @@ class AIPlannerService {
   /**
    * 응답 메시지 생성 (사용자 질문에 맞춘 맞춤 메시지)
    */
-  buildResponseMessage(userMessage, intent, recommendations, planData, transferInfo) {
+  buildResponseMessage(userMessage, intent, recommendations, planData) {
     // 사용자 질문 분석하여 맞춤 메시지 생성
     const userQuery = userMessage.toLowerCase();
     
@@ -635,16 +635,6 @@ class AIPlannerService {
       }
     }
     
-    // 환승 시간 고려 메시지
-    if (transferInfo) {
-      const durationHours = Math.floor((new Date(transferInfo.departure) - new Date(transferInfo.arrival)) / (1000 * 60 * 60));
-      if (durationHours < 4) {
-        message += '💡 짧은 환승 시간을 고려하여 공항 내부 활동 위주로 추천했습니다.\n\n';
-      } else if (durationHours < 8) {
-        message += '💡 환승 시간을 고려하여 공항 내부와 가까운 장소를 추천했습니다.\n\n';
-      }
-    }
-    
     message += '아래 버튼을 클릭하여 일정 페이지로 이동하세요.';
     
     return message;
@@ -653,5 +643,4 @@ class AIPlannerService {
 
 // 전역 인스턴스 생성
 window.aiPlannerService = new AIPlannerService();
-
 
