@@ -9,6 +9,29 @@ let supabaseClient = null;
 let isSupabaseLoading = false;
 
 /**
+ * Supabase JS 라이브러리 로드
+ */
+async function loadSupabaseSDK() {
+  // 이미 로드되어 있는지 확인
+  if (window.supabaseModule) {
+    return window.supabaseModule;
+  }
+
+  try {
+    // 동적 import만 사용 (스크립트 태그 방식 제거)
+    const supabaseModule = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+    
+    // 전역으로 캐시 (다음 호출 시 재사용)
+    window.supabaseModule = supabaseModule;
+    
+    return supabaseModule;
+  } catch (error) {
+    console.error('Supabase SDK 로드 실패:', error);
+    throw new Error('Supabase SDK 로드 실패: ' + error.message);
+  }
+}
+
+/**
  * 환경 변수에서 Supabase 설정 가져오기
  */
 function getSupabaseConfig() {
@@ -22,18 +45,18 @@ function getSupabaseConfig() {
   const anonKey = keyMeta?.getAttribute('content') || 
                   window.SUPABASE_ANON_KEY;
   
-  // 플레이스홀더 값 체크
-  const isPlaceholder = !url || !anonKey || 
-                        url === 'YOUR_SUPABASE_URL' || 
-                        anonKey === 'YOUR_SUPABASE_ANON_KEY' ||
-                        !url.startsWith('http');
-  
-  if (isPlaceholder) {
-    console.warn('⚠️ Supabase 설정이 올바르지 않습니다. 로컬 개발 모드로 실행됩니다.');
-    return { url: null, anonKey: null, isValid: false };
+  // 유효성 검사
+  if (!url || url === 'YOUR_SUPABASE_URL' || !url.startsWith('http')) {
+    console.warn('⚠️ Supabase URL이 유효하지 않습니다:', url);
+    return { url: null, anonKey: null };
   }
   
-  return { url, anonKey, isValid: true };
+  if (!anonKey || anonKey === 'YOUR_SUPABASE_ANON_KEY' || anonKey.length < 20) {
+    console.warn('⚠️ Supabase Anon Key가 유효하지 않습니다.');
+    return { url: null, anonKey: null };
+  }
+  
+  return { url, anonKey };
 }
 
 /**
@@ -48,11 +71,11 @@ export async function initSupabase() {
     // 이미 로딩 중이면 대기
     return new Promise((resolve) => {
       const checkInterval = setInterval(() => {
-        if (supabaseClient !== null) {
+        if (supabaseClient) {
           clearInterval(checkInterval);
           resolve(supabaseClient);
         } else if (!isSupabaseLoading) {
-          // 로딩이 완료되었지만 실패한 경우
+          // 로딩 실패 시 null 반환
           clearInterval(checkInterval);
           resolve(null);
         }
@@ -63,29 +86,33 @@ export async function initSupabase() {
   isSupabaseLoading = true;
 
   try {
-    // 설정 가져오기
-    const config = getSupabaseConfig();
+    // 설정 가져오기 (먼저 검증)
+    const { url, anonKey } = getSupabaseConfig();
     
-    // 유효하지 않은 설정인 경우 null 반환
-    if (!config.isValid) {
-      console.warn('⚠️ Supabase 설정이 올바르지 않아 초기화를 건너뜁니다.');
-      isSupabaseLoading = false;
-      return null;
+    if (!url || !anonKey) {
+      throw new Error('Supabase URL 또는 Anon Key가 설정되지 않았습니다. meta 태그를 확인해주세요.');
     }
     
-    // 동적 import로 createClient 가져오기
-    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+    // Supabase SDK 로드
+    const supabaseModule = await loadSupabaseSDK();
+    
+    if (!supabaseModule || !supabaseModule.createClient) {
+      throw new Error('Supabase SDK에서 createClient를 가져올 수 없습니다.');
+    }
+    
+    // createClient 가져오기
+    const { createClient } = supabaseModule;
     
     // 클라이언트 생성
-    supabaseClient = createClient(config.url, config.anonKey);
+    supabaseClient = createClient(url, anonKey);
     
     console.log('✅ Supabase 클라이언트 초기화 완료');
     return supabaseClient;
   } catch (error) {
     console.error('❌ Supabase 초기화 실패:', error);
-    // 에러를 throw하지 않고 null 반환 (graceful degradation)
     supabaseClient = null;
-    return null;
+    isSupabaseLoading = false; // 에러 발생 시 플래그 리셋
+    throw error;
   } finally {
     isSupabaseLoading = false;
   }
@@ -96,21 +123,25 @@ export async function initSupabase() {
  */
 export async function getSupabase() {
   if (!supabaseClient) {
-    supabaseClient = await initSupabase();
+    try {
+      await initSupabase();
+    } catch (error) {
+      // 초기화 실패 시 null 반환 (앱이 계속 작동하도록)
+      console.warn('⚠️ Supabase를 사용할 수 없습니다:', error.message);
+      return null;
+    }
   }
-  // null인 경우도 처리
   return supabaseClient;
 }
 
 /**
  * Auth0 사용자 ID를 Supabase 프로필과 매핑
  * @param {string} auth0UserId - Auth0 사용자 ID
- * @returns {Promise<UUID|null>} Supabase 프로필 ID (실패 시 null)
+ * @returns {Promise<UUID>} Supabase 프로필 ID
  */
 export async function getSupabaseUserId(auth0UserId) {
   if (!auth0UserId) {
-    console.warn('⚠️ Auth0 사용자 ID가 필요합니다.');
-    return null;
+    throw new Error('Auth0 사용자 ID가 필요합니다.');
   }
 
   const supabase = await getSupabase();
@@ -121,37 +152,32 @@ export async function getSupabaseUserId(auth0UserId) {
     return null;
   }
   
-  try {
-    // 기존 프로필 조회
-    const { data: existingProfile, error: selectError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('auth0_id', auth0UserId)
-      .single();
-    
-    // 프로필이 있으면 반환
-    if (existingProfile && !selectError) {
-      return existingProfile.id;
-    }
-    
-    // 프로필이 없으면 생성
-    const { data: newProfile, error: insertError } = await supabase
-      .from('profiles')
-      .insert({ auth0_id: auth0UserId })
-      .select('id')
-      .single();
-    
-    if (insertError) {
-      console.error('프로필 생성 실패:', insertError);
-      return null;
-    }
-    
-    console.log('✅ 새 프로필 생성됨:', newProfile.id);
-    return newProfile.id;
-  } catch (error) {
-    console.error('프로필 조회/생성 실패:', error);
-    return null;
+  // 기존 프로필 조회
+  const { data: existingProfile, error: selectError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('auth0_id', auth0UserId)
+    .single();
+  
+  // 프로필이 있으면 반환
+  if (existingProfile && !selectError) {
+    return existingProfile.id;
   }
+  
+  // 프로필이 없으면 생성
+  const { data: newProfile, error: insertError } = await supabase
+    .from('profiles')
+    .insert({ auth0_id: auth0UserId })
+    .select('id')
+    .single();
+  
+  if (insertError) {
+    console.error('프로필 생성 실패:', insertError);
+    throw insertError;
+  }
+  
+  console.log('✅ 새 프로필 생성됨:', newProfile.id);
+  return newProfile.id;
 }
 
 /**
@@ -165,11 +191,6 @@ export async function setSupabaseUserContext(auth0UserId) {
   }
 
   const supabase = await getSupabase();
-  
-  // Supabase가 초기화되지 않은 경우
-  if (!supabase) {
-    return;
-  }
   
   // Supabase는 기본적으로 자체 인증을 사용하지만,
   // Auth0를 사용하는 경우 RLS 정책에서 사용할 수 있도록
@@ -193,11 +214,6 @@ export async function testSupabaseConnection() {
     console.log('🔍 Supabase 연결 테스트 시작...');
     
     const supabase = await initSupabase();
-    
-    if (!supabase) {
-      console.warn('⚠️ Supabase가 초기화되지 않았습니다.');
-      return { success: false, error: 'Supabase 초기화 실패' };
-    }
     
     // 간단한 쿼리 테스트 (profiles 테이블 조회)
     const { data, error, count } = await supabase
@@ -248,10 +264,6 @@ async function loadHtml2Canvas() {
  */
 export async function uploadToStorage(bucket, path, file) {
   const supabase = await getSupabase();
-  
-  if (!supabase) {
-    throw new Error('Supabase가 초기화되지 않았습니다. Storage 업로드를 수행할 수 없습니다.');
-  }
   
   try {
     // 파일 업로드
