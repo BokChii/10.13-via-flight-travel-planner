@@ -16,9 +16,15 @@
 ## 🚀 주요 기능
 
 - **멀티스텝 플래너**: 직관적인 3단계 일정 생성
+- **AI 기반 일정 추천**: OpenAI를 활용한 맞춤형 여행 일정 생성 및 POI 추천
 - **실시간 네비게이션**: GPS 기반 위치 추적 및 진행률 표시
+- **경로 이탈 감지**: 실제 폴리라인 기반 경로 이탈 감지 및 재경로 안내
+- **경유지 도착 알림**: 경유지 도착 시 확인 모달 및 최종 목적지 도착 알림
 - **긴급 복귀 모드**: 공항 복귀 시간 부족 시 자동 알림
 - **Google Maps 통합**: 실시간 경로 및 장소 검색
+- **사용자 인증**: Auth0를 통한 소셜 로그인 (Google)
+- **리뷰 시스템**: 여행 일정 리뷰 작성 및 공유 기능
+- **프로필 관리**: 사용자 프로필 및 여행 이력 관리
 - **반응형 디자인**: 모바일과 데스크톱 모두 지원
 - **영업 시간 확인**: POI의 실제 영업 시간을 고려한 일정 추천
 
@@ -26,7 +32,13 @@
 
 - **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
 - **Maps**: Google Maps Platform (Maps, Places, Directions APIs)
-- **Storage**: SessionStorage, SQLite (client-side)
+- **AI**: OpenAI API (GPT-4) - 일정 추천 및 POI 추천
+- **Authentication**: Auth0 - 소셜 로그인 (Google OAuth)
+- **Backend**: Supabase - 사용자 프로필, 리뷰 데이터 저장
+- **Storage**: 
+  - SessionStorage - 세션 데이터
+  - SQLite (client-side) - 로컬 데이터베이스
+  - Supabase Storage - 이미지 및 리뷰 데이터
 - **Deployment**: GitHub Pages with GitHub Actions
 
 ## 🏁 시작하기
@@ -73,10 +85,19 @@ npm run dev
 # Google Maps API 키 (필수)
 GOOGLE_MAPS_API_KEY=your_api_key_here
 
+# OpenAI API 키 (필수 - AI 일정 추천 기능용)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Supabase 설정 (필수 - 사용자 프로필 및 리뷰 기능용)
+SUPABASE_URL=your_supabase_url_here
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
 # 이메일 전송 (선택)
 RESEND_API_KEY=your_resend_key_here
 EMAIL_FROM="Via Flight <no-reply@yourdomain.com>"
 ```
+
+**참고**: `env.example` 파일을 참고하여 필요한 모든 환경 변수를 설정하세요.
 
 ### Google Maps API 키 발급 가이드
 
@@ -112,11 +133,13 @@ npm start
 
 - **Landing Page** (`index.html`): 서비스 소개 및 시작
 - **Transfer Info** (`transfer-info.html`): 환승 정보 입력
-- **Airport Main** (`airport-main.html`): 여행 스타일 선택
+- **Airport Main** (`airport-main.html`): 여행 스타일 선택 및 AI 챗봇
 - **Airport Only** (`airport-only.html`): 공항 내부 일정 구성
 - **Airport External** (`airport-external.html`): 도시 탐방 일정 구성
 - **Navigation** (`navigation.html`): 실시간 네비게이션
-- **Trip Summary** (`trip-summary.html`): 일정 요약
+- **Trip Summary** (`trip-summary.html`): 일정 요약 및 리뷰 작성
+- **Review Detail** (`review-detail.html`): 리뷰 상세 보기
+- **Profile** (`profile.html`): 사용자 프로필 및 여행 이력
 
 ## 📂 프로젝트 구조
 
@@ -124,6 +147,11 @@ npm start
 .
 ├── scripts/              # JavaScript 모듈
 │   ├── api.js           # Google Maps API 통신
+│   ├── auth.js          # Auth0 인증 처리
+│   ├── auth0-config.js  # Auth0 설정
+│   ├── supabaseClient.js # Supabase 클라이언트
+│   ├── aiPlannerService.js # AI 일정 추천 서비스
+│   ├── reviewDB.js      # 리뷰 데이터베이스 관리
 │   ├── config.js        # 설정 및 상수
 │   ├── main.js          # 메인 애플리케이션 로직
 │   ├── router.js        # 페이지 라우팅
@@ -138,8 +166,12 @@ npm start
 │   └── airport.db       # SQLite 데이터베이스
 ├── tools/               # 빌드 도구
 │   └── inject-env.js    # 환경 변수 주입
+├── SUPABASE_RLS_SETUP.md # Supabase RLS 설정 가이드
+├── SUPABASE_STORAGE_SETUP.md # Supabase Storage 설정 가이드
 ├── index.html           # 진입점 (랜딩 페이지)
 ├── navigation.html      # 네비게이션 페이지
+├── profile.html         # 사용자 프로필 페이지
+├── review-detail.html   # 리뷰 상세 페이지
 └── package.json         # 프로젝트 설정
 ```
 
@@ -174,6 +206,17 @@ npm start
 **참고**: 
 - GitHub Pages 설정에서 Source를 **GitHub Actions**로 설정해야 합니다
 - Settings > Pages > Source: **GitHub Actions** 선택
+
+### Supabase 설정
+
+프로젝트에서 Supabase를 사용하기 위해 다음 설정이 필요합니다:
+
+1. **Supabase 프로젝트 생성**: [Supabase Dashboard](https://app.supabase.com)에서 새 프로젝트 생성
+2. **RLS 정책 설정**: `SUPABASE_RLS_SETUP.md` 파일 참고
+3. **Storage 버킷 설정**: `SUPABASE_STORAGE_SETUP.md` 파일 참고
+4. **스키마 확장**: `supabase-schema-extension.sql` 파일의 SQL 실행
+
+자세한 설정 방법은 각 가이드 문서를 참고하세요.
 
 ### 수동 배포
 
@@ -235,6 +278,24 @@ npm run prepare
 1. 브라우저 개발자 도구의 Performance 탭에서 확인
 2. 페이지 전환 시 타이머가 정리되는지 확인
 3. 메모리 누수 확인 (개발자 도구 > Memory)
+
+### Supabase 초기화 실패
+
+**증상**: `Invalid supabaseUrl` 또는 `RLS 정책 오류` 메시지
+
+**해결 방법**:
+1. `SUPABASE_RLS_SETUP.md` 파일을 참고하여 RLS 정책 설정
+2. 환경 변수 `SUPABASE_URL`과 `SUPABASE_ANON_KEY`가 올바르게 설정되었는지 확인
+3. Supabase 프로젝트가 일시 중지되지 않았는지 확인
+
+### Auth0 로그인 실패
+
+**증상**: Google 로그인 시 오류 발생
+
+**해결 방법**:
+1. `scripts/auth0-config.js`의 설정이 올바른지 확인
+2. Auth0 대시보드에서 Application 설정 확인
+3. Allowed Callback URLs에 현재 도메인이 포함되어 있는지 확인
 
 ## 🤝 기여하기
 

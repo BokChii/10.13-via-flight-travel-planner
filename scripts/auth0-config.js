@@ -1,6 +1,6 @@
 // scripts/auth0-config.js
 // Auth0 설정 정보
-// TODO: Auth0 대시보드에서 실제 값으로 교체하세요
+// Auth0 대시보드에서 발급받은 도메인과 클라이언트 ID를 사용합니다
 
 export const auth0Config = {
   domain: 'viaflight.us.auth0.com',
