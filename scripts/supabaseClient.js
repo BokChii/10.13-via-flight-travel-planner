@@ -122,6 +122,21 @@ export async function getSupabaseUserId(auth0UserId) {
     return existingProfile.id;
   }
   
+  // RLS 정책 오류인 경우 명확한 메시지 제공
+  if (selectError && (selectError.code === '42501' || selectError.code === 'PGRST301' || selectError.message?.includes('row-level security'))) {
+    const errorMsg = `⚠️ RLS 정책 오류: profiles 테이블에 대한 Row Level Security 정책이 설정되지 않았습니다.\n\n` +
+                    `Supabase 대시보드에서 다음 SQL을 실행해주세요:\n\n` +
+                    `-- profiles 테이블 RLS 정책 설정\n` +
+                    `ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;\n\n` +
+                    `-- 모든 사용자가 자신의 프로필을 조회/생성/수정할 수 있도록 설정\n` +
+                    `CREATE POLICY "Users can read own profile" ON profiles FOR SELECT USING (true);\n` +
+                    `CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (true);\n` +
+                    `CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (true);\n\n` +
+                    `자세한 내용은 SUPABASE_RLS_SETUP.md 파일을 참고하세요.`;
+    console.error(errorMsg);
+    throw new Error('RLS 정책이 설정되지 않았습니다. Supabase 대시보드에서 RLS 정책을 설정해주세요.');
+  }
+  
   // 프로필이 없으면 생성
   const { data: newProfile, error: insertError } = await supabase
     .from('profiles')
@@ -130,6 +145,20 @@ export async function getSupabaseUserId(auth0UserId) {
     .single();
   
   if (insertError) {
+    // RLS 정책 오류인 경우 명확한 메시지 제공
+    if (insertError.code === '42501' || insertError.message?.includes('row-level security')) {
+      const errorMsg = `⚠️ RLS 정책 오류: profiles 테이블에 대한 Row Level Security 정책이 설정되지 않았습니다.\n\n` +
+                      `Supabase 대시보드에서 다음 SQL을 실행해주세요:\n\n` +
+                      `-- profiles 테이블 RLS 정책 설정\n` +
+                      `ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;\n\n` +
+                      `-- 모든 사용자가 자신의 프로필을 조회/생성/수정할 수 있도록 설정\n` +
+                      `CREATE POLICY "Users can read own profile" ON profiles FOR SELECT USING (true);\n` +
+                      `CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (true);\n` +
+                      `CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (true);\n\n` +
+                      `자세한 내용은 SUPABASE_RLS_SETUP.md 파일을 참고하세요.`;
+      console.error(errorMsg);
+      throw new Error('RLS 정책이 설정되지 않았습니다. Supabase 대시보드에서 RLS 정책을 설정해주세요.');
+    }
     console.error('프로필 생성 실패:', insertError);
     throw insertError;
   }
