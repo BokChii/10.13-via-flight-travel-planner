@@ -10,27 +10,13 @@ let isSupabaseLoading = false;
 
 /**
  * Supabase JS 라이브러리 로드
+ * 주의: jsDelivr +esm 조합에 버그가 있어 esm.sh 사용
+ * 참고: https://github.com/supabase/supabase-js/issues
  */
 async function loadSupabaseSDK() {
-  return new Promise((resolve, reject) => {
-    // 이미 로드되어 있는지 확인
-    if (window.supabase) {
-      resolve();
-      return;
-    }
-
-    // CDN에서 Supabase JS 로드
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    script.type = 'module';
-    script.onload = () => {
-      resolve();
-    };
-    script.onerror = () => {
-      reject(new Error('Supabase SDK 로드 실패'));
-    };
-    document.head.appendChild(script);
-  });
+  // 동적 import만 사용하므로 이 함수는 더 이상 필요 없음
+  // 하위 호환성을 위해 유지하지만 실제로는 아무것도 하지 않음
+  return Promise.resolve();
 }
 
 /**
@@ -77,14 +63,16 @@ export async function initSupabase() {
   isSupabaseLoading = true;
 
   try {
-    // Supabase SDK 로드
-    await loadSupabaseSDK();
-    
-    // 동적 import로 createClient 가져오기
-    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+    // jsDelivr +esm 버그로 인해 esm.sh 사용
+    // 참고: jsDelivr의 +esm 변환 방식 변경으로 인한 AuthClient null 오류 해결
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     
     // 설정 가져오기
     const { url, anonKey } = getSupabaseConfig();
+    
+    if (!url || !anonKey) {
+      throw new Error('Supabase URL 또는 Anon Key가 설정되지 않았습니다.');
+    }
     
     // 클라이언트 생성
     supabaseClient = createClient(url, anonKey);
@@ -93,6 +81,7 @@ export async function initSupabase() {
     return supabaseClient;
   } catch (error) {
     console.error('❌ Supabase 초기화 실패:', error);
+    isSupabaseLoading = false;
     throw error;
   } finally {
     isSupabaseLoading = false;
