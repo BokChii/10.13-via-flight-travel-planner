@@ -51,32 +51,14 @@ class AIPlannerService {
       // 1단계: 사용자 의도 분석
       const intent = await this.analyzeUserIntent(userMessage, transferInfo);
       
-      // 여행과 무관한 질문인 경우 즉시 반환
-      if (intent.isTravelRelated === false) {
-        const responseMessage = intent.message || '죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다.';
-        
-        // 대화 히스토리에 AI 응답 추가
-        this.conversationHistory.push({
-          role: 'assistant',
-          content: responseMessage
-        });
-
-        return {
-          message: responseMessage,
-          recommendations: null,
-          planGenerated: false,
-          planData: null
-        };
-      }
-      
       // 2단계: 카테고리 및 POI 추천
       const recommendations = await this.generateRecommendations(intent, transferInfo);
       
       // 3단계: 일정 생성
       const planData = await this.createPlanFromRecommendations(recommendations, transferInfo, intent);
       
-      // AI 응답 메시지 생성 (사용자 질문에 맞춘 맞춤 메시지)
-      const responseMessage = this.buildResponseMessage(userMessage, intent, recommendations, planData, transferInfo);
+      // AI 응답 메시지 생성
+      const responseMessage = this.buildResponseMessage(intent, recommendations, planData);
       
       // 대화 히스토리에 AI 응답 추가
       this.conversationHistory.push({
@@ -114,7 +96,7 @@ class AIPlannerService {
         messages: [
           {
             role: 'system',
-            content: '당신은 전문 여행 플래너입니다. 사용자의 메시지를 분석하여 여행 선호도를 파악하고, 구조화된 JSON 형식으로 응답합니다. 만약 사용자의 질문이 여행/공항/환승과 관련이 없다면, isTravelRelated: false를 반환하고 적절한 안내 메시지를 제공하세요.'
+            content: '당신은 전문 여행 플래너입니다. 사용자의 메시지를 분석하여 여행 선호도를 파악하고, 구조화된 JSON 형식으로 응답합니다.'
           },
           {
             role: 'user',
@@ -137,17 +119,6 @@ class AIPlannerService {
     
     try {
       const intent = JSON.parse(intentText);
-      
-      // 여행과 무관한 질문인 경우 처리
-      if (intent.isTravelRelated === false) {
-        return {
-          isTravelRelated: false,
-          message: intent.message || '죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다. 공항 내부 장소 추천이나 환승 일정에 대해 물어보시면 도와드리겠습니다!',
-          tripType: null,
-          preferences: null
-        };
-      }
-      
       return intent;
     } catch (e) {
       console.warn('의도 분석 파싱 실패, 기본값 사용:', e);
@@ -172,27 +143,7 @@ class AIPlannerService {
     const isEvening = arrivalHour >= 18 || arrivalHour < 6;
     const timeOfDay = isMorning ? '오전' : isAfternoon ? '오후' : '저녁/밤';
 
-    return `당신은 공항 환승 여행 일정 계획 전문가입니다. 사용자의 메시지를 분석하여 다음을 판단하세요:
-
-**1단계: 여행 관련 여부 판단**
-먼저 사용자의 질문이 공항 환승 여행, 공항 내부 장소, 환승 일정 계획과 관련이 있는지 판단하세요.
-
-**여행 관련 질문 예시:**
-- "면세점 추천해줘", "공항에서 먹을 곳", "쇼핑할 곳", "쉴 수 있는 곳"
-- "공항 내부에서 뭐 할 수 있어?", "환승 시간 동안 뭐 하지?"
-- "싱가포르 공항에서 추천 장소", "라운지 어디 있어?"
-
-**여행과 무관한 질문 예시:**
-- "내일 날씨", "테슬라 주가", "오늘 뉴스", "일반적인 정보 질문"
-- "수학 문제", "다른 주제의 대화"
-
-**여행과 무관한 질문인 경우:**
-{
-  "isTravelRelated": false,
-  "message": "죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다. 공항 내부 장소 추천, 면세점, 식당, 라운지, 환승 일정 계획 등에 대해 물어보시면 도와드리겠습니다! 😊"
-}
-
-**여행 관련 질문인 경우에만 아래 형식으로 응답:**
+    return `사용자의 여행 요청을 분석하여 다음 JSON 형식으로 응답해주세요:
 
 **환승 정보 (중요 - 이 정보를 반드시 고려하세요):**
 - 경유 도시: ${transferInfo.city}
@@ -212,7 +163,6 @@ class AIPlannerService {
 
 **응답 형식 (JSON):**
 {
-  "isTravelRelated": true,
   "tripType": "airport-only" 또는 "airport-external",
   "preferences": {
     "airport": ["shopping", "food", "culture", "relax"] 중 선택 (배열),
@@ -243,24 +193,6 @@ class AIPlannerService {
    */
   getDefaultIntent(userMessage) {
     const message = userMessage.toLowerCase();
-    
-    // 여행과 무관한 질문 감지
-    const nonTravelKeywords = [
-      '날씨', '주가', '주식', '뉴스', '날짜', '시간', '계산', '수학',
-      '번역', '번역해', '의미', '정의', '설명해', '알려줘'
-    ];
-    
-    const isNonTravel = nonTravelKeywords.some(keyword => message.includes(keyword));
-    
-    if (isNonTravel) {
-      return {
-        isTravelRelated: false,
-        message: '죄송합니다. 저는 공항 환승 여행 일정 계획에만 도움을 드릴 수 있습니다. 공항 내부 장소 추천이나 환승 일정에 대해 물어보시면 도와드리겠습니다! 😊',
-        tripType: null,
-        preferences: null
-      };
-    }
-    
     let tripType = 'airport-only';
     const preferences = {
       airport: [],
@@ -296,7 +228,6 @@ class AIPlannerService {
     }
 
     return {
-      isTravelRelated: true,
       tripType: tripType,
       preferences: preferences,
       keywords: [],
@@ -570,82 +501,30 @@ class AIPlannerService {
   }
 
   /**
-   * 응답 메시지 생성 (사용자 질문에 맞춘 맞춤 메시지)
+   * 응답 메시지 생성
    */
-  buildResponseMessage(userMessage, intent, recommendations, planData, transferInfo) {
-    // 사용자 질문 분석하여 맞춤 메시지 생성
-    const userQuery = userMessage.toLowerCase();
+  buildResponseMessage(intent, recommendations, planData) {
+    let message = '완벽해요! 요청하신 내용을 바탕으로 일정을 생성했습니다. 🎉\n\n';
     
-    // 질문 유형에 따른 맞춤 인사말
-    let greeting = '';
-    if (userQuery.includes('추천') || userQuery.includes('어디')) {
-      greeting = '추천해드릴게요! 🎯\n\n';
-    } else if (userQuery.includes('뭐') || userQuery.includes('무엇')) {
-      greeting = '알려드릴게요! 📍\n\n';
-    } else if (userQuery.includes('있') || userQuery.includes('어디에')) {
-      greeting = '찾아드릴게요! 🔍\n\n';
-    } else {
-      greeting = '요청하신 내용을 바탕으로 일정을 생성했습니다! 🎉\n\n';
-    }
-    
-    let message = greeting;
-    
-    // 공항 내부 장소 추천
-    if (planData.airportPOIs && planData.airportPOIs.length > 0) {
-      const airportCount = planData.airportPOIs.length;
-      const categoryLabels = {
-        shopping: '면세점/쇼핑',
-        food: '식당/카페',
-        culture: '문화/체험',
-        relax: '휴식/라운지'
-      };
-      
-      const selectedCategories = planData.selectedCategories?.airport || [];
-      const categoryText = selectedCategories.map(c => categoryLabels[c] || c).join(', ');
-      
-      message += `**공항 내부 (${categoryText}):** ${airportCount}개 장소를 추천했습니다\n`;
-      
-      // 장소 이름 표시
+    if (planData.airportPOIs.length > 0) {
+      message += `**공항 내부:** ${planData.airportPOIs.length}개 장소 추천\n`;
+      // 전체 장소 이름 표시 (일부만 잘라서 보여주지 않음)
       const airportNames = planData.airportPOIs.map(poi => poi.name).join(', ');
       if (airportNames) {
-        message += `📍 ${airportNames}\n\n`;
+        message += `- ${airportNames}\n`;
       }
     }
     
-    // 도시 탐방 장소 추천
-    if (planData.cityPOIs && planData.cityPOIs.length > 0) {
-      const cityCount = planData.cityPOIs.length;
-      const categoryLabels = {
-        food: '로컬 맛집',
-        shopping: '쇼핑',
-        culture: '문화 & 역사',
-        nature: '자연 & 정원',
-        view: '전망 & 야경'
-      };
-      
-      const selectedCategories = planData.selectedCategories?.city || [];
-      const categoryText = selectedCategories.map(c => categoryLabels[c] || c).join(', ');
-      
-      message += `**도시 탐방 (${categoryText}):** ${cityCount}개 장소를 추천했습니다\n`;
-      
-      // 장소 이름 표시
+    if (planData.cityPOIs.length > 0) {
+      message += `\n**도시 탐방:** ${planData.cityPOIs.length}개 장소 추천\n`;
+      // 전체 장소 이름 표시 (일부만 잘라서 보여주지 않음)
       const cityNames = planData.cityPOIs.map(poi => poi.name).join(', ');
       if (cityNames) {
-        message += `📍 ${cityNames}\n\n`;
+        message += `- ${cityNames}\n`;
       }
     }
     
-    // 환승 시간 고려 메시지
-    if (transferInfo) {
-      const durationHours = Math.floor((new Date(transferInfo.departure) - new Date(transferInfo.arrival)) / (1000 * 60 * 60));
-      if (durationHours < 4) {
-        message += '💡 짧은 환승 시간을 고려하여 공항 내부 활동 위주로 추천했습니다.\n\n';
-      } else if (durationHours < 8) {
-        message += '💡 환승 시간을 고려하여 공항 내부와 가까운 장소를 추천했습니다.\n\n';
-      }
-    }
-    
-    message += '아래 버튼을 클릭하여 일정 페이지로 이동하세요.';
+    message += '\n아래 버튼을 클릭하여 일정 페이지로 이동하세요.';
     
     return message;
   }
@@ -653,5 +532,4 @@ class AIPlannerService {
 
 // 전역 인스턴스 생성
 window.aiPlannerService = new AIPlannerService();
-
 
