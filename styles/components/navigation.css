@@ -242,6 +242,49 @@ body.app.navigation-active .app-header .tagline {
   box-shadow: 0 12px 32px rgba(239, 68, 68, 0.4);
 }
 
+/* Summary Header */
+.summary-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.summary-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Departure Time Info */
+.departure-time-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(11, 99, 197, 0.1);
+  border-left: 3px solid #0b63c5;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #0b63c5;
+}
+
+.departure-time-info__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.departure-time-info__label {
+  font-weight: 600;
+  color: #0b63c5;
+}
+
+.departure-time-info__time {
+  font-weight: 500;
+  color: #0f172a;
+}
+
 /* Navigation Status */
 .navigation-status {
   border: 1px dashed var(--color-border);

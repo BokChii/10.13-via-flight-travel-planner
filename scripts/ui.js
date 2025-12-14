@@ -27,6 +27,7 @@ const selectors = {
   summaryOutput: "#summary-output",
   navigationStatus: "#navigation-status",
   navigationOverlay: "#navigation-overlay",
+  departureTimeInfo: "#departure-time-info",
 };
 
 export function getElements() {

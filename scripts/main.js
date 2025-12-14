@@ -586,6 +586,7 @@ async function syncUi({
   emergencyReturn,
   navigationStatus,
   navigationOverlay,
+  departureTimeInfo,
 }, latestState, progress) {
   if (latestState.origin?.address) {
     origin.value = latestState.origin.address;
@@ -686,6 +687,61 @@ async function syncUi({
 
   await renderNavigationStatus(navigationStatus, latestState.navigation, latestState.routePlan, progress, latestState.tripMeta);
   renderSummary(summaryOutput, latestState.routePlan, progress?.closestSegmentIndex ?? null, latestState.tripMeta);
+  
+  // 연결 항공편 탑승 시간 정보 업데이트
+  if (departureTimeInfo) {
+    updateDepartureTimeInfo(departureTimeInfo, latestState.tripMeta);
+  }
+}
+
+/**
+ * 연결 항공편 탑승 시간 정보를 업데이트합니다
+ * @param {HTMLElement} container - 탑승 시간 정보를 표시할 컨테이너
+ * @param {Object} tripMeta - 여행 메타데이터
+ */
+function updateDepartureTimeInfo(container, tripMeta) {
+  if (!container) return;
+  
+  // tripMeta가 없거나 탑승 시간이 없으면 숨김
+  if (!tripMeta) {
+    container.hidden = true;
+    return;
+  }
+  
+  const departureTimeStr = tripMeta.originalDeparture || tripMeta.departure;
+  if (!departureTimeStr) {
+    container.hidden = true;
+    return;
+  }
+  
+  try {
+    const departureDate = new Date(departureTimeStr);
+    
+    if (isNaN(departureDate.getTime())) {
+      container.hidden = true;
+      return;
+    }
+    
+    // 날짜 포맷팅
+    const formattedDate = departureDate.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    container.innerHTML = `
+      <span class="departure-time-info__icon">✈️</span>
+      <span class="departure-time-info__label">연결 항공편 탑승:</span>
+      <span class="departure-time-info__time">${formattedDate}</span>
+    `;
+    container.hidden = false;
+  } catch (error) {
+    console.warn('탑승 시간 정보 업데이트 실패:', error);
+    container.hidden = true;
+  }
 }
 
 /**
