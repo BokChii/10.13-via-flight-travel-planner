@@ -88,8 +88,51 @@ export const CATEGORY_STAY_TIMES = {
 
 // 기본 버퍼 시간 (분)
 export const DEFAULT_BUFFER_TIMES = {
-  RETURN_BUFFER_MINUTES: 30,
+  RETURN_BUFFER_MINUTES: 45,  // 공항 입국 버퍼 (45분)
+  RETURN_SLACK_MINUTES: 20,    // 여유 시간 (20분)
   ENTRY_BUFFER_MINUTES: 30,
+};
+
+// 공항 복귀 알림 레벨 (분) - 사용자 요구사항 반영
+export const RETURN_ALERT_LEVELS = {
+  SAFE: 20,      // 20분 이상: 안전 (알림 없음)
+  PREPARE: 15,   // 15분 전: 간단한 알림
+  WARNING: 10,   // 10분 전: 강조 알림
+  URGENT: 5,     // 5분 전: 더 강조
+  EMERGENCY: 0   // 0분 이하: 비상
+};
+
+// 공항 복귀 알림 메시지 템플릿
+export const RETURN_ALERT_MESSAGES = {
+  PREPARE: {
+    icon: '⏰',
+    message: '공항 복귀까지 약 20분 남았습니다',
+    urgency: 'low'
+  },
+  WARNING: {
+    icon: '⚠️',
+    message: '공항 복귀까지 15분 남았습니다. 이동 준비를 시작하세요',
+    urgency: 'medium'
+  },
+  URGENT: {
+    icon: '🚨',
+    message: '공항 복귀까지 10분 남았습니다. 지금 공항으로 향하세요',
+    urgency: 'high'
+  },
+  EMERGENCY: {
+    icon: '🚨',
+    message: '긴급! 공항 복귀까지 5분 남았습니다. 즉시 공항으로 가세요',
+    urgency: 'critical'
+  }
+};
+
+// 공항 복귀 계산 설정
+export const RETURN_CALCULATION_CONFIG = {
+  // 최소 재계산 간격 (밀리초) - 5분
+  MIN_RECALCULATION_INTERVAL_MS: 5 * 60 * 1000,
+  
+  // 의미 있는 위치 변경 거리 (미터) - 500m 이상 이동 시 즉시 재계산
+  SIGNIFICANT_POSITION_CHANGE_METERS: 500,
 };
 
 // 경로 이탈 감지 설정 (Phase 1)

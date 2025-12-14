@@ -4,10 +4,20 @@
  * 기존 코드와의 호환성을 유지하면서 점진적으로 개선
  */
 
-import { EMERGENCY_THRESHOLDS, NOTIFICATION_CONFIG, DEFAULT_BUFFER_TIMES, getAirportPosition } from './config.js';
+import { 
+  EMERGENCY_THRESHOLDS, 
+  NOTIFICATION_CONFIG, 
+  DEFAULT_BUFFER_TIMES, 
+  RETURN_ALERT_LEVELS,
+  RETURN_ALERT_MESSAGES,
+  RETURN_CALCULATION_CONFIG,
+  getAirportPosition 
+} from './config.js';
 
 let lastAlertTime = {};
 let apiCache = {};
+let lastCalculationTime = 0;  // 마지막 계산 시간
+let lastCalculationPosition = null;  // 마지막 계산 위치
 
 /**
  * 실시간 공항 복귀 정보를 계산합니다
@@ -47,11 +57,12 @@ export async function calculateRealTimeReturnInfo(state, progress) {
     });
   }
   
-  // 출국 버퍼 시간을 0분으로 하드코딩
-  const returnBufferMinutes = 0;
+  // 출국 버퍼 시간과 여유 시간 사용
+  const returnBufferMinutes = DEFAULT_BUFFER_TIMES.RETURN_BUFFER_MINUTES; // 45분
+  const slackMinutes = DEFAULT_BUFFER_TIMES.RETURN_SLACK_MINUTES; // 20분
   
-  // 실제 여유 시간 계산 (재경로 추가 시간 반영)
-  const actualSlackMinutes = remainingMinutes - adjustedAirportTravelTime - returnBufferMinutes;
+  // 실제 여유 시간 계산 (버퍼 + 공항 복귀 시간 + 여유 시간)
+  const actualSlackMinutes = remainingMinutes - (returnBufferMinutes + adjustedAirportTravelTime + slackMinutes);
 
   // 알림 레벨 결정
   const alertLevel = determineAlertLevel(actualSlackMinutes);
@@ -67,6 +78,7 @@ export async function calculateRealTimeReturnInfo(state, progress) {
     rerouteAdditionalMinutes: rerouteAdditionalMinutes, // 추가 소요 시간
     actualSlackMinutes: Math.round(actualSlackMinutes),
     returnBufferMinutes,
+    slackMinutes, // 여유 시간 추가
     shouldShowAlert,
     shouldActivateEmergencyMode: alertLevel === 'EMERGENCY'
   };
@@ -86,12 +98,37 @@ async function calculateRealTimeToAirport(state, progress) {
     return 30; // 기본값
   }
 
-  // 캐시 확인
-  const cacheKey = `${currentPosition.lat},${currentPosition.lng}`;
-  const cached = apiCache[cacheKey];
-  if (cached && (Date.now() - cached.timestamp) < NOTIFICATION_CONFIG.API_CACHE_DURATION_MS) {
-    console.log('캐시된 공항 소요시간 사용:', cached.duration);
-    return cached.duration;
+  const now = Date.now();
+  const timeSinceLastCalculation = now - lastCalculationTime;
+  
+  // 위치 변경 거리 계산
+  let shouldRecalculate = false;
+  if (lastCalculationPosition) {
+    const distanceChange = calculateDistance(currentPosition, lastCalculationPosition);
+    // 500m 이상 이동했으면 즉시 재계산
+    if (distanceChange >= RETURN_CALCULATION_CONFIG.SIGNIFICANT_POSITION_CHANGE_METERS) {
+      console.log(`📍 위치 변경 감지 (${Math.round(distanceChange)}m), 즉시 재계산`);
+      shouldRecalculate = true;
+    }
+  } else {
+    // 첫 계산이면 재계산 필요
+    shouldRecalculate = true;
+  }
+  
+  // 최소 5분마다 재계산 (위치가 변하지 않아도)
+  if (timeSinceLastCalculation >= RETURN_CALCULATION_CONFIG.MIN_RECALCULATION_INTERVAL_MS) {
+    console.log(`⏰ 최소 재계산 간격 도달 (${Math.round(timeSinceLastCalculation / 1000 / 60)}분), 재계산`);
+    shouldRecalculate = true;
+  }
+  
+  // 재계산이 필요하지 않으면 캐시 확인
+  if (!shouldRecalculate) {
+    const cacheKey = `${currentPosition.lat},${currentPosition.lng}`;
+    const cached = apiCache[cacheKey];
+    if (cached && (now - cached.timestamp) < NOTIFICATION_CONFIG.API_CACHE_DURATION_MS) {
+      console.log('캐시된 공항 소요시간 사용:', cached.duration);
+      return cached.duration;
+    }
   }
 
   try {
@@ -99,19 +136,33 @@ async function calculateRealTimeToAirport(state, progress) {
     const transitRoute = await getTransitRouteToAirport(currentPosition, airportPosition);
     const duration = Math.round(transitRoute.duration.value / 60);
     
-    // 캐시 저장
+    // 캐시 저장 및 계산 시간/위치 업데이트
+    const cacheKey = `${currentPosition.lat},${currentPosition.lng}`;
     apiCache[cacheKey] = {
       duration,
-      timestamp: Date.now()
+      timestamp: now
     };
     
-    console.log('실시간 공항 소요시간 계산:', duration, '분');
+    lastCalculationTime = now;
+    lastCalculationPosition = { ...currentPosition };
+    
+    console.log('✅ 실시간 공항 소요시간 계산:', duration, '분', {
+      timeSinceLastCalculation: Math.round(timeSinceLastCalculation / 1000 / 60) + '분',
+      shouldRecalculate
+    });
+    
     return duration;
   } catch (error) {
     console.warn('실시간 경로 계산 실패, 추정값 사용:', error);
     // Fallback: 거리 기반 추정
     const distance = calculateDistance(currentPosition, airportPosition);
-    return Math.max(15, Math.round((distance / 1000) * 2.5));
+    const estimatedDuration = Math.max(15, Math.round((distance / 1000) * 2.5));
+    
+    // 추정값도 계산 시간/위치 업데이트
+    lastCalculationTime = now;
+    lastCalculationPosition = { ...currentPosition };
+    
+    return estimatedDuration;
   }
 }
 
@@ -148,16 +199,18 @@ async function getTransitRouteToAirport(origin, destination) {
 }
 
 /**
- * 알림 레벨을 결정합니다
+ * 알림 레벨을 결정합니다 (새로운 레벨 기준 사용)
  * @param {number} actualSlackMinutes - 실제 여유 시간
  * @returns {string} 알림 레벨
  */
 function determineAlertLevel(actualSlackMinutes) {
-  if (actualSlackMinutes <= EMERGENCY_THRESHOLDS.EMERGENCY) {
+  if (actualSlackMinutes <= RETURN_ALERT_LEVELS.EMERGENCY) {
     return 'EMERGENCY';
-  } else if (actualSlackMinutes <= EMERGENCY_THRESHOLDS.URGENT) {
+  } else if (actualSlackMinutes <= RETURN_ALERT_LEVELS.URGENT) {
     return 'URGENT';
-  } else if (actualSlackMinutes <= EMERGENCY_THRESHOLDS.PREPARE) {
+  } else if (actualSlackMinutes <= RETURN_ALERT_LEVELS.WARNING) {
+    return 'WARNING';
+  } else if (actualSlackMinutes <= RETURN_ALERT_LEVELS.PREPARE) {
     return 'PREPARE';
   } else {
     return 'SAFE';
@@ -185,32 +238,42 @@ function shouldShowAlertForLevel(alertLevel) {
 /**
  * 사용자 친화적인 알림 메시지를 생성합니다
  * @param {Object} returnInfo - 공항 복귀 정보
- * @returns {Object} 알림 메시지 정보
+ * @returns {Object|null} 알림 메시지 정보
  */
 export function generateAirportReturnMessage(returnInfo) {
   if (!returnInfo) return null;
 
-  const { alertLevel, actualSlackMinutes, remainingMinutes, airportTravelTime } = returnInfo;
-  const levelConfig = ALERT_LEVELS[alertLevel];
+  const { alertLevel, actualSlackMinutes } = returnInfo;
   
-  let timeText = '';
-  if (actualSlackMinutes >= 60) {
-    const hours = Math.floor(actualSlackMinutes / 60);
-    const minutes = actualSlackMinutes % 60;
-    timeText = hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
-  } else {
-    timeText = `${actualSlackMinutes}분`;
+  // SAFE 레벨은 알림 없음
+  if (alertLevel === 'SAFE') {
+    return null;
   }
-
-  const message = levelConfig.message.replace('{time}', timeText);
+  
+  // 알림 메시지 가져오기
+  const levelConfig = RETURN_ALERT_MESSAGES[alertLevel];
+  if (!levelConfig) {
+    // 기존 레벨과의 호환성을 위한 fallback
+    console.warn(`알림 레벨 ${alertLevel}에 대한 메시지가 정의되지 않았습니다.`);
+    return null;
+  }
+  
+  // 시간 정보 추가 (메시지에 이미 포함되어 있지만, 필요시 동적으로 업데이트)
+  let message = levelConfig.message;
+  
+  // 실제 여유 시간이 음수인 경우 (이미 늦은 경우)
+  if (actualSlackMinutes < 0) {
+    const absMinutes = Math.abs(Math.round(actualSlackMinutes));
+    if (alertLevel === 'EMERGENCY') {
+      message = `🚨 긴급! 공항 복귀까지 ${absMinutes}분 부족합니다. 즉시 공항으로 가세요!`;
+    }
+  }
   
   return {
     level: alertLevel,
     message,
     icon: levelConfig.icon,
-    urgency: alertLevel === 'EMERGENCY' ? 'critical' : 
-             alertLevel === 'URGENT' ? 'high' : 
-             alertLevel === 'PREPARE' ? 'medium' : 'low',
+    urgency: levelConfig.urgency,
     shouldActivateEmergencyMode: alertLevel === 'EMERGENCY'
   };
 }

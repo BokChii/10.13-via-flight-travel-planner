@@ -168,6 +168,16 @@ async function bootstrap() {
   const elements = getElements();
   assertElements(elements);
 
+  // emergencyMode.js에서 사용할 수 있도록 전역 변수 등록
+  window.getState = getState;
+  window.updateState = updateState;
+  window.clearRoute = clearRoute;
+  window.renderRoute = renderRoute;
+  window.buildRoutePlan = buildRoutePlan;
+  window.setViewMode = setViewMode;
+  window.showToast = showToast;
+  window.googleMaps = null; // 나중에 업데이트됨
+
   subscribe(async (latestState) => {
     console.log('🔄 [Subscribe] 상태 업데이트', {
       navigationActive: latestState.navigation.active,
@@ -386,6 +396,9 @@ async function bootstrap() {
     mapInstance = initMap(googleMaps, { center: { lat: 37.5665, lng: 126.978 }, zoom: 13 });
     placesService = new googleMaps.maps.places.PlacesService(mapInstance);
     attachPlannerServices({ googleMaps, placesService, map: mapInstance });
+    
+    // googleMaps 전역 변수 업데이트
+    window.googleMaps = googleMaps;
     const refreshedElements = getElements();
     initAutocomplete(googleMaps, refreshedElements, {
       onOriginSelect: (place) => handlePlaceSelection("origin", place, refreshedElements.origin),
@@ -534,9 +547,15 @@ function wireEventHandlers({
   if (emergencyReturn) {
     emergencyReturn.addEventListener("click", async () => {
       try {
-        const state = getState();
-        const routeData = await calculateAirportReturnRoute(state);
-        showAirportReturnModal(routeData, state);
+        // 모달 없이 바로 긴급 복귀 모드 실행
+        if (window.startEmergencyNavigation) {
+          await window.startEmergencyNavigation('transit');
+        } else {
+          // fallback: 기존 방식 (모달 표시)
+          const state = getState();
+          const routeData = await calculateAirportReturnRoute(state);
+          showAirportReturnModal(routeData, state);
+        }
       } catch (error) {
         // 통일된 에러 처리
         handleError(error, {
@@ -1222,9 +1241,12 @@ async function maybeNotifyReturnDeadline(state, progress = null) {
 
     const alertMessage = generateAirportReturnMessage(returnInfo);
     
-    // 긴급 모드 활성화
+    // SAFE 레벨이거나 알림 메시지가 없으면 알림 표시 안 함
+    if (!alertMessage) return;
+    
+    // 긴급 모드 활성화 (5분 이하)
     if (returnInfo.shouldActivateEmergencyMode && !returnDeadlineWarningNotified) {
-      activateEmergencyMode(returnInfo, state);
+      await activateEmergencyMode(returnInfo, state);
       returnDeadlineWarningNotified = true;
       returnDeadlineMissedNotified = true;
       returnEtaCriticalNotified = true;
@@ -1232,12 +1254,13 @@ async function maybeNotifyReturnDeadline(state, progress = null) {
       return;
     }
     
-    // 점진적 알림 표시
-    if (returnInfo.shouldShowAlert && alertMessage.urgency !== 'low') {
+    // 단계별 알림 표시
+    if (returnInfo.shouldShowAlert && alertMessage) {
       const toastType = alertMessage.urgency === 'critical' ? 'error' : 
-                       alertMessage.urgency === 'high' ? 'warning' : 'info';
+                       alertMessage.urgency === 'high' ? 'warning' : 
+                       alertMessage.urgency === 'medium' ? 'warning' : 'info';
       showToast({ 
-        message: alertMessage.message, 
+        message: `${alertMessage.icon} ${alertMessage.message}`, 
         type: toastType 
       });
     }
@@ -1253,7 +1276,7 @@ async function maybeNotifyReturnDeadline(state, progress = null) {
     
     // 긴급 모드 활성화가 필요한 경우
     if (shouldActivateEmergencyMode && !returnDeadlineWarningNotified) {
-      activateEmergencyMode(emergencySituation, state);
+      await activateEmergencyMode(emergencySituation, state);
       returnDeadlineWarningNotified = true;
       returnDeadlineMissedNotified = true;
       returnEtaCriticalNotified = true;

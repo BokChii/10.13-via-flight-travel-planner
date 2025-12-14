@@ -144,7 +144,7 @@ function getTrafficFactor() {
  * @param {Object} emergencyData - 긴급 상황 데이터
  * @param {Object} state - 현재 애플리케이션 상태
  */
-export function activateEmergencyMode(emergencyData, state) {
+export async function activateEmergencyMode(emergencyData, state) {
   emergencyModeActive = true;
   emergencyModeData = {
     ...emergencyData,
@@ -157,6 +157,16 @@ export function activateEmergencyMode(emergencyData, state) {
   
   // 긴급 알림 표시
   showEmergencyNotification(emergencyData);
+  
+  // 공항 복귀 경로 계산 및 모달 표시
+  try {
+    const routeData = await calculateAirportReturnRoute(state);
+    showAirportReturnModal(routeData, state);
+  } catch (error) {
+    console.error('공항 복귀 경로 계산 실패:', error);
+    // 경로 계산 실패 시에도 모달 표시 (경로 정보 없이)
+    showAirportReturnModal(null, state);
+  }
   
   console.log('긴급 모드 활성화:', emergencyData);
 }
@@ -504,41 +514,71 @@ export function showAirportReturnModal(routeData, state) {
   modal.id = 'emergency-return-modal';
   modal.className = 'emergency-return-modal';
   
-  const { currentLocation, routes, recommendations, remainingMinutes } = routeData;
+  const currentLocation = routeData?.currentLocation || state?.navigation?.currentPosition;
+  const routes = routeData?.routes;
+  const recommendations = routeData?.recommendations;
+  const remainingMinutes = routeData?.remainingMinutes;
   
   // 현재 위치 정보 가져오기
-  getCurrentLocationContext(currentLocation).then(locationContext => {
-    const locationDesc = locationContext ? 
-      generateLocationDescription(locationContext) : 
-      '현재 위치';
-    
+  if (currentLocation) {
+    getCurrentLocationContext(currentLocation).then(locationContext => {
+      const locationDesc = locationContext ? 
+        generateLocationDescription(locationContext) : 
+        '현재 위치';
+      
+      modal.innerHTML = `
+        <div class="emergency-return-content">
+          <div class="emergency-return-header">
+            <h2>🚨 긴급 복귀 모드</h2>
+            <p>공항 복귀까지 시간이 부족합니다. 남은 일정을 취소하고 공항으로 복귀하시겠습니까?</p>
+          </div>
+          
+          <div class="current-info">
+            <p><strong>📍 현재 위치:</strong> ${locationDesc}</p>
+            ${routeData?.departureTime ? `<p><strong>✈️ 출발 시간:</strong> ${routeData.departureTime.toLocaleString()}</p>` : ''}
+            ${remainingMinutes ? `<p><strong>⏰ 남은 시간:</strong> ${remainingMinutes}분</p>` : ''}
+          </div>
+          
+          ${routes ? `
+            <div class="transport-options" id="return-options">
+              ${generateTransportOptionsHTML(routes, recommendations)}
+            </div>
+          ` : '<p style="text-align: center; color: #666; margin: 16px 0;">경로 정보를 불러오는 중...</p>'}
+          
+          <div class="emergency-actions">
+            <button class="btn-emergency btn-cancel" onclick="closeAirportReturnModal()">취소</button>
+            <button class="btn-emergency btn-confirm" onclick="startEmergencyNavigation('transit')">
+              확인 - 공항으로 복귀
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    });
+  } else {
+    // 위치 정보가 없을 때
     modal.innerHTML = `
       <div class="emergency-return-content">
         <div class="emergency-return-header">
-          <h2>🚨 공항 복귀</h2>
-          <p>현재 위치에서 공항까지의 최적 경로를 안내합니다</p>
+          <h2>🚨 긴급 복귀 모드</h2>
+          <p>공항 복귀까지 시간이 부족합니다. 남은 일정을 취소하고 공항으로 복귀하시겠습니까?</p>
         </div>
         
         <div class="current-info">
-          <p><strong>📍 현재 위치:</strong> ${locationDesc}</p>
-          <p><strong>✈️ 출발 시간:</strong> ${routeData.departureTime.toLocaleString()}</p>
-          <p><strong>⏰ 남은 시간:</strong> ${remainingMinutes}분</p>
-          <p><strong>🎯 추천 교통수단:</strong> ${recommendations.recommended === 'taxi' ? '택시' : '대중교통'}</p>
-        </div>
-        
-        <div class="transport-options" id="return-options">
-          ${generateTransportOptionsHTML(routes, recommendations)}
+          <p><strong>⚠️ 현재 위치를 확인할 수 없습니다.</strong></p>
         </div>
         
         <div class="emergency-actions">
-          <button class="btn-emergency" onclick="closeAirportReturnModal()">닫기</button>
-          <button class="btn-emergency" onclick="startEmergencyNavigation('${recommendations.recommended}')">${recommendations.recommended === 'taxi' ? '택시 호출' : '경로 안내'}</button>
+          <button class="btn-emergency btn-cancel" onclick="closeAirportReturnModal()">취소</button>
+          <button class="btn-emergency btn-confirm" onclick="startEmergencyNavigation('transit')">
+            확인 - 공항으로 복귀
+          </button>
         </div>
       </div>
     `;
-    
     document.body.appendChild(modal);
-  });
+  }
 }
 
 /**
@@ -595,10 +635,131 @@ window.closeAirportReturnModal = function() {
   }
 };
 
-window.startEmergencyNavigation = function(transportType) {
+window.startEmergencyNavigation = async function(transportType = 'transit') {
   console.log(`긴급 네비게이션 시작: ${transportType}`);
-  // 실제 구현에서는 선택된 교통수단으로 네비게이션 시작
+  
+  // 모달 닫기
   window.closeAirportReturnModal();
+  
+  // main.js의 전역 변수/함수 접근을 위한 체크
+  if (typeof window.getState === 'undefined' || typeof window.updateState === 'undefined') {
+    console.error('필요한 함수를 찾을 수 없습니다.');
+    if (window.showToast) {
+      window.showToast({
+        message: '시스템 오류가 발생했습니다.',
+        type: 'error'
+      });
+    }
+    return;
+  }
+  
+  const state = window.getState();
+  if (!state) {
+    console.error('상태를 가져올 수 없습니다.');
+    return;
+  }
+  
+  const currentPosition = state.navigation?.currentPosition;
+  const airportPosition = getAirportPosition(state);
+  
+  if (!currentPosition || !airportPosition) {
+    console.error('현재 위치 또는 공항 위치를 찾을 수 없습니다.');
+    if (window.showToast) {
+      window.showToast({
+        message: '현재 위치 또는 공항 위치를 확인할 수 없습니다.',
+        type: 'error'
+      });
+    }
+    return;
+  }
+  
+  try {
+    // 1. 일정 취소: waypoints와 routePlan 초기화
+    window.updateState((draft) => {
+      draft.waypoints = [];
+      draft.routePlan = null;
+    });
+    
+    // 2. 기존 경로 제거
+    if (typeof window.clearRoute !== 'undefined') {
+      window.clearRoute();
+    }
+    
+    // 3. 공항 복귀 경로 계산 (가장 빠른 대중교통)
+    if (!window.google || !window.google.maps) {
+      throw new Error('Google Maps API가 로드되지 않았습니다.');
+    }
+    
+    const directionsService = new window.google.maps.DirectionsService();
+    
+    const directionsResult = await new Promise((resolve, reject) => {
+      directionsService.route({
+        origin: currentPosition,
+        destination: airportPosition,
+        travelMode: window.google.maps.TravelMode.TRANSIT,
+        transitOptions: {
+          modes: [window.google.maps.TransitMode.SUBWAY, window.google.maps.TransitMode.BUS],
+          routingPreference: window.google.maps.TransitRoutePreference.FEWER_TRANSFERS
+        }
+      }, (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          resolve(result);
+        } else {
+          reject(new Error(`경로 계산 실패: ${status}`));
+        }
+      });
+    });
+    
+    // 4. 경로를 지도에 표시
+    const stops = [
+      { ...currentPosition, label: '현재 위치', markerLabel: 'A' },
+      { ...airportPosition, label: '공항', markerLabel: 'B' }
+    ];
+    const colors = ['#FF0000']; // 긴급 경로는 빨간색
+    
+    if (typeof window.renderRoute !== 'undefined' && window.googleMaps) {
+      window.renderRoute(window.googleMaps, {
+        segments: [directionsResult],
+        stops: stops,
+        colors: colors
+      });
+      
+      // 5. 경로 계획 저장
+      if (typeof window.buildRoutePlan !== 'undefined') {
+        window.updateState((draft) => {
+          draft.routePlan = window.buildRoutePlan({
+            segments: [directionsResult],
+            stops: stops,
+            colors: colors
+          });
+        });
+      }
+      
+      // 6. 네비게이션 모드로 전환 (이미 네비게이션 모드일 수 있음)
+      if (typeof window.setViewMode !== 'undefined') {
+        window.setViewMode('navigation');
+      }
+      
+      if (typeof window.showToast !== 'undefined') {
+        window.showToast({
+          message: '긴급 복귀 경로가 지도에 표시되었습니다.',
+          type: 'success'
+        });
+      }
+      
+      console.log('✅ 긴급 복귀 경로 표시 완료');
+    } else {
+      throw new Error('경로 렌더링 함수를 찾을 수 없습니다.');
+    }
+  } catch (error) {
+    console.error('공항 복귀 경로 표시 실패:', error);
+    if (typeof window.showToast !== 'undefined') {
+      window.showToast({
+        message: '공항 복귀 경로를 표시할 수 없습니다. 다시 시도해주세요.',
+        type: 'error'
+      });
+    }
+  }
 };
 
 window.selectTransport = function(transportType) {
