@@ -2,7 +2,7 @@
 import { getState, subscribe, updateState, updateStateSilent, resetState } from "./state.js";
 import { renderSummary } from "./summary.js";
 import { renderNavigationStatus } from "./navigationUi.js";
-import { loadGoogleMapsSdk, requestDirections } from "./api.js";
+import { loadGoogleMapsSdk, requestDirections, matrixDurations } from "./api.js";
 import {
   initMap,
   renderRoute,
@@ -1104,11 +1104,44 @@ async function applyReroute(state, progress) {
 
 async function calculateRoute() {
   const current = getState();
-  const stops = buildStopList(current);
-  if (!googleMaps || stops.length < 2) return;
+  if (!googleMaps) return;
+
+  // 경유지가 2개 이상이면 순서 최적화
+  let optimizedWaypoints = current.waypoints;
+  if (current.waypoints && current.waypoints.length >= 2 && current.origin && current.destination) {
+    try {
+      optimizedWaypoints = await optimizeWaypointOrder(
+        googleMaps,
+        current.origin,
+        current.waypoints,
+        current.destination
+      );
+      
+      // 최적화된 순서로 state 업데이트
+      if (JSON.stringify(optimizedWaypoints) !== JSON.stringify(current.waypoints)) {
+        updateState((draft) => {
+          draft.waypoints = optimizedWaypoints;
+        });
+        // 업데이트된 state 다시 가져오기
+        const updatedState = getState();
+        optimizedWaypoints = updatedState.waypoints;
+      }
+    } catch (error) {
+      console.warn('경유지 최적화 중 오류 발생, 원래 순서 사용:', error);
+      // 최적화 실패 시 원래 순서 사용
+    }
+  }
+
+  // 최적화된 경유지로 stops 구성
+  const stops = [];
+  if (current.origin) stops.push(current.origin);
+  optimizedWaypoints.forEach((wp) => stops.push(wp));
+  if (current.destination) stops.push(current.destination);
+
+  if (stops.length < 2) return;
 
   // 영업 종료 경유지 확인
-  const closedWaypoints = await hasClosedWaypoints(current.waypoints, current.tripMeta);
+  const closedWaypoints = await hasClosedWaypoints(optimizedWaypoints, current.tripMeta);
   if (closedWaypoints.length > 0) {
     showClosedWaypointsWarning(closedWaypoints);
     return; // 경로 찾기 중단
@@ -1485,6 +1518,103 @@ function markerLabelForIndex(index, total) {
   if (index === 0) return "출발";
   if (index === total - 1) return "도착";
   return `경유 ${index}`;
+}
+
+/**
+ * Greedy 알고리즘을 사용하여 경유지 순서를 최적화합니다
+ * @param {Object} google - Google Maps SDK
+ * @param {Object} origin - 출발지
+ * @param {Array} waypoints - 경유지 배열
+ * @param {Object} destination - 도착지
+ * @returns {Promise<Array>} 최적화된 경유지 배열
+ */
+async function optimizeWaypointOrder(google, origin, waypoints, destination) {
+  // 경유지가 2개 미만이면 최적화 불필요
+  if (!waypoints || waypoints.length < 2) {
+    return waypoints;
+  }
+
+  // 위치 정보가 없는 경유지가 있으면 최적화 불가
+  const waypointsWithLocation = waypoints.filter(wp => {
+    const location = extractDirectionsInput(wp);
+    return location && (location.lat !== undefined || location.placeId);
+  });
+
+  if (waypointsWithLocation.length < 2) {
+    console.log('경유지 최적화: 위치 정보가 부족하여 최적화를 건너뜁니다.');
+    return waypoints;
+  }
+
+  try {
+    const originLocation = extractDirectionsInput(origin);
+    if (!originLocation) {
+      console.warn('경유지 최적화: 출발지 위치 정보가 없습니다.');
+      return waypoints;
+    }
+
+    const remaining = waypointsWithLocation.map(wp => ({ ...wp }));
+    const optimized = [];
+    let currentLocation = originLocation;
+
+    // Greedy 알고리즘: 현재 위치에서 가장 가까운 경유지를 선택
+    while (remaining.length > 0) {
+      const destinations = remaining.map(wp => extractDirectionsInput(wp));
+      
+      // Distance Matrix API로 모든 후보까지의 이동 시간 계산
+      const durations = await matrixDurations(
+        google,
+        currentLocation,
+        destinations,
+        google.maps.TravelMode.TRANSIT
+      );
+
+      // 가장 짧은 시간의 경유지 찾기
+      let minIdx = 0;
+      let minDuration = Number.POSITIVE_INFINITY;
+      
+      durations.forEach((duration, idx) => {
+        if (duration < minDuration) {
+          minDuration = duration;
+          minIdx = idx;
+        }
+      });
+
+      // 최적 경유지 선택
+      const nextWaypoint = remaining.splice(minIdx, 1)[0];
+      optimized.push(nextWaypoint);
+      
+      // 다음 반복을 위해 현재 위치 업데이트
+      currentLocation = extractDirectionsInput(nextWaypoint);
+      
+      // 무한대 시간이면 더 이상 최적화 불가
+      if (minDuration === Number.POSITIVE_INFINITY) {
+        console.warn('경유지 최적화: 일부 경유지의 이동 시간을 계산할 수 없습니다.');
+        // 남은 경유지들을 원래 순서대로 추가
+        optimized.push(...remaining);
+        break;
+      }
+    }
+
+    // 위치 정보가 없는 경유지들은 원래 순서대로 끝에 추가
+    const waypointsWithoutLocation = waypoints.filter(wp => {
+      const location = extractDirectionsInput(wp);
+      return !location || (location.lat === undefined && !location.placeId);
+    });
+    
+    if (waypointsWithoutLocation.length > 0) {
+      optimized.push(...waypointsWithoutLocation);
+    }
+
+    console.log('✅ 경유지 순서 최적화 완료:', {
+      원래순서: waypoints.map(wp => wp.label || wp.address),
+      최적화순서: optimized.map(wp => wp.label || wp.address)
+    });
+
+    return optimized;
+  } catch (error) {
+    console.error('경유지 순서 최적화 실패, 원래 순서 사용:', error);
+    return waypoints; // 실패 시 원래 순서 반환
+  }
 }
 
 function buildStopList(state) {

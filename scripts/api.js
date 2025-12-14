@@ -116,3 +116,48 @@ export async function calculateTravelTime(google, origin, destination, travelMod
     return 30;
   }
 }
+
+/**
+ * 출발지에서 여러 목적지까지의 이동 시간을 한 번에 계산합니다 (Distance Matrix API)
+ * @param {Object} google - Google Maps SDK
+ * @param {Object|string} originLL - 출발지 위치
+ * @param {Array<Object|string>} destLLs - 목적지 위치 배열
+ * @param {string} travelMode - 이동 수단 (기본값: TRANSIT)
+ * @returns {Promise<Array<number>>} 각 목적지까지의 이동 시간 배열 (초 단위, 실패 시 무한대)
+ */
+export function matrixDurations(google, originLL, destLLs, travelMode = null) {
+  if (!google) {
+    return Promise.resolve(destLLs.map(() => Number.POSITIVE_INFINITY));
+  }
+
+  const mode = travelMode || google.maps.TravelMode.TRANSIT;
+
+  return new Promise((resolve) => {
+    const service = new google.maps.DistanceMatrixService();
+    service.getDistanceMatrix({
+      origins: [originLL],
+      destinations: destLLs,
+      travelMode: mode,
+      unitSystem: google.maps.UnitSystem.METRIC,
+      transitOptions: mode === google.maps.TravelMode.TRANSIT ? {
+        modes: [google.maps.TransitMode.SUBWAY, google.maps.TransitMode.BUS],
+        routingPreference: google.maps.TransitRoutePreference.FEWER_TRANSFERS
+      } : undefined
+    }, (result, status) => {
+      if (status !== google.maps.DistanceMatrixStatus.OK) {
+        // 실패 시 무한대 반환하여 Greedy 알고리즘이 해당 경유지를 건너뛰도록 함
+        console.warn('Distance Matrix API 호출 실패:', status);
+        resolve(destLLs.map(() => Number.POSITIVE_INFINITY));
+        return;
+      }
+
+      const row = result.rows?.[0]?.elements || [];
+      resolve(row.map(element => {
+        if (element.status === google.maps.DistanceMatrixElementStatus.OK && element.duration) {
+          return element.duration.value; // 초 단위
+        }
+        return Number.POSITIVE_INFINITY;
+      }));
+    });
+  });
+}
