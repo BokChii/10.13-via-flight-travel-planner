@@ -659,14 +659,26 @@ window.startEmergencyNavigation = async function(transportType = 'transit') {
     return;
   }
   
-  const currentPosition = state.navigation?.currentPosition;
+  // 공항 위치를 먼저 가져오기 (일정 취소 전에)
   const airportPosition = getAirportPosition(state);
+  const currentPosition = state.navigation?.currentPosition;
   
-  if (!currentPosition || !airportPosition) {
-    console.error('현재 위치 또는 공항 위치를 찾을 수 없습니다.');
+  if (!currentPosition) {
+    console.error('현재 위치를 찾을 수 없습니다.');
     if (window.showToast) {
       window.showToast({
-        message: '현재 위치 또는 공항 위치를 확인할 수 없습니다.',
+        message: '현재 위치를 확인할 수 없습니다. GPS 권한을 확인해주세요.',
+        type: 'error'
+      });
+    }
+    return;
+  }
+  
+  if (!airportPosition) {
+    console.error('공항 위치를 찾을 수 없습니다.');
+    if (window.showToast) {
+      window.showToast({
+        message: '공항 위치를 확인할 수 없습니다. 여행 정보를 확인해주세요.',
         type: 'error'
       });
     }
@@ -674,10 +686,11 @@ window.startEmergencyNavigation = async function(transportType = 'transit') {
   }
   
   try {
-    // 1. 일정 취소: waypoints와 routePlan 초기화
+    // 1. 일정 취소: waypoints와 routePlan만 초기화 (tripMeta는 유지 - 공항 정보 보존)
     window.updateState((draft) => {
       draft.waypoints = [];
       draft.routePlan = null;
+      // tripMeta는 유지 (공항 정보가 필요하므로)
     });
     
     // 2. 기존 경로 제거

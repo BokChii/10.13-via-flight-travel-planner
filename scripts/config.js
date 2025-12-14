@@ -192,22 +192,26 @@ export const NAVIGATION_STATUS = {
  * @returns {Object|null} 공항 위치 정보
  */
 export function getAirportPosition(state) {
+  // tripMeta에서 공항 정보 확인
   const tripMeta = state.tripMeta;
-  if (!tripMeta) {
-    console.log('getAirportPosition: tripMeta가 없습니다');
-    return null;
-  }
-
-  // tripMeta에서 실제 공항 정보 가져오기
-  if (tripMeta.airportPosition) {
-    console.log('getAirportPosition: tripMeta.airportPosition 사용:', tripMeta.airportPosition);
-    return tripMeta.airportPosition;
+  if (tripMeta) {
+    // tripMeta에서 실제 공항 정보 가져오기
+    if (tripMeta.airportPosition) {
+      console.log('getAirportPosition: tripMeta.airportPosition 사용:', tripMeta.airportPosition);
+      return tripMeta.airportPosition;
+    }
+    
+    // index.html에서 설정한 공항 정보 확인
+    if (tripMeta.returnAirport && tripMeta.returnAirport.location) {
+      console.log('getAirportPosition: tripMeta.returnAirport.location 사용:', tripMeta.returnAirport.location);
+      return tripMeta.returnAirport.location;
+    }
   }
   
-  // index.html에서 설정한 공항 정보 확인
-  if (tripMeta.returnAirport && tripMeta.returnAirport.location) {
-    console.log('getAirportPosition: tripMeta.returnAirport.location 사용:', tripMeta.returnAirport.location);
-    return tripMeta.returnAirport.location;
+  // tripMeta가 없을 때 state.destination 확인 (네비게이션 모드에서 사용)
+  if (state.destination && state.destination.location) {
+    console.log('getAirportPosition: state.destination.location 사용:', state.destination.location);
+    return state.destination.location;
   }
   
   // Fallback: 기본 공항
