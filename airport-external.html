@@ -845,13 +845,24 @@
           (firstItem.description.length > 50 ? firstItem.description.substring(0, 50) + '...' : firstItem.description) : 
           firstItem.location || '';
         
+        // 이미지 URL 가져오기 (첫 번째 항목의 이미지 사용)
+        const imageUrl = firstItem.imageUrl || '';
+        const imageHtml = imageUrl ? 
+          `<div class="poi-list-item-image">
+            <img src="${imageUrl}" alt="${group.name}" onerror="this.style.display='none'; this.parentElement.style.display='none';">
+          </div>` : 
+          '<div class="poi-list-item-image placeholder"><span>📷</span></div>';
+        
         wrapper.innerHTML = `
           <div class="poi-list-item-main" data-group-index="${index}">
-            <div class="poi-list-item-header">
-              <h5>${group.name}${isMultiple ? ` (${count}곳)` : ''}</h5>
+            ${imageHtml}
+            <div class="poi-list-item-content">
+              <div class="poi-list-item-header">
+                <h5>${group.name}${isMultiple ? ` (${count}곳)` : ''}</h5>
+              </div>
+              <p class="poi-list-item-description">${shortDescription}</p>
+              ${isMultiple ? '<div class="poi-list-item-arrow">▼</div>' : ''}
             </div>
-            <p class="poi-list-item-description">${shortDescription}</p>
-            ${isMultiple ? '<div class="poi-list-item-arrow">▼</div>' : ''}
           </div>
         `;
         
