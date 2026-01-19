@@ -860,15 +860,48 @@
           }
         });
         
-        const imageHtml = imageUrl ? 
-          `<div class="poi-list-item-image">
-            <img src="${imageUrl}" alt="${group.name.replace(/"/g, '&quot;')}">
-          </div>` : 
-          '<div class="poi-list-item-image placeholder"><span>📷</span></div>';
+        // 이미지 컨테이너 생성
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'poi-list-item-image';
+        
+        if (imageUrl) {
+          // 이미지 요소 생성
+          const imgElement = document.createElement('img');
+          imgElement.alt = group.name.replace(/"/g, '&quot;');
+          
+          // 이벤트 리스너를 먼저 추가
+          imgElement.addEventListener('error', function() {
+            console.error('[이미지 로드 실패]', group.name, this.src);
+            // 에러 상세 정보 추가
+            console.error('[이미지 에러 상세]', {
+              name: group.name,
+              url: this.src,
+              naturalWidth: this.naturalWidth,
+              naturalHeight: this.naturalHeight,
+              complete: this.complete
+            });
+            this.style.display = 'none';
+            if (this.parentElement) {
+              this.parentElement.style.display = 'none';
+            }
+          });
+          
+          imgElement.addEventListener('load', function() {
+            console.log('[이미지 로드 성공]', group.name, this.src);
+          });
+          
+          // 이벤트 리스너 추가 후 src 설정
+          imgElement.src = imageUrl;
+          imageContainer.appendChild(imgElement);
+        } else {
+          imageContainer.className = 'poi-list-item-image placeholder';
+          const placeholder = document.createElement('span');
+          placeholder.textContent = '📷';
+          imageContainer.appendChild(placeholder);
+        }
         
         wrapper.innerHTML = `
           <div class="poi-list-item-main" data-group-index="${index}">
-            ${imageHtml}
             <div class="poi-list-item-content">
               <div class="poi-list-item-header">
                 <h5>${group.name}${isMultiple ? ` (${count}곳)` : ''}</h5>
@@ -879,24 +912,10 @@
           </div>
         `;
         
-        // 이미지 이벤트 리스너 추가 (인라인 핸들러 대신)
-        if (imageUrl) {
-          const imgElement = wrapper.querySelector('img');
-          if (imgElement) {
-            imgElement.addEventListener('error', function() {
-              console.error('[이미지 로드 실패]', group.name, this.src);
-              this.style.display = 'none';
-              if (this.parentElement) {
-                this.parentElement.style.display = 'none';
-              }
-            });
-            imgElement.addEventListener('load', function() {
-              console.log('[이미지 로드 성공]', group.name, this.src);
-            });
-          }
-        }
-        
+        // 이미지 컨테이너를 메인 요소에 추가
         const mainElement = wrapper.querySelector('.poi-list-item-main');
+        mainElement.insertBefore(imageContainer, mainElement.firstChild);
+        
         mainElement.addEventListener('click', (e) => {
           e.stopPropagation();
           selectPOIItem(group, index);
