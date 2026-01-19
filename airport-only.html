@@ -628,9 +628,7 @@
         
         const imageHtml = imageUrl ? 
           `<div class="poi-list-item-image">
-            <img src="${imageUrl}" alt="${group.name}" 
-                 onerror="console.error('[이미지 로드 실패]', '${group.name}', this.src); this.style.display='none'; this.parentElement.style.display='none';"
-                 onload="console.log('[이미지 로드 성공]', '${group.name}', this.src);">
+            <img src="${imageUrl}" alt="${group.name.replace(/"/g, '&quot;')}">
           </div>` : 
           '<div class="poi-list-item-image placeholder"><span>📷</span></div>';
         
@@ -646,6 +644,23 @@
             </div>
           </div>
         `;
+        
+        // 이미지 이벤트 리스너 추가 (인라인 핸들러 대신)
+        if (imageUrl) {
+          const imgElement = wrapper.querySelector('img');
+          if (imgElement) {
+            imgElement.addEventListener('error', function() {
+              console.error('[이미지 로드 실패]', group.name, this.src);
+              this.style.display = 'none';
+              if (this.parentElement) {
+                this.parentElement.style.display = 'none';
+              }
+            });
+            imgElement.addEventListener('load', function() {
+              console.log('[이미지 로드 성공]', group.name, this.src);
+            });
+          }
+        }
         
         // 클릭 이벤트를 메인 영역에만 추가
         const mainElement = wrapper.querySelector('.poi-list-item-main');
