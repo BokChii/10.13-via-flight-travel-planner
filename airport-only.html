@@ -613,9 +613,24 @@
         
         // 이미지 URL 가져오기 (첫 번째 항목의 이미지 사용)
         const imageUrl = firstItem.imageUrl || '';
+        
+        // 디버깅 로그
+        console.log(`[POI 이미지 디버깅] ${group.name}:`, {
+          hasImageUrl: !!imageUrl,
+          imageUrl: imageUrl,
+          firstItem: {
+            id: firstItem.id,
+            name: firstItem.name,
+            imageUrl: firstItem.imageUrl,
+            allKeys: Object.keys(firstItem)
+          }
+        });
+        
         const imageHtml = imageUrl ? 
           `<div class="poi-list-item-image">
-            <img src="${imageUrl}" alt="${group.name}" onerror="this.style.display='none'; this.parentElement.style.display='none';">
+            <img src="${imageUrl}" alt="${group.name}" 
+                 onerror="console.error('[이미지 로드 실패]', '${group.name}', this.src); this.style.display='none'; this.parentElement.style.display='none';"
+                 onload="console.log('[이미지 로드 성공]', '${group.name}', this.src);">
           </div>` : 
           '<div class="poi-list-item-image placeholder"><span>📷</span></div>';
         

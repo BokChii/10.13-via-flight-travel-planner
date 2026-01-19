@@ -275,7 +275,7 @@ class SQLiteClient {
         
         poiMap.set(baseId, true);
         
-        return {
+        const poi = {
           id: baseId,
           name: name,
           category: category,
@@ -291,6 +291,17 @@ class SQLiteClient {
           rating: 4.0 + Math.random(), // 임시 평점
           userRatingsTotal: Math.floor(Math.random() * 100) + 10 // 임시 리뷰 수
         };
+        
+        // 디버깅: 처음 3개만 이미지 URL 확인
+        if (index < 3) {
+          console.log(`[DB POI 변환] ${poi.name}:`, {
+            hasImageUrl: !!poi.imageUrl,
+            imageUrl: poi.imageUrl,
+            rawImageUrl: row.image_url
+          });
+        }
+        
+        return poi;
       });
       
       console.log(`✨ [${tableName}] POI 변환 완료: ${pois.length}개`);
