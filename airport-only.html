@@ -626,10 +626,10 @@
           }
         });
         
-        // 이미지 HTML 생성
+        // 이미지 HTML 생성 (src는 나중에 설정)
         const imageHtml = imageUrl ? 
           `<div class="poi-list-item-image">
-            <img src="${imageUrl.replace(/"/g, '&quot;')}" alt="${group.name.replace(/"/g, '&quot;')}">
+            <img alt="${group.name.replace(/"/g, '&quot;')}">
           </div>` : 
           '<div class="poi-list-item-image placeholder"><span>📷</span></div>';
         
@@ -646,12 +646,21 @@
           </div>
         `;
         
-        // 이미지 요소에 이벤트 리스너 추가
+        // 이미지 요소에 이벤트 리스너 추가 후 src 설정
         const mainElement = wrapper.querySelector('.poi-list-item-main');
         const imgElement = mainElement.querySelector('img');
-        if (imgElement) {
+        if (imgElement && imageUrl) {
+          // 이벤트 리스너를 먼저 추가
           imgElement.addEventListener('error', function() {
             console.error('[이미지 로드 실패]', group.name, this.src);
+            console.error('[이미지 에러 상세]', {
+              name: group.name,
+              url: this.src,
+              naturalWidth: this.naturalWidth,
+              naturalHeight: this.naturalHeight,
+              complete: this.complete,
+              networkState: this.networkState
+            });
             this.style.display = 'none';
             if (this.parentElement) {
               this.parentElement.style.display = 'none';
@@ -662,10 +671,18 @@
             console.log('[이미지 로드 성공]', group.name, this.src);
           });
           
+          // 이벤트 리스너 추가 후 src 설정
+          imgElement.src = imageUrl;
+          
           // 이미지가 이미 로드되었을 수 있으므로 확인
-          if (imgElement.complete && imgElement.naturalWidth === 0) {
-            // 이미지가 로드되었지만 크기가 0이면 에러 처리
-            imgElement.dispatchEvent(new Event('error'));
+          if (imgElement.complete) {
+            if (imgElement.naturalWidth === 0) {
+              // 이미지가 로드되었지만 크기가 0이면 에러 처리
+              imgElement.dispatchEvent(new Event('error'));
+            } else {
+              // 이미지가 성공적으로 로드됨
+              console.log('[이미지 이미 로드됨]', group.name, imgElement.src);
+            }
           }
         }
         
